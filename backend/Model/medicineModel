@@ -1,0 +1,47 @@
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
+
+const medicineSchema = new mongoose.Schema({
+    mediName:{
+        type:String,
+        required:true,
+    },
+    mediPrice:{
+        type:Number,
+        required:true,
+    },
+    mediDescription:{
+        type:String,
+        required:true,
+    },
+    mediImage:{
+        type:String,
+        required:true,
+    },
+    mediCategory:{
+        type:String,
+        required:true,
+    },
+    mediStock:{
+        type:Number,
+        required:true,
+    },
+    mediCompany:{
+        type:String,
+        required:true,
+    },
+    mediExpiryDate:{
+        type:Date,
+        required:true,
+    },
+    mediManufactureDate:{
+        type:Date,
+        required:true,
+    },
+    mediPrescriptionStatus:{
+        type:String,
+        required:true,
+    }
+});
+
+module.exports = mongoose.model("Medicine", medicineSchema);

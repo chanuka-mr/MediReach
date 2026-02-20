@@ -1,0 +1,63 @@
+const Medicine = require('../Model/medicineModel');
+
+//Display all medicines
+const getAllMedicines = async (req, res) => {
+    try {
+        const medicines = await Medicine.find();
+        return res.status(200).json({ medicines });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+//Medicine Insert
+const  addmedicine = async (req, res, next) => {
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus } = req.body;
+    try {
+        medicine = new Medicine({
+            mediName,
+            mediPrice,
+            mediDescription,
+            mediImage,  
+            mediCategory,
+            mediStock,
+            mediCompany,
+            mediExpiryDate,
+            mediManufactureDate,
+            mediPrescriptionStatus
+        });
+        await medicine.save();
+    } catch (error) {
+        console.error(error);
+    }
+
+    if (!medicine) {
+        return res.status(500).json({ message: "Unable to add" });
+    }
+    return res.status(201).json({ message: "Medicine added successfully", medicine });
+
+};
+
+//Get by ID
+const getById = async (req, res,next) => {
+    const id = req.params.id;
+    let medicine;
+    try {
+        medicine = await Medicine.findById(id);
+    } catch (error) {
+        console.error(error);
+    }
+    if (!medicine) {
+        return res.status(404).json({ message: "No medicine found" });
+    }
+    return res.status(200).json({ medicine });
+};
+
+
+module.exports = {
+    getAllMedicines,
+    addmedicine,
+    getById
+};

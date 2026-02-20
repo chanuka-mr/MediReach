@@ -1,19 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const routes = require("./Route/medicineRoute");
 require("dotenv").config();
 
 const app = express();
 
 // middleware
-app.use("/", (req, res) => {
-    res.send("Success");
-})
+app.use(express.json());
+app.use("/medicines", routes);
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect("mongodb+srv://admin:jEvCBzBxRrHyAYJr@medireach.it1h5bs.mongodb.net/")
 .then(() => console.log("Connected to MongoDB"))
 .then(() => {
-    app.listen(process.env.PORT, () => {
-        console.log("Server is running on port", process.env.PORT);
+    app.listen(5000, () => {
+        console.log("Server is running on port 5000");
     })
 })
 .catch((err) => {
