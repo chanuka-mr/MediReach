@@ -236,3 +236,231 @@ exports.createPharmacy = async (req, res) => {
     });
   }
 };
+
+// ============= UPDATE OPERATIONS =============
+
+// @desc    Update pharmacy by ID (FULL update)
+// @route   PUT /api/pharmacies/:id
+// @access  Public (for now, we'll add auth later)
+exports.updatePharmacy = async (req, res) => {
+  try {
+    console.log(`✏️ Updating pharmacy with ID: ${req.params.id}`);
+    console.log('📝 Update data:', req.body);
+
+    // Find the pharmacy first
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      console.log(`❌ No pharmacy found with ID: ${req.params.id}`);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Prevent updating certain fields
+    const allowedUpdates = [
+      'name', 'district', 'location', 'contactNumber', 
+      'email', 'operatingHours', 'pharmacistName'
+    ];
+    
+    // Filter out fields that are not allowed to be updated
+    const updateData = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updateData[key] = req.body[key];
+      }
+    });
+
+    // If location is being updated, check if new location is available
+    if (updateData.location && updateData.location.coordinates) {
+      // Check if another pharmacy exists at this new location
+      const existingPharmacy = await Pharmacy.findOne({
+        _id: { $ne: req.params.id }, // Exclude current pharmacy
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: updateData.location.coordinates
+            },
+            $maxDistance: 1000 // 1km radius
+          }
+        }
+      });
+
+      if (existingPharmacy) {
+        return res.status(409).json({
+          status: 'fail',
+          message: 'Another pharmacy already exists within 1km of this location'
+        });
+      }
+    }
+
+    // Update the pharmacy
+    const updatedPharmacy = await Pharmacy.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run schema validations
+      }
+    );
+
+    console.log(`✅ Pharmacy updated successfully: ${updatedPharmacy.name}`);
+
+    res.status(200).json({
+      status: 'success',
+      data: { pharmacy: updatedPharmacy }
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating pharmacy:', error);
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({
+        status: 'fail',
+        message: `${field} already exists. Please use a different ${field}`
+      });
+    }
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: errors.join(', ')
+      });
+    }
+
+    // Handle invalid MongoDB ID
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid pharmacy ID format'
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Partially update pharmacy (PATCH)
+// @route   PATCH /api/pharmacies/:id
+// @access  Public (for now, we'll add auth later)
+exports.partiallyUpdatePharmacy = async (req, res) => {
+  try {
+    console.log(`🔧 Partially updating pharmacy with ID: ${req.params.id}`);
+    console.log('📝 Update data:', req.body);
+
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // If location is being updated, check location availability
+    if (req.body.location && req.body.location.coordinates) {
+      const existingPharmacy = await Pharmacy.findOne({
+        _id: { $ne: req.params.id },
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: req.body.location.coordinates
+            },
+            $maxDistance: 1000
+          }
+        }
+      });
+
+      if (existingPharmacy) {
+        return res.status(409).json({
+          status: 'fail',
+          message: 'Another pharmacy already exists within 1km of this location'
+        });
+      }
+    }
+
+    // Only update fields that are provided
+    const updatedPharmacy = await Pharmacy.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { 
+        new: true,
+        runValidators: true
+      }
+    );
+
+    console.log(`✅ Pharmacy partially updated: ${updatedPharmacy.name}`);
+
+    res.status(200).json({
+      status: 'success',
+      data: { pharmacy: updatedPharmacy }
+    });
+
+  } catch (error) {
+    console.error('❌ Error partially updating pharmacy:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: errors.join(', ')
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Toggle pharmacy active status
+// @route   PATCH /api/pharmacies/:id/toggle-status
+// @access  Public (for now, we'll add auth later)
+exports.togglePharmacyStatus = async (req, res) => {
+  try {
+    console.log(`🔄 Toggling status for pharmacy ID: ${req.params.id}`);
+
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Toggle the isActive status
+    pharmacy.isActive = !pharmacy.isActive;
+    await pharmacy.save();
+
+    const status = pharmacy.isActive ? 'activated' : 'deactivated';
+    console.log(`✅ Pharmacy ${status}: ${pharmacy.name}`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Pharmacy ${status} successfully`,
+      data: { 
+        isActive: pharmacy.isActive,
+        pharmacy 
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error toggling pharmacy status:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};

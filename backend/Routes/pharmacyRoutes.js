@@ -8,7 +8,7 @@ router.use((req, res, next) => {
     next();
 });
 
-// 📖 READ ROUTES
+// ============= READ ROUTES =============
 // Get all pharmacies with pagination and filters
 router.get('/', pharmacyController.getAllPharmacies);
 
@@ -30,7 +30,17 @@ router.get('/test', (req, res) => {
     });
 });
 
-// ✏️ CREATE ROUTE
+// ============= CREATE ROUTE =============
 router.post('/', pharmacyController.createPharmacy);
+
+// ============= UPDATE ROUTES =============
+// Full update (PUT) - replace entire resource
+router.put('/:id', pharmacyController.updatePharmacy);
+
+// Partial update (PATCH) - update specific fields
+router.patch('/:id', pharmacyController.partiallyUpdatePharmacy);
+
+// Toggle active status
+router.patch('/:id/toggle-status', pharmacyController.togglePharmacyStatus);
 
 module.exports = router;
