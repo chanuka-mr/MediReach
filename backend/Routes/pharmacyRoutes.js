@@ -43,4 +43,17 @@ router.patch('/:id', pharmacyController.partiallyUpdatePharmacy);
 // Toggle active status
 router.patch('/:id/toggle-status', pharmacyController.togglePharmacyStatus);
 
+// Restore soft-deleted pharmacy
+router.patch('/:id/restore', pharmacyController.restorePharmacy);
+
+// ============= DELETE ROUTES =============
+// Hard delete (permanent)
+router.delete('/:id', pharmacyController.deletePharmacyPermanently);
+
+// Soft delete (mark as inactive)
+router.delete('/:id/soft', pharmacyController.softDeletePharmacy);
+
+// Bulk delete multiple pharmacies
+router.post('/bulk-delete', pharmacyController.bulkDeletePharmacies);
+
 module.exports = router;

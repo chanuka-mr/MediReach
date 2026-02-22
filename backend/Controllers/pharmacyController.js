@@ -464,3 +464,226 @@ exports.togglePharmacyStatus = async (req, res) => {
     });
   }
 };
+
+// ============= DELETE OPERATIONS =============
+
+// @desc    Delete pharmacy permanently (HARD DELETE)
+// @route   DELETE /api/pharmacies/:id
+// @access  Public (for now, we'll add auth later - Admin only)
+exports.deletePharmacyPermanently = async (req, res) => {
+  try {
+    console.log(`🗑️ Permanently deleting pharmacy with ID: ${req.params.id}`);
+
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      console.log(`❌ No pharmacy found with ID: ${req.params.id}`);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Store pharmacy name for response message
+    const pharmacyName = pharmacy.name;
+
+    // Permanently delete from database
+    await Pharmacy.findByIdAndDelete(req.params.id);
+
+    console.log(`✅ Pharmacy permanently deleted: ${pharmacyName}`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Pharmacy '${pharmacyName}' has been permanently deleted`,
+      data: null
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting pharmacy:', error);
+
+    // Handle invalid MongoDB ID
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid pharmacy ID format'
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Soft delete pharmacy (just mark as inactive)
+// @route   DELETE /api/pharmacies/:id/soft
+// @access  Public (for now, we'll add auth later)
+exports.softDeletePharmacy = async (req, res) => {
+  try {
+    console.log(`📌 Soft deleting pharmacy with ID: ${req.params.id}`);
+
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      console.log(`❌ No pharmacy found with ID: ${req.params.id}`);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Check if already inactive
+    if (!pharmacy.isActive) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Pharmacy is already inactive'
+      });
+    }
+
+    // Mark as inactive (soft delete)
+    pharmacy.isActive = false;
+    await pharmacy.save();
+
+    console.log(`✅ Pharmacy soft deleted: ${pharmacy.name}`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Pharmacy '${pharmacy.name}' has been deactivated (soft delete)`,
+      data: {
+        pharmacy: {
+          id: pharmacy._id,
+          name: pharmacy.name,
+          isActive: pharmacy.isActive
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error soft deleting pharmacy:', error);
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid pharmacy ID format'
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Restore soft-deleted pharmacy
+// @route   PATCH /api/pharmacies/:id/restore
+// @access  Public (for now, we'll add auth later)
+exports.restorePharmacy = async (req, res) => {
+  try {
+    console.log(`🔄 Restoring pharmacy with ID: ${req.params.id}`);
+
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      console.log(`❌ No pharmacy found with ID: ${req.params.id}`);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Check if already active
+    if (pharmacy.isActive) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Pharmacy is already active'
+      });
+    }
+
+    // Restore by marking as active
+    pharmacy.isActive = true;
+    await pharmacy.save();
+
+    console.log(`✅ Pharmacy restored: ${pharmacy.name}`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Pharmacy '${pharmacy.name}' has been restored`,
+      data: {
+        pharmacy: {
+          id: pharmacy._id,
+          name: pharmacy.name,
+          isActive: pharmacy.isActive
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error restoring pharmacy:', error);
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid pharmacy ID format'
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Delete multiple pharmacies (bulk delete)
+// @route   POST /api/pharmacies/bulk-delete
+// @access  Public (for now, we'll add auth later - Admin only)
+exports.bulkDeletePharmacies = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide an array of pharmacy IDs to delete'
+      });
+    }
+
+    console.log(`🗑️ Bulk deleting ${ids.length} pharmacies`);
+
+    // Find all pharmacies to delete
+    const pharmacies = await Pharmacy.find({ _id: { $in: ids } });
+    
+    if (pharmacies.length === 0) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacies found with the provided IDs'
+      });
+    }
+
+    // Store names for response
+    const deletedNames = pharmacies.map(p => p.name);
+
+    // Delete all matching pharmacies
+    const result = await Pharmacy.deleteMany({ _id: { $in: ids } });
+
+    console.log(`✅ Successfully deleted ${result.deletedCount} pharmacies`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Successfully deleted ${result.deletedCount} pharmacies`,
+      data: {
+        deletedCount: result.deletedCount,
+        deletedPharmacies: deletedNames
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error bulk deleting pharmacies:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
