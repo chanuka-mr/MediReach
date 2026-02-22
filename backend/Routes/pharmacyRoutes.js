@@ -8,13 +8,20 @@ router.use((req, res, next) => {
     next();
 });
 
-// GET route for fetching all pharmacies
+// 📖 READ ROUTES
+// Get all pharmacies with pagination and filters
 router.get('/', pharmacyController.getAllPharmacies);
 
-// POST route for creating pharmacy
-router.post('/', pharmacyController.createPharmacy);
+// Search pharmacies
+router.get('/search', pharmacyController.searchPharmacies);
 
-// Test route to verify router is working
+// Get pharmacies by district
+router.get('/district/:district', pharmacyController.getPharmaciesByDistrict);
+
+// Get single pharmacy by ID (this must come AFTER specific routes)
+router.get('/:id', pharmacyController.getPharmacyById);
+
+// Test route
 router.get('/test', (req, res) => {
     console.log("✅ Test route accessed");
     res.json({ 
@@ -22,5 +29,8 @@ router.get('/test', (req, res) => {
         message: 'Pharmacy routes are working!' 
     });
 });
+
+// ✏️ CREATE ROUTE
+router.post('/', pharmacyController.createPharmacy);
 
 module.exports = router;
