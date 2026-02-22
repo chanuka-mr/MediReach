@@ -55,9 +55,55 @@ const getById = async (req, res,next) => {
     return res.status(200).json({ medicine });
 };
 
+//Update medicine
+const updateMedicine = async (req, res, next) => {
+    const id = req.params.id;
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus } = req.body;
+
+    try{
+        medicine = await Medicine.findByIdAndUpdate(id, {
+            mediName,
+            mediPrice,
+            mediDescription,
+            mediImage,
+            mediCategory,
+            mediStock,
+            mediCompany,
+            mediExpiryDate,
+            mediManufactureDate,
+            mediPrescriptionStatus
+        });
+        medicine = await medicine.save();
+    }catch(error){
+        console.error(error);
+    }
+    if (!medicine) {
+        return res.status(404).json({ message: "No medicine found to Update" });
+    }
+    return res.status(200).json({ medicine });
+};
+
+//Delete medicine
+const deleteMedicine = async (req, res, next) => {
+    const id = req.params.id;
+
+    try {
+        medicine = await Medicine.findByIdAndDelete(id);
+    } catch (error) {
+        console.error(error);
+    }   
+    if (!medicine) {
+        return res.status(404).json({ message: "No medicine found to Delete" });
+    }   
+    return res.status(200).json({ message: "Medicine deleted successfully" });
+};
+    
+
 
 module.exports = {
     getAllMedicines,
     addmedicine,
-    getById
+    getById,
+    updateMedicine,
+    deleteMedicine
 };
