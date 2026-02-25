@@ -30,6 +30,10 @@ router.get('/24-7', pharmacyController.get247Pharmacies);
 // FEATURE 3: Get pharmacy statistics
 router.get('/stats', pharmacyController.getPharmacyStats);
 
+// FEATURE 4: Bulk update pharmacies (e.g., update status of multiple pharmacies at once)
+router.patch('/bulk-update', pharmacyController.bulkUpdatePharmacies);
+router.get('/export/csv', pharmacyController.exportPharmaciesCSV);
+
 // Get single pharmacy by ID (this must come AFTER specific routes)
 router.get('/:id', pharmacyController.getPharmacyById);
 

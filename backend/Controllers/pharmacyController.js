@@ -982,3 +982,78 @@ exports.getPharmacyStats = async (req, res) => {
     });
   }
 };
+
+// @desc    Bulk update pharmacies
+// @route   PATCH /api/pharmacies/bulk-update
+// @access  Public (Admin only for production)
+exports.bulkUpdatePharmacies = async (req, res) => {
+  try {
+    const { pharmacyIds, updateData } = req.body;
+
+    if (!pharmacyIds || !Array.isArray(pharmacyIds) || pharmacyIds.length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide an array of pharmacy IDs'
+      });
+    }
+
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide update data'
+      });
+    }
+
+    console.log(`📦 Bulk updating ${pharmacyIds.length} pharmacies`);
+
+    const result = await Pharmacy.updateMany(
+      { _id: { $in: pharmacyIds } },
+      updateData,
+      { runValidators: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: `Updated ${result.modifiedCount} pharmacies`,
+      data: {
+        matched: result.matchedCount,
+        modified: result.modifiedCount,
+        updateData
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error bulk updating:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Export pharmacies as CSV
+// @route   GET /api/pharmacies/export/csv
+// @access  Public
+exports.exportPharmaciesCSV = async (req, res) => {
+  try {
+    const pharmacies = await Pharmacy.find({ isActive: true });
+
+    // Create CSV header
+    let csv = 'Name,District,Contact,Email,Pharmacist,Open,Close,Status\n';
+
+    // Add rows
+    pharmacies.forEach(p => {
+      csv += `"${p.name}",${p.district},${p.contactNumber},${p.email},${p.pharmacistName},${p.operatingHours.open},${p.operatingHours.close},${p.isActive ? 'Active' : 'Inactive'}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=pharmacies.csv');
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error('❌ Error exporting CSV:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
