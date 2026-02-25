@@ -687,3 +687,113 @@ exports.bulkDeletePharmacies = async (req, res) => {
     });
   }
 };
+
+// ============= NEW FEATURE: NEARBY PHARMACIES =============
+
+// Helper function to calculate distance using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// @desc    Find nearest pharmacies to user's location
+// @route   GET /api/pharmacies/nearby?lat=6.9271&lng=79.8612&radius=5
+// @access  Public
+exports.getNearbyPharmacies = async (req, res) => {
+  try {
+    const { lat, lng, radius = 5 } = req.query; // radius in km
+    
+    if (!lat || !lng) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide latitude and longitude'
+      });
+    }
+
+    console.log(`📍 Finding pharmacies near [${lat}, ${lng}] within ${radius}km`);
+
+    // Validate coordinates
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    
+    if (isNaN(latNum) || isNaN(lngNum) || 
+        latNum < -90 || latNum > 90 || 
+        lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid coordinates provided'
+      });
+    }
+
+    // Find pharmacies using MongoDB geospatial query
+    const pharmacies = await Pharmacy.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [lngNum, latNum] // MongoDB expects [longitude, latitude]
+          },
+          $maxDistance: radius * 1000 // Convert km to meters
+        }
+      },
+      isActive: true
+    }).limit(20);
+
+    // Calculate distance for each pharmacy and add to response
+    const pharmaciesWithDistance = pharmacies.map(pharmacy => {
+      const distance = calculateDistance(
+        latNum, lngNum,
+        pharmacy.location.coordinates[1],
+        pharmacy.location.coordinates[0]
+      );
+      
+      // Create a plain object with all pharmacy properties plus distance
+      const pharmacyObj = pharmacy.toObject();
+      pharmacyObj.distance = {
+        km: parseFloat(distance.toFixed(2)),
+        meters: Math.round(distance * 1000),
+        text: `${distance.toFixed(2)} km`
+      };
+      pharmacyObj.travelTime = {
+        car: `${Math.round(distance / 5 * 60)} mins`,
+        walk: `${Math.round(distance / 5 * 60 * 3)} mins`, // Walking is ~3x slower than car
+        bike: `${Math.round(distance / 15 * 60)} mins` // Bike is ~3x faster than walking
+      };
+      
+      return pharmacyObj;
+    });
+
+    // Sort by distance (nearest first)
+    pharmaciesWithDistance.sort((a, b) => a.distance.km - b.distance.km);
+
+    res.status(200).json({
+      status: 'success',
+      results: pharmaciesWithDistance.length,
+      data: { 
+        pharmacies: pharmaciesWithDistance,
+        userLocation: { 
+          lat: latNum, 
+          lng: lngNum,
+          text: `${latNum.toFixed(4)}, ${lngNum.toFixed(4)}`
+        },
+        searchRadius: {
+          km: parseFloat(radius),
+          meters: radius * 1000
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error finding nearby pharmacies:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
