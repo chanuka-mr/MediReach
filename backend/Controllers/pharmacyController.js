@@ -688,7 +688,7 @@ exports.bulkDeletePharmacies = async (req, res) => {
   }
 };
 
-// ============= NEW FEATURE: NEARBY PHARMACIES =============
+// ============= FEATURE 1: NEARBY PHARMACIES =============
 
 // Helper function to calculate distance using Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -791,6 +791,92 @@ exports.getNearbyPharmacies = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error finding nearby pharmacies:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// ============= FEATURE 2: OPEN NOW & 24/7 PHARMACIES =============
+
+// @desc    Get pharmacies that are currently open
+// @route   GET /api/pharmacies/open-now
+// @access  Public
+exports.getOpenNowPharmacies = async (req, res) => {
+  try {
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    console.log(`🕐 Finding pharmacies open at ${currentTime}`);
+
+    const pharmacies = await Pharmacy.find({
+      isActive: true,
+      $or: [
+        // Regular hours (same day)
+        {
+          'operatingHours.open': { $lte: currentTime },
+          'operatingHours.close': { $gte: currentTime }
+        },
+        // Handle pharmacies that close after midnight (e.g., 22:00 to 02:00)
+        {
+          'operatingHours.open': { $gt: '12:00' },
+          'operatingHours.close': { $lt: '12:00' },
+          $expr: { 
+            $or: [
+              { $gte: [currentTime, '$operatingHours.open'] },
+              { $lte: [currentTime, '$operatingHours.close'] }
+            ]
+          }
+        }
+      ]
+    });
+
+    console.log(`✅ Found ${pharmacies.length} pharmacies open now`);
+
+    res.status(200).json({
+      status: 'success',
+      results: pharmacies.length,
+      data: { 
+        pharmacies,
+        currentTime,
+        date: now.toDateString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error finding open pharmacies:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get 24/7 pharmacies
+// @route   GET /api/pharmacies/24-7
+// @access  Public
+exports.get247Pharmacies = async (req, res) => {
+  try {
+    console.log('🕛 Finding 24/7 pharmacies');
+
+    const pharmacies = await Pharmacy.find({
+      isActive: true,
+      $or: [
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '23:59' },
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '00:00' },
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '24:00' }
+      ]
+    });
+
+    console.log(`✅ Found ${pharmacies.length} pharmacies open 24/7`);
+
+    res.status(200).json({
+      status: 'success',
+      results: pharmacies.length,
+      data: { pharmacies }
+    });
+  } catch (error) {
+    console.error('❌ Error finding 24/7 pharmacies:', error);
     res.status(500).json({
       status: 'error',
       message: error.message

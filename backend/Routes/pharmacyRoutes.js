@@ -18,8 +18,14 @@ router.get('/search', pharmacyController.searchPharmacies);
 // Get pharmacies by district
 router.get('/district/:district', pharmacyController.getPharmaciesByDistrict);
 
-// NEW: Get nearby pharmacies based on user location
+// FEATURE 1: Get nearby pharmacies based on user location
 router.get('/nearby', pharmacyController.getNearbyPharmacies);
+
+// FEATURE 2: Get pharmacies open now
+router.get('/open-now', pharmacyController.getOpenNowPharmacies);
+
+// FEATURE 2: Get 24/7 pharmacies
+router.get('/24-7', pharmacyController.get247Pharmacies);
 
 // Get single pharmacy by ID (this must come AFTER specific routes)
 router.get('/:id', pharmacyController.getPharmacyById);
