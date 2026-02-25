@@ -1057,3 +1057,49 @@ exports.exportPharmaciesCSV = async (req, res) => {
   }
 };
 
+const QRCode = require('qrcode');
+
+// @desc    Generate QR code for pharmacy
+// @route   GET /api/pharmacies/:id/qrcode
+// @access  Public
+exports.generatePharmacyQR = async (req, res) => {
+  try {
+    const pharmacy = await Pharmacy.findById(req.params.id);
+
+    if (!pharmacy) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No pharmacy found with that ID'
+      });
+    }
+
+    // Create QR code data
+    const qrData = {
+      id: pharmacy._id,
+      name: pharmacy.name,
+      district: pharmacy.district,
+      contact: pharmacy.contactNumber,
+      location: pharmacy.location.coordinates,
+      website: `http://localhost:5000/api/pharmacies/${pharmacy._id}`
+    };
+
+    // Generate QR code as data URL
+    const qrCode = await QRCode.toDataURL(JSON.stringify(qrData));
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        pharmacy: pharmacy.name,
+        qrCode: qrCode,
+        scanUrl: `http://localhost:5000/api/pharmacies/${pharmacy._id}`
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error generating QR code:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+

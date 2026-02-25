@@ -34,6 +34,9 @@ router.get('/stats', pharmacyController.getPharmacyStats);
 router.patch('/bulk-update', pharmacyController.bulkUpdatePharmacies);
 router.get('/export/csv', pharmacyController.exportPharmaciesCSV);
 
+// FEATURE 5: Generate QR code for pharmacy details
+router.get('/:id/qrcode', pharmacyController.generatePharmacyQR);
+
 // Get single pharmacy by ID (this must come AFTER specific routes)
 router.get('/:id', pharmacyController.getPharmacyById);
 
