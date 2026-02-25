@@ -883,3 +883,102 @@ exports.get247Pharmacies = async (req, res) => {
     });
   }
 };
+
+// ============= FEATURE 3: ANALYTICS & STATISTICS =============
+
+// @desc    Get pharmacy statistics dashboard
+// @route   GET /api/pharmacies/stats
+// @access  Public
+exports.getPharmacyStats = async (req, res) => {
+  try {
+    console.log('📊 Generating pharmacy statistics');
+
+    // Stats by district
+    const byDistrict = await Pharmacy.aggregate([
+      {
+        $group: {
+          _id: '$district',
+          total: { $sum: 1 },
+          active: { $sum: { $cond: ['$isActive', 1, 0] } },
+          inactive: { $sum: { $cond: ['$isActive', 0, 1] } }
+        }
+      },
+      { $sort: { total: -1 } }
+    ]);
+
+    // Total counts
+    const total = await Pharmacy.countDocuments();
+    const active = await Pharmacy.countDocuments({ isActive: true });
+    const inactive = total - active;
+
+    // Recently added (last 7 days)
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recent = await Pharmacy.countDocuments({
+      createdAt: { $gte: weekAgo }
+    });
+
+    // Operating hours analysis
+    const morningPharmacies = await Pharmacy.countDocuments({
+      'operatingHours.open': { $lte: '08:00' }
+    });
+    
+    const nightPharmacies = await Pharmacy.countDocuments({
+      'operatingHours.close': { $gte: '22:00' }
+    });
+
+    const twentyFourSeven = await Pharmacy.countDocuments({
+      $or: [
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '23:59' },
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '00:00' }
+      ]
+    });
+
+    // Get total number of unique districts
+    const districts = await Pharmacy.distinct('district');
+    
+    // Get pharmacy with most recent update
+    const latestUpdate = await Pharmacy.findOne().sort('-updatedAt');
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        overview: {
+          total,
+          active,
+          inactive,
+          activePercentage: total > 0 ? ((active / total) * 100).toFixed(1) + '%' : '0%',
+          inactivePercentage: total > 0 ? ((inactive / total) * 100).toFixed(1) + '%' : '0%',
+          totalDistricts: districts.length,
+          recentAdditions: recent
+        },
+        byDistrict: byDistrict.map(item => ({
+          district: item._id,
+          total: item.total,
+          active: item.active,
+          inactive: item.inactive,
+          occupancyRate: ((item.active / item.total) * 100).toFixed(1) + '%'
+        })),
+        operatingHours: {
+          opensEarly: morningPharmacies,
+          closesLate: nightPharmacies,
+          twentyFourSeven: twentyFourSeven,
+          regularHours: total - (morningPharmacies + nightPharmacies + twentyFourSeven)
+        },
+        metadata: {
+          latestUpdate: latestUpdate ? {
+            name: latestUpdate.name,
+            updatedAt: latestUpdate.updatedAt
+          } : null,
+          timestamp: new Date()
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error generating stats:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};

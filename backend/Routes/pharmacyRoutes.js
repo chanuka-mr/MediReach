@@ -27,8 +27,12 @@ router.get('/open-now', pharmacyController.getOpenNowPharmacies);
 // FEATURE 2: Get 24/7 pharmacies
 router.get('/24-7', pharmacyController.get247Pharmacies);
 
+// FEATURE 3: Get pharmacy statistics
+router.get('/stats', pharmacyController.getPharmacyStats);
+
 // Get single pharmacy by ID (this must come AFTER specific routes)
 router.get('/:id', pharmacyController.getPharmacyById);
+
 
 // Test route
 router.get('/test', (req, res) => {
