@@ -5,7 +5,13 @@ require("dotenv").config();
 const app = express();
 
 // middleware
-app.use("/", (req, res) => {
+app.use(express.json());
+
+// routes
+const userRoutes = require("./Routes/userRoutes");
+app.use("/api/users", userRoutes);
+
+app.get("/", (req, res) => {
     res.send("Success");
 })
 
