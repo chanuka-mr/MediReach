@@ -8,7 +8,10 @@ const app = express();
 app.use(express.json());
 
 // routes
+const authRoutes = require("./Routes/authRoutes");
 const userRoutes = require("./Routes/userRoutes");
+
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {

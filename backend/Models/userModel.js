@@ -4,13 +4,7 @@ const bcrypt = require("bcrypt");
 
 const userSchema = new Schema(
   {
-    firstName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    lastName: {
+    name: {
       type: String,
       required: true,
       trim: true,
@@ -35,18 +29,18 @@ const userSchema = new Schema(
       default: "user",
     },
 
-    phone: {
+    pharmacyName: {
       type: String,
+      required: function() { return this.role === 'pharmacy'; }
     },
 
-    isActive: {
-      type: Boolean,
-      default: true,
+    licenseNumber: {
+      type: String,
+      required: function() { return this.role === 'pharmacy'; }
     },
   },
   { timestamps: true }
 );
-
 
 // Encrypt password using bcrypt
 userSchema.pre("save", async function () {

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../Models/userModel");
 
+// Middleware to protect routes
 const protect = async (req, res, next) => {
   let token;
 
@@ -15,27 +16,35 @@ const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from the token
+      // Get user from the token (exclude password)
       req.user = await User.findById(decoded.id).select("-password");
 
-      return next();
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authorized, user not found" });
+      }
+
+      next();
     } catch (error) {
       console.error(error);
-      return res.status(401).json({ message: "Not authorized, token failed" });
+      res.status(401).json({ message: "Not authorized, token failed" });
     }
   }
 
   if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
+    res.status(401).json({ message: "Not authorized, no token" });
   }
 };
 
-const admin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    return next();
-  } else {
-    return res.status(403).json({ message: "Not authorized as an admin" });
-  }
+// Middleware to authorize roles
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `User role ${req.user ? req.user.role : 'unknown'} is not authorized to access this route`,
+      });
+    }
+    next();
+  };
 };
 
-module.exports = { protect, admin };
+module.exports = { protect, authorize };
