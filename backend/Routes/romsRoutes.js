@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const {
     createRequest,
-    getMyRequests,
     getAllRequests,
     getRequestById,
     updateRequest,
@@ -22,7 +21,7 @@ router.get('/request', getAllRequests);
 router.get('/request/:id', getRequestById);
 router.put('/request/:id', updateRequest);
 router.delete('/request/:id', deleteRequest);
-router.get('/my-requests', getMyRequests);
+
 router.post('/:id/cancel', validateRequest(schemas.cancelRequest), cancelRequest);
 
 // Pharmacist routes

@@ -12,16 +12,8 @@ const createRequest = async (req, res, next) => {
     }
 };
 
-const getMyRequests = async (req, res, next) => {
-    try {
-        const patient_id = req.user ? req.user._id : (req.query.patient_id || req.body.patient_id);
-        const requests = await MedicationRequest.find({ patient_id })
-            .sort({ createdAt: -1 });
-        res.json(requests);
-    } catch (error) {
-        next(error);
-    }
-};
+
+
 
 const getPharmacyRequests = async (req, res, next) => {
     try {
@@ -60,7 +52,14 @@ const cancelRequest = async (req, res, next) => {
 
 const getAllRequests = async (req, res, next) => {
     try {
-        const requests = await MedicationRequest.find({}).sort({ createdAt: -1 });
+        const filter = {};
+        const patient_id = req.user ? req.user._id : (req.query.patient_id || req.body.patient_id);
+
+        if (patient_id) {
+            filter.patient_id = patient_id;
+        }
+
+        const requests = await MedicationRequest.find(filter).sort({ createdAt: -1 });
         res.json(requests);
     } catch (error) {
         next(error);
@@ -113,7 +112,6 @@ const deleteRequest = async (req, res, next) => {
 
 module.exports = {
     createRequest,
-    getMyRequests,
     getAllRequests,
     getRequestById,
     updateRequest,
