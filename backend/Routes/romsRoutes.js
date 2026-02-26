@@ -17,16 +17,16 @@ const { validateRequest, schemas } = require('../Middleware/validationMiddleware
 // router.use(protect);
 
 // Patient routes
-router.post('/request', authorize('Patient'), validateRequest(schemas.createMedRequest), createRequest);
-router.get('/requests', getAllRequests);
+router.post('/request', validateRequest(schemas.createMedRequest), createRequest);
+router.get('/request', getAllRequests);
 router.get('/request/:id', getRequestById);
 router.put('/request/:id', updateRequest);
 router.delete('/request/:id', deleteRequest);
-router.get('/my-requests', authorize('Patient'), getMyRequests);
-router.post('/:id/cancel', authorize('Patient'), validateRequest(schemas.cancelRequest), cancelRequest);
+router.get('/my-requests', getMyRequests);
+router.post('/:id/cancel', validateRequest(schemas.cancelRequest), cancelRequest);
 
 // Pharmacist routes
-router.get('/pharmacy-tasks', authorize('Pharmacist'), getPharmacyRequests);
-router.put('/:id/process', authorize('Pharmacist'), validateRequest(schemas.processAction), processRequest);
+router.get('/pharmacy-tasks', getPharmacyRequests);
+router.put('/:id/process', validateRequest(schemas.processAction), processRequest);
 
 module.exports = router;
