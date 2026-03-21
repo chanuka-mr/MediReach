@@ -4,7 +4,7 @@ import InventoryDashboard from './Component/InventoryDashboard';
 import MedicineForm from './Component/MedicineAdd';
 import AdminNav from './Component/AdminNavBar';
 import MedicineInventory from './Component/MedicineInventory';
-
+import Orders from './Component/PharmacyOrders';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 function App() {
@@ -16,6 +16,7 @@ function App() {
           <Route path="/inventory" element={<InventoryDashboard />} />
           <Route path="/medicineAdd" element={<MedicineForm />} />
           <Route path="/medicineInventory" element={<MedicineInventory />} />
+          <Route path="/orders" element={<Orders />} />
           </Route>
         </Routes>
       </BrowserRouter>

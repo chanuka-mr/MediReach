@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Package2,
   Building2,
+  ShoppingCart,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +46,13 @@ const navItems = [
     tag: "Network",
     desc: "Connected locations",
   },
+  {
+    label: "Orders",
+    path: "/order",
+    icon: ShoppingCart,
+    tag: "Orders",
+    desc: "Pharmacy order requests",
+  },
 ]
 
 const bottomNav = [
@@ -52,7 +60,7 @@ const bottomNav = [
   { label: "Settings", path: "/settings", icon: Settings },
 ]
 
-export default function AdminNavBar() {
+export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [hoveredPath, setHoveredPath] = useState(null)
   const navigate = useNavigate()

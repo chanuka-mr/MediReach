@@ -266,6 +266,7 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         <button
           onMouseEnter={() => setOrdHov(true)}
           onMouseLeave={() => setOrdHov(false)}
+          onClick={() => navigate('/orders')}
           style={{
             padding: "7px 14px", borderRadius: 9,
             border: `1px solid ${ordHov ? "rgba(144,224,239,0.3)" : "rgba(144,224,239,0.1)"}`,
