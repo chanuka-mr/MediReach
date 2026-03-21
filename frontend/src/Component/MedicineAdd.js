@@ -1,4 +1,12 @@
 import React, { useState } from 'react'
+import {
+  ArrowLeft, ChevronRight, AlertCircle, CheckCircle2,
+  Package, FileText, Pill, Building2, Calendar,
+  DollarSign, Hash, Tag, Layers, Upload, X,
+  Loader2, Check, ShieldCheck, ShieldAlert, ShieldOff,
+  Stethoscope, FlaskConical, Barcode, ImagePlus,
+  ClipboardList, Info
+} from 'lucide-react'
 
 const C = {
   navy:   "#03045e",
@@ -9,6 +17,7 @@ const C = {
   white:  "#ffffff",
   warn:   "#f59e0b",
   danger: "#ef4444",
+  green:  "#22c55e",
 }
 
 const API = "http://localhost:5000/medicines"
@@ -26,7 +35,9 @@ const pharmaciesList = [
 ]
 
 const prescriptionStatuses = [
-  "Prescription Required","Over The Counter","Controlled Substance"
+  { key: "Prescription Required",  icon: ShieldCheck, color: C.sky,   bg: "rgba(0,180,216,0.1)",   border: "rgba(0,180,216,0.3)" },
+  { key: "Over The Counter",       icon: ShieldOff,   color: C.green, bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.3)" },
+  { key: "Controlled Substance",   icon: ShieldAlert, color: C.warn,  bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)" },
 ]
 
 const initialForm = {
@@ -36,32 +47,54 @@ const initialForm = {
   mediPrescriptionStatus:"", Pharmacy:"",
 }
 
-function Field({ label, required, error, children }) {
+// ── Field wrapper ────────────────────────────────────────────
+function Field({ label, required, error, icon: Icon, hint, children }) {
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-      <label style={{
-        fontSize:11, fontWeight:700, color:C.ocean,
-        letterSpacing:"0.1em", textTransform:"uppercase", fontFamily:"inherit"
-      }}>
-        {label}{required && <span style={{ color:C.sky, marginLeft:3 }}>*</span>}
-      </label>
+    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <label style={{
+          display:"flex", alignItems:"center", gap:6,
+          fontSize:11, fontWeight:700,
+          color: error ? "rgba(239,68,68,0.8)" : "rgba(144,224,239,0.5)",
+          letterSpacing:"0.13em", textTransform:"uppercase", fontFamily:"inherit"
+        }}>
+          {Icon && <Icon size={11} strokeWidth={2} />}
+          {label}
+          {required && <span style={{ color:C.sky, marginLeft:1 }}>*</span>}
+        </label>
+        {hint && (
+          <span style={{ fontSize:10.5, color:"rgba(144,224,239,0.25)", fontWeight:500, display:"flex", alignItems:"center", gap:3 }}>
+            <Info size={9} />
+            {hint}
+          </span>
+        )}
+      </div>
       {children}
       {error && (
         <span style={{
-          fontSize:11, color:C.danger, fontWeight:600,
+          fontSize:11, color:"rgba(239,68,68,0.8)", fontWeight:600,
           display:"flex", alignItems:"center", gap:5
         }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+          <AlertCircle size={11} strokeWidth={2.5} />
           {error}
         </span>
       )}
     </div>
   )
 }
+
+// ── Styled input/select base ─────────────────────────────────
+const inputBase = (hasError) => ({
+  padding:"11px 14px", borderRadius:11,
+  border:`1px solid ${hasError ? "rgba(239,68,68,0.4)" : "rgba(144,224,239,0.12)"}`,
+  background:"rgba(255,255,255,0.04)",
+  fontSize:13.5, outline:"none",
+  fontFamily:"inherit",
+  color: C.white,
+  width:"100%",
+  transition:"border-color 0.2s, background 0.2s, box-shadow 0.2s",
+  boxSizing:"border-box", fontWeight:400,
+})
 
 export default function MedicineAdd() {
   const [form,         setForm]         = useState(initialForm)
@@ -71,14 +104,13 @@ export default function MedicineAdd() {
   const [submitting,   setSubmitting]   = useState(false)
   const [apiError,     setApiError]     = useState(null)
   const [step,         setStep]         = useState(1)
+  const [focused,      setFocused]      = useState(null)
 
   const inp = (field) => ({
-    padding:"11px 14px", borderRadius:10,
-    border:`2px solid ${errors[field] ? "#ef444450" : C.foam}`,
-    background:C.white, fontSize:14, outline:"none",
-    fontFamily:"inherit", color:C.navy, width:"100%",
-    transition:"border-color 0.2s, box-shadow 0.2s",
-    boxSizing:"border-box", fontWeight:500,
+    ...inputBase(!!errors[field]),
+    border:`1px solid ${errors[field] ? "rgba(239,68,68,0.4)" : focused===field ? "rgba(0,180,216,0.45)" : "rgba(144,224,239,0.1)"}`,
+    background: focused===field ? "rgba(0,180,216,0.06)" : "rgba(255,255,255,0.03)",
+    boxShadow: focused===field ? "0 0 0 3px rgba(0,180,216,0.08)" : "none",
   })
 
   const handleChange = (field, value) => {
@@ -100,7 +132,7 @@ export default function MedicineAdd() {
       if (!form[k]) errs[k] = "This field is required"
     })
     if (form.mediPrice && isNaN(form.mediPrice)) errs.mediPrice = "Must be a number"
-    if (form.mediStock && isNaN(form.mediStock)) errs.mediStock = "Must be a number"
+    if (form.mediStock && isNaN(form.mediStock))  errs.mediStock = "Must be a number"
     if (form.mediManufactureDate && form.mediExpiryDate) {
       if (new Date(form.mediExpiryDate) <= new Date(form.mediManufactureDate))
         errs.mediExpiryDate = "Expiry must be after manufacture date"
@@ -112,21 +144,16 @@ export default function MedicineAdd() {
     const errs = validate()
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
-      const s1 = ["mediName","mediPrice","mediCategory","mediCompany","mediStock","Pharmacy"]
-      setStep(s1.some(f => errs[f]) ? 1 : 2)
+      const s1Fields = ["mediName","mediPrice","mediCategory","mediCompany","mediStock","Pharmacy"]
+      setStep(s1Fields.some(f => errs[f]) ? 1 : 2)
       return
     }
-    setSubmitting(true)
-    setApiError(null)
+    setSubmitting(true); setApiError(null)
     try {
       const res = await fetch(API, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          ...form,
-          mediPrice: Number(form.mediPrice),
-          mediStock: Number(form.mediStock),
-        }),
+        body: JSON.stringify({ ...form, mediPrice:Number(form.mediPrice), mediStock:Number(form.mediStock) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || "Failed to save medicine")
@@ -143,100 +170,132 @@ export default function MedicineAdd() {
     setSubmitted(false); setApiError(null); setStep(1)
   }
 
-  // ─── Success Screen ──────────────────────────────────────────────
+  // ── field input props helpers ─────────────────────────────
+  const fp = (field) => ({
+    style: inp(field),
+    value: form[field],
+    onFocus:  () => setFocused(field),
+    onBlur:   () => setFocused(null),
+    onChange: (e) => handleChange(field, e.target.value),
+  })
+
+  // ── Progress ─────────────────────────────────────────────
+  const step1Fields = ["mediName","mediPrice","mediCategory","mediCompany","mediStock","Pharmacy"]
+  const step2Fields = ["mediDescription","mediManufactureDate","mediExpiryDate","mediPrescriptionStatus","mediImage"]
+  const s1Fill = step1Fields.filter(f => form[f]).length / step1Fields.length
+  const s2Fill = step2Fields.filter(f => form[f]).length / step2Fields.length
+
+  // ─── Success Screen ──────────────────────────────────────
   if (submitted) {
     return (
       <div style={{
-        minHeight:"100vh",
-        background:`linear-gradient(160deg, ${C.foam} 0%, #eafaff 50%, ${C.foam} 100%)`,
+        minHeight:"100vh", background:"transparent",
         display:"flex", alignItems:"center", justifyContent:"center",
-        fontFamily:"'Outfit',sans-serif", padding:24
+        fontFamily:"'DM Sans',sans-serif", padding:24,
       }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');`}</style>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+          @keyframes popIn { from{opacity:0;transform:scale(0.7) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+          @keyframes checkDraw { from{stroke-dashoffset:30} to{stroke-dashoffset:0} }
+          @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        `}</style>
 
         <div style={{
-          background:C.white, borderRadius:28, padding:"56px 52px",
-          textAlign:"center", maxWidth:460, width:"100%",
-          border:`2px solid ${C.foam}`,
-          boxShadow:`0 24px 80px rgba(3,4,94,0.12)`
+          borderRadius:24, padding:"52px 48px", textAlign:"center", maxWidth:460, width:"100%",
+          background:"rgba(255,255,255,0.04)",
+          border:"1px solid rgba(0,180,216,0.15)",
+          boxShadow:"0 32px 80px rgba(0,0,0,0.4)",
+          backdropFilter:"blur(20px)",
+          animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
         }}>
-          {/* Success icon */}
+          {/* Success ring */}
           <div style={{
-            width:96, height:96,
-            background:`linear-gradient(135deg, ${C.navy}, ${C.ocean})`,
-            borderRadius:"50%", display:"flex", alignItems:"center",
-            justifyContent:"center", margin:"0 auto 28px", fontSize:44,
-            boxShadow:`0 12px 40px rgba(3,4,94,0.3)`,
-            animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1)"
-          }}>✅</div>
-
-          <h2 style={{
-            margin:"0 0 10px", fontSize:30, fontWeight:900,
-            letterSpacing:"-1px", color:C.navy
-          }}>Medicine Saved!</h2>
-          <p style={{ margin:"0 0 8px", color:"#64748b", fontSize:15 }}>
-            <strong style={{ color:C.ocean }}>{form.mediName}</strong> has been added to the MediReach database.
-          </p>
-          <div style={{
-            display:"inline-flex", alignItems:"center", gap:6,
-            background:C.foam, borderRadius:99, padding:"5px 14px",
-            margin:"0 0 36px", border:`1px solid ${C.mist}`
+            width:88, height:88, borderRadius:"50%", margin:"0 auto 28px",
+            background:"linear-gradient(135deg, rgba(34,197,94,0.15), rgba(0,180,216,0.1))",
+            border:"1.5px solid rgba(34,197,94,0.3)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            boxShadow:"0 0 40px rgba(34,197,94,0.15)",
+            position:"relative",
           }}>
-            <span style={{ fontSize:13 }}>🏥</span>
-            <span style={{ fontSize:12, fontWeight:700, color:C.ocean }}>{form.Pharmacy}</span>
+            <CheckCircle2 size={40} color={C.green} strokeWidth={1.5} />
           </div>
 
-          <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
-            <button onClick={handleReset} style={{
-              padding:"12px 28px", borderRadius:12,
-              border:`2px solid ${C.mist}`, background:"transparent",
-              color:C.ocean, fontWeight:700, fontSize:14,
-              cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s"
-            }}
-              onMouseEnter={e=>{ e.currentTarget.style.background=C.foam; e.currentTarget.style.borderColor=C.sky }}
-              onMouseLeave={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor=C.mist }}
-            >+ Add Another</button>
+          <h2 style={{
+            margin:"0 0 8px", fontSize:28, fontWeight:800,
+            color:C.white, letterSpacing:"-1px",
+            fontFamily:"'Plus Jakarta Sans',sans-serif",
+          }}>Medicine Registered</h2>
+          <p style={{ margin:"0 0 6px", color:"rgba(202,240,248,0.6)", fontSize:14 }}>
+            <span style={{ color:C.sky, fontWeight:600 }}>{form.mediName}</span> has been added to the MediReach network.
+          </p>
 
-            <button onClick={()=>window.history.back()} style={{
-              padding:"12px 28px", borderRadius:12, border:"none",
-              background:`linear-gradient(135deg, ${C.navy}, ${C.ocean})`,
-              color:C.white, fontWeight:700, fontSize:14,
-              cursor:"pointer", fontFamily:"inherit",
-              boxShadow:`0 4px 18px rgba(3,4,94,0.35)`, transition:"all 0.2s"
+          <div style={{
+            display:"inline-flex", alignItems:"center", gap:7,
+            background:"rgba(0,180,216,0.08)", borderRadius:99, padding:"6px 16px",
+            margin:"16px 0 36px", border:"1px solid rgba(0,180,216,0.18)",
+          }}>
+            <Building2 size={12} color={C.sky} />
+            <span style={{ fontSize:12.5, fontWeight:600, color:C.sky }}>{form.Pharmacy}</span>
+          </div>
+
+          <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+            <button onClick={handleReset} style={{
+              padding:"11px 24px", borderRadius:11,
+              border:"1px solid rgba(144,224,239,0.15)", background:"rgba(144,224,239,0.04)",
+              color:"rgba(202,240,248,0.7)", fontWeight:600, fontSize:13.5,
+              cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+              display:"flex", alignItems:"center", gap:7,
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.background=`linear-gradient(135deg,${C.ocean},${C.sky})`; e.currentTarget.style.transform="translateY(-2px)" }}
-              onMouseLeave={e=>{ e.currentTarget.style.background=`linear-gradient(135deg,${C.navy},${C.ocean})`; e.currentTarget.style.transform="none" }}
-            >← Go Back</button>
+              onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(0,180,216,0.35)"; e.currentTarget.style.color=C.sky }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.15)"; e.currentTarget.style.color="rgba(202,240,248,0.7)" }}
+            >
+              <Package size={14} /> Add Another
+            </button>
+            <button onClick={()=>window.history.back()} style={{
+              padding:"11px 24px", borderRadius:11, border:"none",
+              background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
+              color:C.white, fontWeight:600, fontSize:13.5,
+              cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+              display:"flex", alignItems:"center", gap:7,
+              boxShadow:"0 6px 22px rgba(0,180,216,0.3)",
+            }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}
+            >
+              <ArrowLeft size={14} /> Go Back
+            </button>
           </div>
         </div>
       </div>
     )
   }
 
-  // ─── Main Form ───────────────────────────────────────────────────
+  // ─── Main Form ───────────────────────────────────────────
   return (
     <div style={{
-      minHeight:"100vh",
-      background:`linear-gradient(160deg, ${C.foam} 0%, #eafaff 50%, ${C.foam} 100%)`,
-      fontFamily:"'Outfit',sans-serif", padding:"40px 24px",
+      minHeight:"100vh", background:"transparent",
+      fontFamily:"'DM Sans',sans-serif", padding:"36px 32px 56px",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
         * { box-sizing:border-box; }
 
-        input:focus, select:focus, textarea:focus {
-          border-color: ${C.sky} !important;
-          box-shadow: 0 0 0 4px ${C.foam} !important;
+        .mr-input:focus {
+          outline: none !important;
         }
+
         input[type="date"]::-webkit-calendar-picker-indicator {
-          cursor:pointer; opacity:0.5; filter:hue-rotate(200deg);
+          filter: invert(0.6) sepia(1) hue-rotate(170deg);
+          cursor:pointer; opacity:0.6;
         }
-        select option { color:${C.navy}; background:${C.white}; }
-        ::-webkit-scrollbar { width:4px; }
-        ::-webkit-scrollbar-thumb { background:${C.mist}; border-radius:99px; }
+
+        select option { color:#03045e; background:#f0faff; }
+
+        ::-webkit-scrollbar { width:3px; }
+        ::-webkit-scrollbar-thumb { background:rgba(0,180,216,0.2); border-radius:99px; }
 
         @keyframes fadeUp {
-          from { opacity:0; transform:translateY(16px); }
+          from { opacity:0; transform:translateY(14px); }
           to   { opacity:1; transform:translateY(0); }
         }
         @keyframes popIn {
@@ -244,69 +303,114 @@ export default function MedicineAdd() {
           to   { opacity:1; transform:scale(1); }
         }
         @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes shimmer {
-          0%   { left:-100%; }
-          100% { left:200%; }
+        @keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+        @keyframes glowPulse {
+          0%,100%{ box-shadow:0 0 0 0 rgba(0,180,216,0); }
+          50%    { box-shadow:0 0 20px 4px rgba(0,180,216,0.12); }
         }
+        @keyframes progressFill {
+          from { width:0%; } to { width:100%; }
+        }
+
+        input::placeholder, textarea::placeholder { color:rgba(144,224,239,0.2); }
+        input[type="date"] { color-scheme:dark; }
       `}</style>
 
-      {/* Rainbow top strip */}
+      {/* Top accent bar */}
       <div style={{
-        position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
-        background:`linear-gradient(90deg, ${C.navy}, ${C.ocean}, ${C.sky}, ${C.mist}, ${C.foam})`
+        position:"fixed", top:0, left:0, right:0, height:2, zIndex:99,
+        background:`linear-gradient(90deg, ${C.navy}, ${C.ocean} 30%, ${C.sky} 60%, ${C.mist} 85%, transparent)`,
       }} />
 
-      <div style={{ maxWidth:820, margin:"0 auto", paddingTop:8 }}>
+      <div style={{ maxWidth:780, margin:"0 auto", paddingTop:4 }}>
 
-        {/* ── Page Header ── */}
-        <div style={{ marginBottom:32, animation:"fadeUp 0.4s ease both" }}>
+        {/* ── Back + Header ── */}
+        <div style={{ marginBottom:28, animation:"fadeUp 0.4s ease both" }}>
           <button onClick={()=>window.history.back()} style={{
             background:"none", border:"none", cursor:"pointer",
             display:"flex", alignItems:"center", gap:7,
-            color:C.mist, fontSize:13, fontWeight:600,
-            fontFamily:"inherit", marginBottom:20, padding:0, transition:"color 0.2s"
+            color:"rgba(144,224,239,0.35)", fontSize:13, fontWeight:500,
+            fontFamily:"inherit", marginBottom:22, padding:0, transition:"color 0.2s",
           }}
             onMouseEnter={e=>e.currentTarget.style.color=C.sky}
-            onMouseLeave={e=>e.currentTarget.style.color=C.mist}
+            onMouseLeave={e=>e.currentTarget.style.color="rgba(144,224,239,0.35)"}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="19" y1="12" x2="5" y2="12"/>
-              <polyline points="12 19 5 12 12 5"/>
-            </svg>
+            <ArrowLeft size={15} strokeWidth={2} />
             Back to Dashboard
           </button>
 
-          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:20 }}>
             <div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              {/* Breadcrumb */}
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
                 <div style={{
-                  width:32, height:32, borderRadius:9,
-                  background:`linear-gradient(135deg,${C.navy},${C.ocean})`,
+                  width:28, height:28, borderRadius:8,
+                  background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
                   display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:16
-                }}>💊</div>
-                <span style={{ fontSize:11, color:C.sky, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase" }}>
-                  MediReach · Medicine Registry
-                </span>
+                  boxShadow:"0 4px 12px rgba(0,180,216,0.3)",
+                }}>
+                  <Pill size={14} color="white" strokeWidth={2} />
+                </div>
+                <span style={{ fontSize:11, color:"rgba(144,224,239,0.3)", fontWeight:500 }}>MediReach</span>
+                <ChevronRight size={11} color="rgba(144,224,239,0.15)" />
+                <span style={{ fontSize:11, color:"rgba(144,224,239,0.3)", fontWeight:500 }}>Medicine Registry</span>
+                <ChevronRight size={11} color="rgba(144,224,239,0.15)" />
+                <span style={{
+                  fontSize:11, color:C.sky, fontWeight:700,
+                  background:"rgba(0,180,216,0.1)", padding:"2px 9px", borderRadius:99,
+                  border:"1px solid rgba(0,180,216,0.18)",
+                }}>Add Medicine</span>
               </div>
+
               <h1 style={{
-                margin:0, fontSize:34, fontWeight:900,
-                letterSpacing:"-1.5px", color:C.navy, lineHeight:1.1
-              }}>Add New Medicine</h1>
-              <p style={{ margin:"8px 0 0", color:"#64748b", fontSize:13, fontWeight:500 }}>
-                Fill in all required fields to register a medicine across the pharmacy network.
+                margin:0, fontSize:30, fontWeight:800,
+                color:C.white, letterSpacing:"-1.2px", lineHeight:1.1,
+                fontFamily:"'Plus Jakarta Sans',sans-serif",
+              }}>Register New Medicine</h1>
+              <p style={{ margin:"8px 0 0", color:"rgba(144,224,239,0.3)", fontSize:13.5, fontWeight:400 }}>
+                Complete both steps to register a medicine across the network.
               </p>
             </div>
 
-            {/* Step pill */}
+            {/* Step indicator */}
             <div style={{
-              background:C.white, borderRadius:99,
-              padding:"8px 20px", border:`2px solid ${C.foam}`,
-              boxShadow:`0 2px 12px rgba(3,4,94,0.08)`
+              display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8, flexShrink:0,
             }}>
-              <span style={{ fontSize:11, color:C.ocean, fontWeight:700, letterSpacing:"0.06em" }}>
-                STEP {step} OF 2
-              </span>
+              <div style={{ display:"flex", gap:6 }}>
+                {[
+                  { num:1, label:"Basic Info",     fill:s1Fill },
+                  { num:2, label:"Details",         fill:s2Fill },
+                ].map(s => (
+                  <button key={s.num} onClick={()=>setStep(s.num)} style={{
+                    padding:"8px 14px", borderRadius:9,
+                    border:`1px solid ${step===s.num ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.08)"}`,
+                    background: step===s.num ? "rgba(0,180,216,0.1)" : "rgba(255,255,255,0.02)",
+                    cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+                    display:"flex", alignItems:"center", gap:7,
+                  }}>
+                    <div style={{
+                      width:20, height:20, borderRadius:"50%", flexShrink:0,
+                      background: s.fill===1
+                        ? `linear-gradient(135deg, ${C.green}, rgba(34,197,94,0.7))`
+                        : step===s.num
+                          ? `linear-gradient(135deg, ${C.ocean}, ${C.sky})`
+                          : "rgba(144,224,239,0.08)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      border:`1px solid ${step===s.num ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.12)"}`,
+                      boxShadow: step===s.num ? "0 2px 8px rgba(0,180,216,0.2)" : "none",
+                      transition:"all 0.3s",
+                    }}>
+                      {s.fill===1
+                        ? <Check size={10} color="white" strokeWidth={3} />
+                        : <span style={{ fontSize:10, fontWeight:800, color: step===s.num ? C.white : "rgba(144,224,239,0.3)" }}>{s.num}</span>
+                      }
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:600, color: step===s.num ? "rgba(202,240,248,0.8)" : "rgba(144,224,239,0.3)" }}>
+                      {s.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -314,195 +418,163 @@ export default function MedicineAdd() {
         {/* ── API Error ── */}
         {apiError && (
           <div style={{
-            background:"#fef2f2", border:`2px solid #fca5a5`,
-            borderRadius:14, padding:"14px 20px", marginBottom:24,
+            background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)",
+            borderRadius:12, padding:"13px 18px", marginBottom:22,
             display:"flex", alignItems:"center", gap:12,
-            animation:"fadeUp 0.3s ease both"
+            animation:"fadeUp 0.3s ease both",
           }}>
-            <span style={{ fontSize:20 }}>⚠️</span>
+            <AlertCircle size={18} color={C.danger} strokeWidth={2} />
             <div>
-              <p style={{ margin:0, fontWeight:700, color:"#dc2626", fontSize:14 }}>Failed to save medicine</p>
-              <p style={{ margin:"3px 0 0", color:C.danger, fontSize:12 }}>{apiError}</p>
+              <p style={{ margin:0, fontWeight:600, color:"rgba(239,68,68,0.9)", fontSize:13.5 }}>Failed to save medicine</p>
+              <p style={{ margin:"2px 0 0", color:"rgba(239,68,68,0.6)", fontSize:12 }}>{apiError}</p>
             </div>
             <button onClick={()=>setApiError(null)} style={{
               marginLeft:"auto", background:"none", border:"none",
-              cursor:"pointer", color:"#dc2626", fontSize:20, fontWeight:700
-            }}>✕</button>
+              cursor:"pointer", color:"rgba(239,68,68,0.5)", fontFamily:"inherit",
+              display:"flex", alignItems:"center",
+            }}>
+              <X size={16} />
+            </button>
           </div>
         )}
 
-        {/* ── Step Tabs ── */}
+        {/* ── Main Form Card ── */}
         <div style={{
-          display:"flex", gap:6, marginBottom:28,
-          background:C.white, borderRadius:16, padding:6,
-          border:`2px solid ${C.foam}`, width:"fit-content",
-          boxShadow:`0 2px 16px rgba(3,4,94,0.06)`,
-          animation:"fadeUp 0.4s ease 0.05s both"
-        }}>
-          {[
-            { num:1, label:"Basic Info",       emoji:"👤" },
-            { num:2, label:"Details & Dates",  emoji:"📋" },
-          ].map((s,i) => (
-            <React.Fragment key={s.num}>
-              <button onClick={()=>setStep(s.num)} style={{
-                padding:"10px 24px", borderRadius:11, border:"none",
-                background: step===s.num
-                  ? `linear-gradient(135deg,${C.navy},${C.ocean})`
-                  : "transparent",
-                color: step===s.num ? C.white : "#94a3b8",
-                fontWeight:700, fontSize:13, cursor:"pointer",
-                fontFamily:"inherit", transition:"all 0.22s",
-                display:"flex", alignItems:"center", gap:8,
-                boxShadow: step===s.num ? `0 4px 16px rgba(3,4,94,0.3)` : "none"
-              }}>
-                <span style={{
-                  width:24, height:24, borderRadius:"50%",
-                  background: step===s.num ? "rgba(255,255,255,0.18)" : C.foam,
-                  color: step===s.num ? C.mist : C.ocean,
-                  display:"inline-flex", alignItems:"center",
-                  justifyContent:"center", fontSize:11, fontWeight:800
-                }}>{s.num}</span>
-                {s.emoji} {s.label}
-              </button>
-              {i===0 && <div style={{ width:1, background:C.foam, alignSelf:"stretch", margin:"4px 0" }} />}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* ── Form Card ── */}
-        <div style={{
-          background:C.white, borderRadius:24,
-          border:`2px solid ${C.foam}`,
-          boxShadow:`0 8px 48px rgba(3,4,94,0.09)`,
+          borderRadius:20,
+          border:"1px solid rgba(144,224,239,0.08)",
+          background:"rgba(255,255,255,0.02)",
+          backdropFilter:"blur(12px)",
+          boxShadow:"0 12px 50px rgba(0,0,0,0.3)",
           overflow:"hidden",
-          animation:"fadeUp 0.4s ease 0.1s both"
+          animation:"fadeUp 0.4s ease 0.1s both",
         }}>
 
           {/* Card Header */}
           <div style={{
-            background:`linear-gradient(135deg, ${C.navy}, ${C.ocean})`,
-            padding:"22px 32px", borderBottom:`3px solid ${C.sky}`,
-            display:"flex", alignItems:"center", gap:16, position:"relative", overflow:"hidden"
+            padding:"22px 30px",
+            borderBottom:"1px solid rgba(144,224,239,0.06)",
+            display:"flex", alignItems:"center", gap:16,
+            position:"relative", overflow:"hidden",
+            background:"rgba(0,180,216,0.03)",
           }}>
-            {/* Shimmer sweep */}
+            {/* Shimmer */}
             <div style={{
               position:"absolute", top:0, left:"-100%", width:"40%", height:"100%",
-              background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)",
-              animation:"shimmer 4s ease-in-out infinite"
+              background:"linear-gradient(90deg,transparent,rgba(0,180,216,0.04),transparent)",
+              animation:"shimmer 5s ease-in-out infinite",
+              pointerEvents:"none",
             }} />
 
-            {/* Icon */}
             <div style={{
-              width:48, height:48,
-              background:"rgba(255,255,255,0.12)",
-              borderRadius:14, display:"flex", alignItems:"center",
-              justifyContent:"center", fontSize:22, flexShrink:0,
-              border:"1.5px solid rgba(255,255,255,0.18)"
+              width:46, height:46, borderRadius:13, flexShrink:0,
+              background: step===1 ? "rgba(0,180,216,0.12)" : "rgba(144,224,239,0.07)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              border:`1px solid ${step===1 ? "rgba(0,180,216,0.25)" : "rgba(144,224,239,0.1)"}`,
+              transition:"all 0.3s",
             }}>
-              {step===1 ? "👤" : "📋"}
+              {step===1
+                ? <ClipboardList size={20} color={C.sky} strokeWidth={1.8} />
+                : <FileText size={20} color="rgba(144,224,239,0.45)" strokeWidth={1.8} />
+              }
             </div>
 
             <div style={{ flex:1 }}>
-              <p style={{ margin:0, color:C.white, fontWeight:900, fontSize:18, letterSpacing:"-0.4px" }}>
+              <p style={{ margin:0, color:C.white, fontWeight:700, fontSize:17, letterSpacing:"-0.3px", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
                 {step===1 ? "Basic Information" : "Details & Dates"}
               </p>
-              <p style={{ margin:"3px 0 0", color:C.mist, fontSize:12, fontWeight:500 }}>
+              <p style={{ margin:"3px 0 0", color:"rgba(144,224,239,0.3)", fontSize:12.5, fontWeight:400 }}>
                 {step===1
-                  ? "Name, price, stock, category and assigned pharmacy"
-                  : "Description, dates, prescription status and medicine image"}
+                  ? "Name, pricing, stock, category and assigned pharmacy"
+                  : "Description, validity dates, status and medicine image"}
               </p>
             </div>
 
-            {/* Progress */}
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
+            {/* Progress bar */}
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:12, color:C.mist, fontWeight:700 }}>
-                  {step===1 ? "50%" : "100%"}
+                <span style={{ fontSize:11, color:"rgba(144,224,239,0.35)", fontWeight:600 }}>
+                  {step===1 ? Math.round(s1Fill*100) : Math.round(s2Fill*100)}% filled
                 </span>
-                {step===2 && (
-                  <span style={{
-                    fontSize:10, fontWeight:800, color:C.navy,
-                    background:C.foam, padding:"2px 8px", borderRadius:99
-                  }}>COMPLETE</span>
+                {((step===1 && s1Fill===1) || (step===2 && s2Fill===1)) && (
+                  <div style={{
+                    display:"flex", alignItems:"center", gap:4,
+                    background:"rgba(34,197,94,0.1)", borderRadius:99, padding:"2px 8px",
+                    border:"1px solid rgba(34,197,94,0.2)",
+                  }}>
+                    <Check size={9} color={C.green} strokeWidth={3} />
+                    <span style={{ fontSize:9.5, fontWeight:800, color:C.green, letterSpacing:"0.08em" }}>DONE</span>
+                  </div>
                 )}
               </div>
-              <div style={{
-                width:120, height:6, borderRadius:99,
-                background:"rgba(255,255,255,0.15)", overflow:"hidden"
-              }}>
+              <div style={{ width:130, height:5, borderRadius:99, background:"rgba(144,224,239,0.07)", overflow:"hidden" }}>
                 <div style={{
-                  width:step===1?"50%":"100%", height:"100%", borderRadius:99,
-                  background:`linear-gradient(90deg, ${C.sky}, ${C.mist})`,
+                  height:"100%", borderRadius:99,
+                  width:`${(step===1 ? s1Fill : s2Fill)*100}%`,
+                  background:`linear-gradient(90deg, ${C.ocean}, ${C.sky})`,
+                  boxShadow:`0 0 8px ${C.sky}60`,
                   transition:"width 0.5s cubic-bezier(0.4,0,0.2,1)",
-                  boxShadow:`0 0 10px ${C.sky}80`
                 }} />
               </div>
             </div>
           </div>
 
-          {/* ── Form Fields ── */}
-          <div style={{ padding:"34px 32px" }}>
+          {/* ── Fields ── */}
+          <div style={{ padding:"30px 30px 28px" }}>
 
             {/* STEP 1 */}
             {step===1 && (
-              <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:22 }}>
 
-                <Field label="Medicine Name" required error={errors.mediName}>
-                  <input
+                <Field label="Medicine Name" required icon={Pill} error={errors.mediName}>
+                  <input className="mr-input"
                     placeholder="e.g. Amoxicillin 500mg"
-                    value={form.mediName}
-                    onChange={e=>handleChange("mediName",e.target.value)}
-                    style={inp("mediName")}
+                    {...fp("mediName")}
                   />
                 </Field>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
-                  <Field label="Price (LKR)" required error={errors.mediPrice}>
-                    <input
-                      placeholder="e.g. 150.00" type="number" min="0"
-                      value={form.mediPrice}
-                      onChange={e=>handleChange("mediPrice",e.target.value)}
-                      style={inp("mediPrice")}
-                    />
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
+                  <Field label="Price (LKR)" required icon={DollarSign} error={errors.mediPrice}
+                    hint="Retail price">
+                    <input className="mr-input" type="number" min="0"
+                      placeholder="e.g. 150.00" {...fp("mediPrice")} />
                   </Field>
-                  <Field label="Stock Quantity" required error={errors.mediStock}>
-                    <input
-                      placeholder="e.g. 500" type="number" min="0"
-                      value={form.mediStock}
-                      onChange={e=>handleChange("mediStock",e.target.value)}
-                      style={inp("mediStock")}
-                    />
+                  <Field label="Stock Quantity" required icon={Hash} error={errors.mediStock}
+                    hint="Units in hand">
+                    <input className="mr-input" type="number" min="0"
+                      placeholder="e.g. 500" {...fp("mediStock")} />
                   </Field>
                 </div>
 
-                <Field label="Category" required error={errors.mediCategory}>
-                  <select
-                    value={form.mediCategory}
-                    onChange={e=>handleChange("mediCategory",e.target.value)}
-                    style={{ ...inp("mediCategory"), cursor:"pointer" }}
-                  >
-                    <option value="">— Select a category —</option>
-                    {categories.map(c=><option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
+                  <Field label="Category" required icon={Tag} error={errors.mediCategory}>
+                    <select className="mr-input"
+                      style={inp("mediCategory")}
+                      value={form.mediCategory}
+                      onFocus={() => setFocused("mediCategory")}
+                      onBlur={() => setFocused(null)}
+                      onChange={e=>handleChange("mediCategory",e.target.value)}
+                    >
+                      <option value="">— Select category —</option>
+                      {categories.map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Manufacturer" required icon={Barcode} error={errors.mediCompany}>
+                    <input className="mr-input"
+                      placeholder="e.g. Sun Pharma, Cipla"
+                      {...fp("mediCompany")} />
+                  </Field>
+                </div>
 
-                <Field label="Manufacturer / Company" required error={errors.mediCompany}>
-                  <input
-                    placeholder="e.g. Sun Pharma, Cipla"
-                    value={form.mediCompany}
-                    onChange={e=>handleChange("mediCompany",e.target.value)}
-                    style={inp("mediCompany")}
-                  />
-                </Field>
-
-                <Field label="Assigned Pharmacy" required error={errors.Pharmacy}>
-                  <select
+                <Field label="Assigned Pharmacy" required icon={Building2} error={errors.Pharmacy}>
+                  <select className="mr-input"
+                    style={inp("Pharmacy")}
                     value={form.Pharmacy}
+                    onFocus={() => setFocused("Pharmacy")}
+                    onBlur={() => setFocused(null)}
                     onChange={e=>handleChange("Pharmacy",e.target.value)}
-                    style={{ ...inp("Pharmacy"), cursor:"pointer" }}
                   >
                     <option value="">— Select a pharmacy —</option>
-                    {pharmaciesList.map(p=><option key={p} value={p}>{p}</option>)}
+                    {pharmaciesList.map(p=><option key={p}>{p}</option>)}
                   </select>
                 </Field>
 
@@ -511,98 +583,113 @@ export default function MedicineAdd() {
 
             {/* STEP 2 */}
             {step===2 && (
-              <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:22 }}>
 
-                <Field label="Description" required error={errors.mediDescription}>
-                  <textarea
-                    placeholder="Brief description of the medicine, its usage and any important notes..."
+                <Field label="Description" required icon={FileText} error={errors.mediDescription}
+                  hint="Usage & notes">
+                  <textarea className="mr-input"
+                    placeholder="Brief description of the medicine, its usage and important notes..."
                     value={form.mediDescription}
+                    onFocus={() => setFocused("mediDescription")}
+                    onBlur={() => setFocused(null)}
                     onChange={e=>handleChange("mediDescription",e.target.value)}
                     rows={4}
                     style={{ ...inp("mediDescription"), resize:"vertical", minHeight:110, lineHeight:1.7 }}
                   />
                 </Field>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
-                  <Field label="Manufacture Date" required error={errors.mediManufactureDate}>
-                    <input
-                      type="date" value={form.mediManufactureDate}
-                      onChange={e=>handleChange("mediManufactureDate",e.target.value)}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
+                  <Field label="Manufacture Date" required icon={Calendar} error={errors.mediManufactureDate}>
+                    <input className="mr-input" type="date"
                       style={inp("mediManufactureDate")}
+                      value={form.mediManufactureDate}
+                      onFocus={() => setFocused("mediManufactureDate")}
+                      onBlur={() => setFocused(null)}
+                      onChange={e=>handleChange("mediManufactureDate",e.target.value)}
                     />
                   </Field>
-                  <Field label="Expiry Date" required error={errors.mediExpiryDate}>
-                    <input
-                      type="date" value={form.mediExpiryDate}
-                      onChange={e=>handleChange("mediExpiryDate",e.target.value)}
+                  <Field label="Expiry Date" required icon={Calendar} error={errors.mediExpiryDate}>
+                    <input className="mr-input" type="date"
                       style={inp("mediExpiryDate")}
+                      value={form.mediExpiryDate}
+                      onFocus={() => setFocused("mediExpiryDate")}
+                      onBlur={() => setFocused(null)}
+                      onChange={e=>handleChange("mediExpiryDate",e.target.value)}
                     />
                   </Field>
                 </div>
 
                 {/* Prescription Status */}
-                <Field label="Prescription Status" required error={errors.mediPrescriptionStatus}>
-                  <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <Field label="Prescription Status" required icon={ShieldCheck} error={errors.mediPrescriptionStatus}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
                     {prescriptionStatuses.map(ps => {
-                      const active = form.mediPrescriptionStatus===ps
+                      const active = form.mediPrescriptionStatus === ps.key
+                      const Icon = ps.icon
                       return (
                         <button
-                          key={ps} type="button"
-                          onClick={()=>handleChange("mediPrescriptionStatus",ps)}
+                          key={ps.key} type="button"
+                          onClick={()=>handleChange("mediPrescriptionStatus",ps.key)}
                           style={{
-                            flex:1, padding:"13px 14px", borderRadius:12,
-                            border:`2px solid ${active ? C.ocean : C.foam}`,
-                            background: active
-                              ? `linear-gradient(135deg,${C.navy},${C.ocean})`
-                              : C.white,
-                            color: active ? C.white : "#64748b",
-                            fontWeight:700, fontSize:13, cursor:"pointer",
-                            fontFamily:"inherit", transition:"all 0.2s",
-                            whiteSpace:"nowrap",
-                            boxShadow: active ? `0 4px 16px rgba(3,4,94,0.3)` : "none",
-                            transform: active ? "translateY(-1px)" : "none"
+                            padding:"14px 10px", borderRadius:12,
+                            border:`1px solid ${active ? ps.border : "rgba(144,224,239,0.1)"}`,
+                            background: active ? ps.bg : "rgba(255,255,255,0.02)",
+                            cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+                            display:"flex", flexDirection:"column", alignItems:"center", gap:8,
+                            transform: active ? "translateY(-2px)" : "none",
+                            boxShadow: active ? `0 6px 20px ${ps.color}20` : "none",
                           }}
-                          onMouseEnter={e=>{ if(!active){ e.currentTarget.style.borderColor=C.mist; e.currentTarget.style.background=C.foam }}}
-                          onMouseLeave={e=>{ if(!active){ e.currentTarget.style.borderColor=C.foam; e.currentTarget.style.background=C.white }}}
-                        >{ps}</button>
+                          onMouseEnter={e=>{ if(!active){ e.currentTarget.style.borderColor=ps.border; e.currentTarget.style.background=ps.bg+"80" }}}
+                          onMouseLeave={e=>{ if(!active){ e.currentTarget.style.borderColor="rgba(144,224,239,0.1)"; e.currentTarget.style.background="rgba(255,255,255,0.02)" }}}
+                        >
+                          <Icon size={20} color={active ? ps.color : "rgba(144,224,239,0.3)"} strokeWidth={1.8} style={{ transition:"color 0.2s" }} />
+                          <span style={{
+                            fontSize:12, fontWeight:600,
+                            color: active ? ps.color : "rgba(144,224,239,0.35)",
+                            textAlign:"center", lineHeight:1.3,
+                            transition:"color 0.2s",
+                          }}>{ps.key}</span>
+                        </button>
                       )
                     })}
                   </div>
                 </Field>
 
                 {/* Image Upload */}
-                <Field label="Medicine Image" required error={errors.mediImage}>
+                <Field label="Medicine Image" required icon={ImagePlus} error={errors.mediImage}>
                   <label style={{
                     display:"flex", flexDirection:"column",
-                    alignItems:"center", justifyContent:"center", gap:14,
-                    border:`2px dashed ${errors.mediImage ? "#ef444460" : imagePreview ? C.sky : C.mist}`,
-                    borderRadius:18, padding:"36px 24px", cursor:"pointer",
+                    alignItems:"center", justifyContent:"center", gap:12,
+                    border:`1.5px dashed ${errors.mediImage ? "rgba(239,68,68,0.35)" : imagePreview ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.15)"}`,
+                    borderRadius:14, padding:"32px 24px", cursor:"pointer",
                     background: imagePreview
-                      ? `linear-gradient(135deg,${C.foam},#eafaff)`
-                      : `linear-gradient(135deg,#fafeff,${C.foam}50)`,
-                    transition:"all 0.25s", minHeight:160,
+                      ? "rgba(0,180,216,0.04)"
+                      : "rgba(255,255,255,0.02)",
+                    transition:"all 0.25s", minHeight:150,
+                    position:"relative", overflow:"hidden",
                   }}
-                    onMouseEnter={e=>{ if(!imagePreview) e.currentTarget.style.borderColor=C.sky }}
-                    onMouseLeave={e=>{ if(!imagePreview) e.currentTarget.style.borderColor=C.mist }}
+                    onMouseEnter={e=>{ if(!imagePreview) e.currentTarget.style.borderColor="rgba(0,180,216,0.35)" }}
+                    onMouseLeave={e=>{ if(!imagePreview) e.currentTarget.style.borderColor="rgba(144,224,239,0.15)" }}
+                    onDragOver={e=>{ e.preventDefault(); e.currentTarget.style.borderColor="rgba(0,180,216,0.5)"; e.currentTarget.style.background="rgba(0,180,216,0.06)" }}
+                    onDragLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.15)"; e.currentTarget.style.background="rgba(255,255,255,0.02)" }}
                   >
                     {imagePreview ? (
                       <img src={imagePreview} alt="preview"
-                        style={{ height:100, borderRadius:12, objectFit:"contain" }} />
+                        style={{ height:90, borderRadius:10, objectFit:"contain", opacity:0.9 }} />
                     ) : (
                       <>
                         <div style={{
-                          width:62, height:62, fontSize:28,
-                          background:`linear-gradient(135deg,${C.foam},${C.mist})`,
-                          borderRadius:16, display:"flex", alignItems:"center",
-                          justifyContent:"center",
-                          border:`2px solid ${C.mist}`,
-                          boxShadow:`0 4px 14px rgba(0,180,216,0.15)`
-                        }}>🖼️</div>
+                          width:52, height:52,
+                          background:"rgba(0,180,216,0.08)",
+                          borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center",
+                          border:"1px solid rgba(0,180,216,0.18)",
+                        }}>
+                          <Upload size={22} color="rgba(0,180,216,0.5)" strokeWidth={1.8} />
+                        </div>
                         <div style={{ textAlign:"center" }}>
-                          <p style={{ margin:0, fontSize:15, color:C.ocean, fontWeight:700 }}>
-                            Click to upload image
+                          <p style={{ margin:0, fontSize:14, color:"rgba(202,240,248,0.7)", fontWeight:600 }}>
+                            Click or drag to upload
                           </p>
-                          <p style={{ margin:"5px 0 0", fontSize:12, color:C.mist, fontWeight:500 }}>
+                          <p style={{ margin:"4px 0 0", fontSize:11.5, color:"rgba(144,224,239,0.25)" }}>
                             PNG, JPG up to 5MB
                           </p>
                         </div>
@@ -615,9 +702,15 @@ export default function MedicineAdd() {
                       onClick={()=>{ setImagePreview(null); handleChange("mediImage","") }}
                       style={{
                         background:"none", border:"none", fontSize:12,
-                        color:C.danger, cursor:"pointer",
-                        fontFamily:"inherit", fontWeight:700, padding:"4px 0"
-                      }}>✕ Remove image</button>
+                        color:"rgba(239,68,68,0.6)", cursor:"pointer",
+                        fontFamily:"inherit", fontWeight:600, padding:"4px 0",
+                        display:"flex", alignItems:"center", gap:5, transition:"color 0.2s"
+                      }}
+                      onMouseEnter={e=>e.currentTarget.style.color=C.danger}
+                      onMouseLeave={e=>e.currentTarget.style.color="rgba(239,68,68,0.6)"}
+                    >
+                      <X size={13} /> Remove image
+                    </button>
                   )}
                 </Field>
 
@@ -627,84 +720,86 @@ export default function MedicineAdd() {
 
           {/* ── Footer ── */}
           <div style={{
-            padding:"22px 32px",
-            borderTop:`2px solid ${C.foam}`,
-            background:`linear-gradient(90deg,${C.foam}40,#eafaff40)`,
-            display:"flex", alignItems:"center", justifyContent:"space-between"
+            padding:"18px 30px",
+            borderTop:"1px solid rgba(144,224,239,0.06)",
+            background:"rgba(0,0,0,0.15)",
+            display:"flex", alignItems:"center", justifyContent:"space-between",
           }}>
             {/* Step dots */}
-            <div style={{ display:"flex", gap:7, alignItems:"center" }}>
+            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
               {[1,2].map(i=>(
                 <div key={i} style={{
-                  width:i===step?30:9, height:9, borderRadius:99,
+                  width:i===step?26:8, height:8, borderRadius:99,
                   background: i===step
-                    ? `linear-gradient(90deg,${C.navy},${C.sky})`
-                    : C.foam,
-                  border: i===step ? "none" : `1.5px solid ${C.mist}`,
+                    ? `linear-gradient(90deg, ${C.ocean}, ${C.sky})`
+                    : "rgba(144,224,239,0.1)",
+                  boxShadow: i===step ? `0 0 10px ${C.sky}50` : "none",
                   transition:"all 0.35s cubic-bezier(0.4,0,0.2,1)",
-                  boxShadow: i===step ? `0 0 12px ${C.sky}60` : "none"
                 }} />
               ))}
-              <span style={{ marginLeft:8, fontSize:12, color:C.mist, fontWeight:700 }}>
-                {step===1 ? "Almost there..." : "Final step!"}
+              <span style={{ marginLeft:10, fontSize:11.5, color:"rgba(144,224,239,0.25)", fontWeight:500 }}>
+                Step {step} of 2
               </span>
             </div>
 
-            {/* Nav buttons */}
-            <div style={{ display:"flex", gap:10 }}>
+            {/* Buttons */}
+            <div style={{ display:"flex", gap:9 }}>
               {step>1 && (
                 <button type="button" onClick={()=>setStep(1)} style={{
-                  padding:"11px 26px", borderRadius:12,
-                  border:`2px solid ${C.foam}`, background:C.white,
-                  color:C.ocean, fontWeight:700, fontSize:14,
-                  cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s"
+                  padding:"10px 20px", borderRadius:10,
+                  border:"1px solid rgba(144,224,239,0.12)",
+                  background:"rgba(144,224,239,0.04)",
+                  color:"rgba(202,240,248,0.55)", fontWeight:600, fontSize:13.5,
+                  cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+                  display:"flex", alignItems:"center", gap:7,
                 }}
-                  onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.mist; e.currentTarget.style.background=C.foam }}
-                  onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.foam; e.currentTarget.style.background=C.white }}
-                >← Back</button>
+                  onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.25)"; e.currentTarget.style.color="rgba(202,240,248,0.8)" }}
+                  onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.12)"; e.currentTarget.style.color="rgba(202,240,248,0.55)" }}
+                >
+                  <ArrowLeft size={14} /> Back
+                </button>
               )}
 
               {step===1 ? (
                 <button type="button" onClick={()=>setStep(2)} style={{
-                  padding:"11px 28px", borderRadius:12, border:"none",
-                  background:`linear-gradient(135deg,${C.navy},${C.ocean})`,
-                  color:C.white, fontWeight:700, fontSize:14, cursor:"pointer",
-                  fontFamily:"inherit", boxShadow:`0 4px 18px rgba(3,4,94,0.32)`,
-                  transition:"all 0.22s"
+                  padding:"10px 24px", borderRadius:10, border:"none",
+                  background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
+                  color:C.white, fontWeight:600, fontSize:13.5,
+                  cursor:"pointer", fontFamily:"inherit",
+                  boxShadow:"0 6px 22px rgba(0,180,216,0.3)",
+                  transition:"all 0.22s",
+                  display:"flex", alignItems:"center", gap:7,
                 }}
-                  onMouseEnter={e=>{ e.currentTarget.style.background=`linear-gradient(135deg,${C.ocean},${C.sky})`; e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=`0 8px 28px rgba(0,119,182,0.4)` }}
-                  onMouseLeave={e=>{ e.currentTarget.style.background=`linear-gradient(135deg,${C.navy},${C.ocean})`; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 4px 18px rgba(3,4,94,0.32)` }}
-                >Next →</button>
+                  onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}
+                  onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}
+                >
+                  Continue <ChevronRight size={15} strokeWidth={2.5} />
+                </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  style={{
-                    padding:"11px 28px", borderRadius:12, border:"none",
-                    background: submitting
-                      ? C.mist
-                      : `linear-gradient(135deg,${C.navy},${C.ocean})`,
-                    color:C.white, fontWeight:700, fontSize:14,
-                    cursor:submitting ? "not-allowed" : "pointer",
-                    fontFamily:"inherit",
-                    boxShadow: submitting ? "none" : `0 4px 18px rgba(3,4,94,0.32)`,
-                    transition:"all 0.22s",
-                    display:"flex", alignItems:"center", gap:9
-                  }}
-                  onMouseEnter={e=>{ if(!submitting){ e.currentTarget.style.background=`linear-gradient(135deg,${C.ocean},${C.sky})`; e.currentTarget.style.transform="translateY(-2px)" }}}
-                  onMouseLeave={e=>{ if(!submitting){ e.currentTarget.style.background=`linear-gradient(135deg,${C.navy},${C.ocean})`; e.currentTarget.style.transform="none" }}}
+                <button type="button" onClick={handleSubmit} disabled={submitting} style={{
+                  padding:"10px 24px", borderRadius:10, border:"none",
+                  background: submitting
+                    ? "rgba(0,180,216,0.15)"
+                    : `linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
+                  color: submitting ? "rgba(144,224,239,0.4)" : C.white,
+                  fontWeight:600, fontSize:13.5,
+                  cursor:submitting ? "not-allowed" : "pointer",
+                  fontFamily:"inherit",
+                  boxShadow: submitting ? "none" : "0 6px 22px rgba(0,180,216,0.3)",
+                  transition:"all 0.22s",
+                  display:"flex", alignItems:"center", gap:8,
+                }}
+                  onMouseEnter={e=>{ if(!submitting){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}}
+                  onMouseLeave={e=>{ if(!submitting){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}}
                 >
                   {submitting ? (
                     <>
-                      <span style={{ display:"inline-block", animation:"spin 0.8s linear infinite", fontSize:16 }}>⏳</span>
+                      <Loader2 size={15} style={{ animation:"spin 0.8s linear infinite" }} />
                       Saving to database...
                     </>
                   ) : (
                     <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
+                      <Check size={15} strokeWidth={2.5} />
                       Submit Medicine
                     </>
                   )}
@@ -714,8 +809,7 @@ export default function MedicineAdd() {
           </div>
         </div>
 
-        {/* Bottom padding */}
-        <div style={{ height:40 }} />
+        <div style={{ height:48 }} />
       </div>
     </div>
   )
