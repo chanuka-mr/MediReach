@@ -14,7 +14,7 @@ const getAllMedicines = async (req, res) => {
 
 //Medicine Insert
 const  addmedicine = async (req, res, next) => {
-    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus } = req.body;
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus,Pharmacy } = req.body;
     try {
         medicine = new Medicine({
             mediName,
@@ -26,7 +26,8 @@ const  addmedicine = async (req, res, next) => {
             mediCompany,
             mediExpiryDate,
             mediManufactureDate,
-            mediPrescriptionStatus
+            mediPrescriptionStatus,
+            Pharmacy
         });
         await medicine.save();
     } catch (error) {
@@ -58,7 +59,7 @@ const getById = async (req, res,next) => {
 //Update medicine
 const updateMedicine = async (req, res, next) => {
     const id = req.params.id;
-    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus } = req.body;
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus,Pharmacy } = req.body;
 
     try{
         medicine = await Medicine.findByIdAndUpdate(id, {
@@ -71,7 +72,8 @@ const updateMedicine = async (req, res, next) => {
             mediCompany,
             mediExpiryDate,
             mediManufactureDate,
-            mediPrescriptionStatus
+            mediPrescriptionStatus,
+            Pharmacy
         });
         medicine = await medicine.save();
     }catch(error){
