@@ -1,6 +1,10 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const dns = require("dns");
 require("dotenv").config();
+
+// Override default DNS for MongoDB +srv connections (Bypasses local ISP blocks)
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const app = express();
 

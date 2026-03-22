@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 
 const userSchema = new Schema(
@@ -15,6 +16,11 @@ const userSchema = new Schema(
       required: true,
       unique: true,
       lowercase: true,
+    },
+
+    contactNumber: {
+      type: String,
+      required: true,
     },
 
     password: {
@@ -38,6 +44,9 @@ const userSchema = new Schema(
       type: String,
       required: function() { return this.role === 'pharmacy'; }
     },
+
+    resetPasswordOtp: String,
+    resetPasswordOtpExpire: Date,
   },
   { timestamps: true }
 );
@@ -55,6 +64,20 @@ userSchema.pre("save", async function () {
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate and hash password token
+userSchema.methods.getResetPasswordOtp = function () {
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Hash OTP and set to resetPasswordOtp
+  this.resetPasswordOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+  // Set expire to 2 minutes
+  this.resetPasswordOtpExpire = Date.now() + 2 * 60 * 1000;
+
+  return otp;
 };
 
 module.exports = mongoose.model("User", userSchema);
