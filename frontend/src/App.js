@@ -5,6 +5,8 @@ import MedicineForm from './Component/MedicineAdd';
 import AdminNav from './Component/AdminNavBar';
 import MedicineInventory from './Component/MedicineInventory';
 import Orders from './Component/PharmacyOrders';
+import UpdateMedicine from './Component/UpdateMedicine';
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
           <Route path="/medicineAdd" element={<MedicineForm />} />
           <Route path="/medicineInventory" element={<MedicineInventory />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/updateMedicine/:id" element={<UpdateMedicine />} />
           </Route>
         </Routes>
       </BrowserRouter>

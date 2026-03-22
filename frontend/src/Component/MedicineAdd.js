@@ -5,19 +5,20 @@ import {
   DollarSign, Hash, Tag, Layers, Upload, X,
   Loader2, Check, ShieldCheck, ShieldAlert, ShieldOff,
   Stethoscope, FlaskConical, Barcode, ImagePlus,
-  ClipboardList, Info
+  ClipboardList, Info, LayoutGrid
 } from 'lucide-react'
 
+// ── Palette — matches InventoryDashboard exactly ──────────────────
 const C = {
-  navy:   "#03045e",
-  ocean:  "#0077b6",
-  sky:    "#00b4d8",
-  mist:   "#90e0ef",
-  foam:   "#caf0f8",
-  white:  "#ffffff",
-  warn:   "#f59e0b",
-  danger: "#ef4444",
-  green:  "#22c55e",
+  snow:      "#FFFFFF",
+  white:     "#F7F9FC",
+  paleSlate: "#DDE3ED",
+  techBlue:  "#023E8A",
+  lilacAsh:  "#4C6EF5",
+  blueSlate: "#4A5568",
+  success:   "#0E7C5B",
+  warn:      "#B45309",
+  danger:    "#C0392B",
 }
 
 const API = "http://localhost:5000/medicines"
@@ -35,9 +36,9 @@ const pharmaciesList = [
 ]
 
 const prescriptionStatuses = [
-  { key: "Prescription Required",  icon: ShieldCheck, color: C.sky,   bg: "rgba(0,180,216,0.1)",   border: "rgba(0,180,216,0.3)" },
-  { key: "Over The Counter",       icon: ShieldOff,   color: C.green, bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.3)" },
-  { key: "Controlled Substance",   icon: ShieldAlert, color: C.warn,  bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)" },
+  { key: "Prescription Required", icon: ShieldCheck, color: C.techBlue,  bg: "rgba(2,62,138,0.07)",   border: "rgba(2,62,138,0.2)"  },
+  { key: "Over The Counter",      icon: ShieldOff,   color: C.success,   bg: "rgba(14,124,91,0.07)",  border: "rgba(14,124,91,0.2)" },
+  { key: "Controlled Substance",  icon: ShieldAlert, color: C.warn,      bg: "rgba(180,83,9,0.07)",   border: "rgba(180,83,9,0.2)"  },
 ]
 
 const initialForm = {
@@ -47,23 +48,23 @@ const initialForm = {
   mediPrescriptionStatus:"", Pharmacy:"",
 }
 
-// ── Field wrapper ────────────────────────────────────────────
+// ── Field wrapper ─────────────────────────────────────────────────
 function Field({ label, required, error, icon: Icon, hint, children }) {
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <label style={{
-          display:"flex", alignItems:"center", gap:6,
-          fontSize:11, fontWeight:700,
-          color: error ? "rgba(239,68,68,0.8)" : "rgba(144,224,239,0.5)",
-          letterSpacing:"0.13em", textTransform:"uppercase", fontFamily:"inherit"
+          display:"flex", alignItems:"center", gap:5,
+          fontSize:10.5, fontWeight:700,
+          color: error ? C.danger : C.lilacAsh,
+          letterSpacing:"0.13em", textTransform:"uppercase",
         }}>
-          {Icon && <Icon size={11} strokeWidth={2} />}
+          {Icon && <Icon size={10} strokeWidth={2.2} />}
           {label}
-          {required && <span style={{ color:C.sky, marginLeft:1 }}>*</span>}
+          {required && <span style={{ color:C.techBlue, marginLeft:1 }}>*</span>}
         </label>
         {hint && (
-          <span style={{ fontSize:10.5, color:"rgba(144,224,239,0.25)", fontWeight:500, display:"flex", alignItems:"center", gap:3 }}>
+          <span style={{ fontSize:10.5, color:C.lilacAsh, fontWeight:400, opacity:0.6, display:"flex", alignItems:"center", gap:3 }}>
             <Info size={9} />
             {hint}
           </span>
@@ -71,10 +72,7 @@ function Field({ label, required, error, icon: Icon, hint, children }) {
       </div>
       {children}
       {error && (
-        <span style={{
-          fontSize:11, color:"rgba(239,68,68,0.8)", fontWeight:600,
-          display:"flex", alignItems:"center", gap:5
-        }}>
+        <span style={{ fontSize:11, color:C.danger, fontWeight:600, display:"flex", alignItems:"center", gap:5 }}>
           <AlertCircle size={11} strokeWidth={2.5} />
           {error}
         </span>
@@ -83,17 +81,21 @@ function Field({ label, required, error, icon: Icon, hint, children }) {
   )
 }
 
-// ── Styled input/select base ─────────────────────────────────
-const inputBase = (hasError) => ({
-  padding:"11px 14px", borderRadius:11,
-  border:`1px solid ${hasError ? "rgba(239,68,68,0.4)" : "rgba(144,224,239,0.12)"}`,
-  background:"rgba(255,255,255,0.04)",
-  fontSize:13.5, outline:"none",
+// ── Input base style ──────────────────────────────────────────────
+const inputBase = (hasError, focused) => ({
+  padding:"10px 13px",
+  borderRadius:9,
+  border:`1.5px solid ${hasError ? C.danger : focused ? C.techBlue : C.paleSlate}`,
+  background: focused ? C.snow : C.white,
+  fontSize:13.5,
+  outline:"none",
   fontFamily:"inherit",
-  color: C.white,
+  color: C.blueSlate,
   width:"100%",
   transition:"border-color 0.2s, background 0.2s, box-shadow 0.2s",
-  boxSizing:"border-box", fontWeight:400,
+  boxSizing:"border-box",
+  fontWeight:400,
+  boxShadow: focused ? `0 0 0 3px rgba(2,62,138,0.08)` : hasError ? `0 0 0 3px rgba(192,57,43,0.07)` : "none",
 })
 
 export default function MedicineAdd() {
@@ -106,16 +108,11 @@ export default function MedicineAdd() {
   const [step,         setStep]         = useState(1)
   const [focused,      setFocused]      = useState(null)
 
-  const inp = (field) => ({
-    ...inputBase(!!errors[field]),
-    border:`1px solid ${errors[field] ? "rgba(239,68,68,0.4)" : focused===field ? "rgba(0,180,216,0.45)" : "rgba(144,224,239,0.1)"}`,
-    background: focused===field ? "rgba(0,180,216,0.06)" : "rgba(255,255,255,0.03)",
-    boxShadow: focused===field ? "0 0 0 3px rgba(0,180,216,0.08)" : "none",
-  })
+  const inp = (field) => inputBase(!!errors[field], focused === field)
 
   const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]:value }))
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]:"" }))
+    setForm(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }))
   }
 
   const handleImageChange = (e) => {
@@ -126,16 +123,22 @@ export default function MedicineAdd() {
     }
   }
 
+  const imageRequired = form.mediPrescriptionStatus === "Prescription Required"
+
   const validate = () => {
     const errs = {}
     Object.keys(initialForm).forEach(k => {
-      if (!form[k]) errs[k] = "This field is required"
+      if (k === "mediImage") {
+        if (imageRequired && !form[k]) errs[k] = "Image is required for prescription medicines"
+      } else {
+        if (!form[k]) errs[k] = "This field is required"
+      }
     })
     if (form.mediPrice && isNaN(form.mediPrice)) errs.mediPrice = "Must be a number"
-    if (form.mediStock && isNaN(form.mediStock))  errs.mediStock = "Must be a number"
+    if (form.mediStock  && isNaN(form.mediStock))  errs.mediStock  = "Must be a number"
     if (form.mediManufactureDate && form.mediExpiryDate) {
       if (new Date(form.mediExpiryDate) <= new Date(form.mediManufactureDate))
-        errs.mediExpiryDate = "Expiry must be after manufacture date"
+        errs.mediExpiryDate = "Expiry date must be after the manufacture date"
     }
     return errs
   }
@@ -170,7 +173,6 @@ export default function MedicineAdd() {
     setSubmitted(false); setApiError(null); setStep(1)
   }
 
-  // ── field input props helpers ─────────────────────────────
   const fp = (field) => ({
     style: inp(field),
     value: form[field],
@@ -179,88 +181,93 @@ export default function MedicineAdd() {
     onChange: (e) => handleChange(field, e.target.value),
   })
 
-  // ── Progress ─────────────────────────────────────────────
   const step1Fields = ["mediName","mediPrice","mediCategory","mediCompany","mediStock","Pharmacy"]
   const step2Fields = ["mediDescription","mediManufactureDate","mediExpiryDate","mediPrescriptionStatus","mediImage"]
   const s1Fill = step1Fields.filter(f => form[f]).length / step1Fields.length
   const s2Fill = step2Fields.filter(f => form[f]).length / step2Fields.length
 
-  // ─── Success Screen ──────────────────────────────────────
+  // ── Success Screen ────────────────────────────────────────────
   if (submitted) {
     return (
       <div style={{
-        minHeight:"100vh", background:"transparent",
+        minHeight:"100vh", background:C.snow,
         display:"flex", alignItems:"center", justifyContent:"center",
         fontFamily:"'DM Sans',sans-serif", padding:24,
+        position:"relative",
       }}>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
-          @keyframes popIn { from{opacity:0;transform:scale(0.7) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
-          @keyframes checkDraw { from{stroke-dashoffset:30} to{stroke-dashoffset:0} }
+          @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+          @keyframes popIn { from{opacity:0;transform:scale(0.75) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
           @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         `}</style>
 
+        {/* Dot grid bg */}
+        <div style={{
+          position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+          backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
+          backgroundSize:"28px 28px", opacity:0.4,
+        }} />
+
         <div style={{
           borderRadius:24, padding:"52px 48px", textAlign:"center", maxWidth:460, width:"100%",
-          background:"rgba(255,255,255,0.04)",
-          border:"1px solid rgba(0,180,216,0.15)",
-          boxShadow:"0 32px 80px rgba(0,0,0,0.4)",
-          backdropFilter:"blur(20px)",
+          background:C.white,
+          border:`1.5px solid ${C.paleSlate}`,
+          boxShadow:"0 24px 64px rgba(2,62,138,0.1)",
           animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
+          position:"relative", zIndex:1,
         }}>
           {/* Success ring */}
           <div style={{
-            width:88, height:88, borderRadius:"50%", margin:"0 auto 28px",
-            background:"linear-gradient(135deg, rgba(34,197,94,0.15), rgba(0,180,216,0.1))",
-            border:"1.5px solid rgba(34,197,94,0.3)",
+            width:86, height:86, borderRadius:"50%", margin:"0 auto 28px",
+            background:`rgba(14,124,91,0.08)`,
+            border:`1.5px solid rgba(14,124,91,0.25)`,
             display:"flex", alignItems:"center", justifyContent:"center",
-            boxShadow:"0 0 40px rgba(34,197,94,0.15)",
-            position:"relative",
+            boxShadow:"0 0 32px rgba(14,124,91,0.12)",
           }}>
-            <CheckCircle2 size={40} color={C.green} strokeWidth={1.5} />
+            <CheckCircle2 size={40} color={C.success} strokeWidth={1.5} />
           </div>
 
           <h2 style={{
             margin:"0 0 8px", fontSize:28, fontWeight:800,
-            color:C.white, letterSpacing:"-1px",
-            fontFamily:"'Plus Jakarta Sans',sans-serif",
+            color:C.blueSlate, letterSpacing:"-1px",
+            fontFamily:"'Sora',sans-serif",
           }}>Medicine Registered</h2>
-          <p style={{ margin:"0 0 6px", color:"rgba(202,240,248,0.6)", fontSize:14 }}>
-            <span style={{ color:C.sky, fontWeight:600 }}>{form.mediName}</span> has been added to the MediReach network.
+          <p style={{ margin:"0 0 6px", color:C.lilacAsh, fontSize:14 }}>
+            <span style={{ color:C.techBlue, fontWeight:600 }}>{form.mediName}</span> has been added to the MediReach network.
           </p>
 
           <div style={{
             display:"inline-flex", alignItems:"center", gap:7,
-            background:"rgba(0,180,216,0.08)", borderRadius:99, padding:"6px 16px",
-            margin:"16px 0 36px", border:"1px solid rgba(0,180,216,0.18)",
+            background:"rgba(2,62,138,0.07)", borderRadius:99, padding:"6px 16px",
+            margin:"16px 0 36px", border:`1px solid rgba(2,62,138,0.15)`,
           }}>
-            <Building2 size={12} color={C.sky} />
-            <span style={{ fontSize:12.5, fontWeight:600, color:C.sky }}>{form.Pharmacy}</span>
+            <Building2 size={12} color={C.techBlue} />
+            <span style={{ fontSize:12.5, fontWeight:600, color:C.techBlue }}>{form.Pharmacy}</span>
           </div>
 
           <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
             <button onClick={handleReset} style={{
-              padding:"11px 24px", borderRadius:11,
-              border:"1px solid rgba(144,224,239,0.15)", background:"rgba(144,224,239,0.04)",
-              color:"rgba(202,240,248,0.7)", fontWeight:600, fontSize:13.5,
+              padding:"11px 22px", borderRadius:9,
+              border:`1.5px solid ${C.paleSlate}`, background:C.white,
+              color:C.blueSlate, fontWeight:600, fontSize:13.5,
               cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
               display:"flex", alignItems:"center", gap:7,
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(0,180,216,0.35)"; e.currentTarget.style.color=C.sky }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.15)"; e.currentTarget.style.color="rgba(202,240,248,0.7)" }}
+              onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
             >
               <Package size={14} /> Add Another
             </button>
             <button onClick={()=>window.history.back()} style={{
-              padding:"11px 24px", borderRadius:11, border:"none",
-              background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
-              color:C.white, fontWeight:600, fontSize:13.5,
+              padding:"11px 22px", borderRadius:9, border:"none",
+              background:C.techBlue,
+              color:C.snow, fontWeight:600, fontSize:13.5,
               cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
               display:"flex", alignItems:"center", gap:7,
-              boxShadow:"0 6px 22px rgba(0,180,216,0.3)",
+              boxShadow:`0 6px 22px rgba(2,62,138,0.28)`,
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=`0 10px 30px rgba(2,62,138,0.38)` }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 6px 22px rgba(2,62,138,0.28)` }}
             >
               <ArrowLeft size={14} /> Go Back
             </button>
@@ -270,70 +277,71 @@ export default function MedicineAdd() {
     )
   }
 
-  // ─── Main Form ───────────────────────────────────────────
+  // ── Main Form ─────────────────────────────────────────────────
   return (
     <div style={{
-      minHeight:"100vh", background:"transparent",
-      fontFamily:"'DM Sans',sans-serif", padding:"36px 32px 56px",
+      minHeight:"100vh",
+      background: C.snow,
+      fontFamily:"'DM Sans',sans-serif",
+      padding:"36px 40px 64px",
+      position:"relative",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
         * { box-sizing:border-box; }
 
-        .mr-input:focus {
-          outline: none !important;
-        }
-
+        input::placeholder, textarea::placeholder { color:${C.lilacAsh}; opacity:0.55; }
+        input[type="date"] { color-scheme:light; }
         input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(0.6) sepia(1) hue-rotate(170deg);
-          cursor:pointer; opacity:0.6;
+          filter: none; cursor:pointer; opacity:0.5;
         }
+        select option { color:${C.blueSlate}; background:${C.snow}; }
 
-        select option { color:#03045e; background:#f0faff; }
-
-        ::-webkit-scrollbar { width:3px; }
-        ::-webkit-scrollbar-thumb { background:rgba(0,180,216,0.2); border-radius:99px; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-thumb { background:${C.paleSlate}; border-radius:99px; }
 
         @keyframes fadeUp {
-          from { opacity:0; transform:translateY(14px); }
+          from { opacity:0; transform:translateY(12px); }
           to   { opacity:1; transform:translateY(0); }
         }
-        @keyframes popIn {
-          from { opacity:0; transform:scale(0.6); }
-          to   { opacity:1; transform:scale(1); }
-        }
-        @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
-        @keyframes glowPulse {
-          0%,100%{ box-shadow:0 0 0 0 rgba(0,180,216,0); }
-          50%    { box-shadow:0 0 20px 4px rgba(0,180,216,0.12); }
-        }
-        @keyframes progressFill {
-          from { width:0%; } to { width:100%; }
-        }
-
-        input::placeholder, textarea::placeholder { color:rgba(144,224,239,0.2); }
-        input[type="date"] { color-scheme:dark; }
+        @keyframes spin { to { transform:rotate(360deg); } }
       `}</style>
 
-      {/* Top accent bar */}
+      {/* Top palette stripe */}
       <div style={{
-        position:"fixed", top:0, left:0, right:0, height:2, zIndex:99,
-        background:`linear-gradient(90deg, ${C.navy}, ${C.ocean} 30%, ${C.sky} 60%, ${C.mist} 85%, transparent)`,
+        position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
+        background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})`,
       }} />
 
-      <div style={{ maxWidth:780, margin:"0 auto", paddingTop:4 }}>
+      {/* Dot grid bg */}
+      <div style={{
+        position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+        backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
+        backgroundSize:"28px 28px", opacity:0.35,
+      }} />
+
+      {/* Radial bg accents */}
+      <div style={{
+        position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+        backgroundImage:`
+          radial-gradient(circle at 5% 5%, rgba(2,62,138,0.05) 0%, transparent 40%),
+          radial-gradient(circle at 95% 90%, rgba(76,110,245,0.06) 0%, transparent 40%)
+        `,
+      }} />
+
+      <div style={{ maxWidth:780, margin:"0 auto", position:"relative", zIndex:1, paddingTop:4 }}>
 
         {/* ── Back + Header ── */}
         <div style={{ marginBottom:28, animation:"fadeUp 0.4s ease both" }}>
           <button onClick={()=>window.history.back()} style={{
             background:"none", border:"none", cursor:"pointer",
-            display:"flex", alignItems:"center", gap:7,
-            color:"rgba(144,224,239,0.35)", fontSize:13, fontWeight:500,
+            display:"flex", alignItems:"center", gap:6,
+            color:C.lilacAsh, fontSize:13, fontWeight:500,
             fontFamily:"inherit", marginBottom:22, padding:0, transition:"color 0.2s",
           }}
-            onMouseEnter={e=>e.currentTarget.style.color=C.sky}
-            onMouseLeave={e=>e.currentTarget.style.color="rgba(144,224,239,0.35)"}
+            onMouseEnter={e=>e.currentTarget.style.color=C.techBlue}
+            onMouseLeave={e=>e.currentTarget.style.color=C.lilacAsh}
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to Dashboard
@@ -342,75 +350,71 @@ export default function MedicineAdd() {
           <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:20 }}>
             <div>
               {/* Breadcrumb */}
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
                 <div style={{
-                  width:28, height:28, borderRadius:8,
-                  background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
+                  width:30, height:30, borderRadius:8,
+                  background:C.techBlue,
                   display:"flex", alignItems:"center", justifyContent:"center",
-                  boxShadow:"0 4px 12px rgba(0,180,216,0.3)",
+                  boxShadow:`0 4px 12px rgba(2,62,138,0.28)`,
                 }}>
-                  <Pill size={14} color="white" strokeWidth={2} />
+                  <Pill size={14} color={C.snow} strokeWidth={2} />
                 </div>
-                <span style={{ fontSize:11, color:"rgba(144,224,239,0.3)", fontWeight:500 }}>MediReach</span>
-                <ChevronRight size={11} color="rgba(144,224,239,0.15)" />
-                <span style={{ fontSize:11, color:"rgba(144,224,239,0.3)", fontWeight:500 }}>Medicine Registry</span>
-                <ChevronRight size={11} color="rgba(144,224,239,0.15)" />
+                <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:400 }}>MediReach</span>
+                <ChevronRight size={11} color={C.paleSlate} />
+                <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:400 }}>Medicine Registry</span>
+                <ChevronRight size={11} color={C.paleSlate} />
                 <span style={{
-                  fontSize:11, color:C.sky, fontWeight:700,
-                  background:"rgba(0,180,216,0.1)", padding:"2px 9px", borderRadius:99,
-                  border:"1px solid rgba(0,180,216,0.18)",
+                  fontSize:11.5, color:C.techBlue, fontWeight:700,
+                  background:"rgba(2,62,138,0.08)", padding:"2px 10px", borderRadius:99,
+                  border:`1px solid rgba(2,62,138,0.15)`,
                 }}>Add Medicine</span>
               </div>
 
               <h1 style={{
-                margin:0, fontSize:30, fontWeight:800,
-                color:C.white, letterSpacing:"-1.2px", lineHeight:1.1,
-                fontFamily:"'Plus Jakarta Sans',sans-serif",
+                margin:0, fontSize:32, fontWeight:700,
+                letterSpacing:"-1.4px", color:C.blueSlate, lineHeight:1.1,
+                fontFamily:"'Sora',sans-serif",
               }}>Register New Medicine</h1>
-              <p style={{ margin:"8px 0 0", color:"rgba(144,224,239,0.3)", fontSize:13.5, fontWeight:400 }}>
+              <p style={{ margin:"7px 0 0", color:C.lilacAsh, fontSize:14, fontWeight:400 }}>
                 Complete both steps to register a medicine across the network.
               </p>
             </div>
 
-            {/* Step indicator */}
-            <div style={{
-              display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8, flexShrink:0,
-            }}>
-              <div style={{ display:"flex", gap:6 }}>
-                {[
-                  { num:1, label:"Basic Info",     fill:s1Fill },
-                  { num:2, label:"Details",         fill:s2Fill },
-                ].map(s => (
-                  <button key={s.num} onClick={()=>setStep(s.num)} style={{
-                    padding:"8px 14px", borderRadius:9,
-                    border:`1px solid ${step===s.num ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.08)"}`,
-                    background: step===s.num ? "rgba(0,180,216,0.1)" : "rgba(255,255,255,0.02)",
-                    cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
-                    display:"flex", alignItems:"center", gap:7,
+            {/* Step tabs */}
+            <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+              {[
+                { num:1, label:"Basic Info", fill:s1Fill },
+                { num:2, label:"Details",    fill:s2Fill },
+              ].map(s => (
+                <button key={s.num} onClick={()=>setStep(s.num)} style={{
+                  padding:"8px 16px", borderRadius:9,
+                  border:`1.5px solid ${step===s.num ? C.techBlue : C.paleSlate}`,
+                  background: step===s.num ? C.techBlue : C.white,
+                  cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+                  display:"flex", alignItems:"center", gap:8,
+                  boxShadow: step===s.num ? `0 4px 16px rgba(2,62,138,0.22)` : "none",
+                }}>
+                  <div style={{
+                    width:20, height:20, borderRadius:"50%", flexShrink:0,
+                    background: s.fill===1
+                      ? `linear-gradient(135deg, ${C.success}, rgba(14,124,91,0.7))`
+                      : step===s.num
+                        ? "rgba(255,255,255,0.25)"
+                        : "rgba(2,62,138,0.08)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    border:`1px solid ${step===s.num ? "rgba(255,255,255,0.3)" : C.paleSlate}`,
+                    transition:"all 0.3s",
                   }}>
-                    <div style={{
-                      width:20, height:20, borderRadius:"50%", flexShrink:0,
-                      background: s.fill===1
-                        ? `linear-gradient(135deg, ${C.green}, rgba(34,197,94,0.7))`
-                        : step===s.num
-                          ? `linear-gradient(135deg, ${C.ocean}, ${C.sky})`
-                          : "rgba(144,224,239,0.08)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      border:`1px solid ${step===s.num ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.12)"}`,
-                      boxShadow: step===s.num ? "0 2px 8px rgba(0,180,216,0.2)" : "none",
-                      transition:"all 0.3s",
-                    }}>
-                      {s.fill===1
-                        ? <Check size={10} color="white" strokeWidth={3} />
-                        : <span style={{ fontSize:10, fontWeight:800, color: step===s.num ? C.white : "rgba(144,224,239,0.3)" }}>{s.num}</span>
-                      }
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:600, color: step===s.num ? "rgba(202,240,248,0.8)" : "rgba(144,224,239,0.3)" }}>
-                      {s.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    {s.fill===1
+                      ? <Check size={10} color={C.snow} strokeWidth={3} />
+                      : <span style={{ fontSize:10, fontWeight:800, color: step===s.num ? C.snow : C.lilacAsh }}>{s.num}</span>
+                    }
+                  </div>
+                  <span style={{ fontSize:12.5, fontWeight:600, color: step===s.num ? C.snow : C.blueSlate }}>
+                    {s.label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -418,19 +422,19 @@ export default function MedicineAdd() {
         {/* ── API Error ── */}
         {apiError && (
           <div style={{
-            background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)",
-            borderRadius:12, padding:"13px 18px", marginBottom:22,
+            background:"rgba(192,57,43,0.06)", border:`1px solid rgba(192,57,43,0.22)`,
+            borderRadius:10, padding:"13px 18px", marginBottom:22,
             display:"flex", alignItems:"center", gap:12,
             animation:"fadeUp 0.3s ease both",
           }}>
             <AlertCircle size={18} color={C.danger} strokeWidth={2} />
             <div>
-              <p style={{ margin:0, fontWeight:600, color:"rgba(239,68,68,0.9)", fontSize:13.5 }}>Failed to save medicine</p>
-              <p style={{ margin:"2px 0 0", color:"rgba(239,68,68,0.6)", fontSize:12 }}>{apiError}</p>
+              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13.5 }}>Failed to save medicine</p>
+              <p style={{ margin:"2px 0 0", color:C.danger, fontSize:12, opacity:0.7 }}>{apiError}</p>
             </div>
             <button onClick={()=>setApiError(null)} style={{
               marginLeft:"auto", background:"none", border:"none",
-              cursor:"pointer", color:"rgba(239,68,68,0.5)", fontFamily:"inherit",
+              cursor:"pointer", color:C.danger, opacity:0.5, fontFamily:"inherit",
               display:"flex", alignItems:"center",
             }}>
               <X size={16} />
@@ -440,78 +444,76 @@ export default function MedicineAdd() {
 
         {/* ── Main Form Card ── */}
         <div style={{
-          borderRadius:20,
-          border:"1px solid rgba(144,224,239,0.08)",
-          background:"rgba(255,255,255,0.02)",
-          backdropFilter:"blur(12px)",
-          boxShadow:"0 12px 50px rgba(0,0,0,0.3)",
+          borderRadius:16,
+          border:`1.5px solid ${C.paleSlate}`,
+          background:C.white,
+          boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
           overflow:"hidden",
           animation:"fadeUp 0.4s ease 0.1s both",
         }}>
 
           {/* Card Header */}
           <div style={{
-            padding:"22px 30px",
-            borderBottom:"1px solid rgba(144,224,239,0.06)",
+            padding:"20px 28px",
+            borderBottom:`1.5px solid ${C.paleSlate}`,
             display:"flex", alignItems:"center", gap:16,
+            background:C.snow,
             position:"relative", overflow:"hidden",
-            background:"rgba(0,180,216,0.03)",
           }}>
             {/* Shimmer */}
             <div style={{
               position:"absolute", top:0, left:"-100%", width:"40%", height:"100%",
-              background:"linear-gradient(90deg,transparent,rgba(0,180,216,0.04),transparent)",
-              animation:"shimmer 5s ease-in-out infinite",
-              pointerEvents:"none",
+              background:`linear-gradient(90deg,transparent,rgba(2,62,138,0.03),transparent)`,
+              animation:"shimmer 5s ease-in-out infinite", pointerEvents:"none",
             }} />
 
             <div style={{
-              width:46, height:46, borderRadius:13, flexShrink:0,
-              background: step===1 ? "rgba(0,180,216,0.12)" : "rgba(144,224,239,0.07)",
+              width:44, height:44, borderRadius:11, flexShrink:0,
+              background: step===1 ? `rgba(2,62,138,0.08)` : "rgba(76,110,245,0.07)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              border:`1px solid ${step===1 ? "rgba(0,180,216,0.25)" : "rgba(144,224,239,0.1)"}`,
+              border:`1.5px solid ${step===1 ? `rgba(2,62,138,0.18)` : C.paleSlate}`,
               transition:"all 0.3s",
             }}>
               {step===1
-                ? <ClipboardList size={20} color={C.sky} strokeWidth={1.8} />
-                : <FileText size={20} color="rgba(144,224,239,0.45)" strokeWidth={1.8} />
+                ? <ClipboardList size={20} color={C.techBlue} strokeWidth={1.8} />
+                : <FileText      size={20} color={C.lilacAsh}  strokeWidth={1.8} />
               }
             </div>
 
             <div style={{ flex:1 }}>
-              <p style={{ margin:0, color:C.white, fontWeight:700, fontSize:17, letterSpacing:"-0.3px", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+              <p style={{ margin:0, color:C.blueSlate, fontWeight:700, fontSize:17, letterSpacing:"-0.4px", fontFamily:"'Sora',sans-serif" }}>
                 {step===1 ? "Basic Information" : "Details & Dates"}
               </p>
-              <p style={{ margin:"3px 0 0", color:"rgba(144,224,239,0.3)", fontSize:12.5, fontWeight:400 }}>
+              <p style={{ margin:"3px 0 0", color:C.lilacAsh, fontSize:12.5, fontWeight:400 }}>
                 {step===1
                   ? "Name, pricing, stock, category and assigned pharmacy"
                   : "Description, validity dates, status and medicine image"}
               </p>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress */}
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:11, color:"rgba(144,224,239,0.35)", fontWeight:600 }}>
+                <span style={{ fontSize:11, color:C.lilacAsh, fontWeight:600 }}>
                   {step===1 ? Math.round(s1Fill*100) : Math.round(s2Fill*100)}% filled
                 </span>
-                {((step===1 && s1Fill===1) || (step===2 && s2Fill===1)) && (
+                {((step===1 && s1Fill===1)||(step===2 && s2Fill===1)) && (
                   <div style={{
                     display:"flex", alignItems:"center", gap:4,
-                    background:"rgba(34,197,94,0.1)", borderRadius:99, padding:"2px 8px",
-                    border:"1px solid rgba(34,197,94,0.2)",
+                    background:"rgba(14,124,91,0.08)", borderRadius:99, padding:"2px 8px",
+                    border:`1px solid rgba(14,124,91,0.2)`,
                   }}>
-                    <Check size={9} color={C.green} strokeWidth={3} />
-                    <span style={{ fontSize:9.5, fontWeight:800, color:C.green, letterSpacing:"0.08em" }}>DONE</span>
+                    <Check size={9} color={C.success} strokeWidth={3} />
+                    <span style={{ fontSize:9.5, fontWeight:800, color:C.success, letterSpacing:"0.08em" }}>DONE</span>
                   </div>
                 )}
               </div>
-              <div style={{ width:130, height:5, borderRadius:99, background:"rgba(144,224,239,0.07)", overflow:"hidden" }}>
+              <div style={{ width:130, height:5, borderRadius:99, background:C.paleSlate, overflow:"hidden" }}>
                 <div style={{
                   height:"100%", borderRadius:99,
-                  width:`${(step===1 ? s1Fill : s2Fill)*100}%`,
-                  background:`linear-gradient(90deg, ${C.ocean}, ${C.sky})`,
-                  boxShadow:`0 0 8px ${C.sky}60`,
+                  width:`${(step===1?s1Fill:s2Fill)*100}%`,
+                  background:C.techBlue,
+                  boxShadow:`0 0 8px rgba(2,62,138,0.4)`,
                   transition:"width 0.5s cubic-bezier(0.4,0,0.2,1)",
                 }} />
               </div>
@@ -519,39 +521,31 @@ export default function MedicineAdd() {
           </div>
 
           {/* ── Fields ── */}
-          <div style={{ padding:"30px 30px 28px" }}>
+          <div style={{ padding:"28px 28px 26px" }}>
 
             {/* STEP 1 */}
             {step===1 && (
-              <div style={{ display:"flex", flexDirection:"column", gap:22 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
                 <Field label="Medicine Name" required icon={Pill} error={errors.mediName}>
-                  <input className="mr-input"
-                    placeholder="e.g. Amoxicillin 500mg"
-                    {...fp("mediName")}
-                  />
+                  <input className="mr-input" placeholder="e.g. Amoxicillin 500mg" {...fp("mediName")} />
                 </Field>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
-                  <Field label="Price (LKR)" required icon={DollarSign} error={errors.mediPrice}
-                    hint="Retail price">
-                    <input className="mr-input" type="number" min="0"
-                      placeholder="e.g. 150.00" {...fp("mediPrice")} />
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                  <Field label="Price (LKR)" required icon={DollarSign} error={errors.mediPrice} hint="Retail price">
+                    <input className="mr-input" type="number" min="0" placeholder="e.g. 150.00" {...fp("mediPrice")} />
                   </Field>
-                  <Field label="Stock Quantity" required icon={Hash} error={errors.mediStock}
-                    hint="Units in hand">
-                    <input className="mr-input" type="number" min="0"
-                      placeholder="e.g. 500" {...fp("mediStock")} />
+                  <Field label="Stock Quantity" required icon={Hash} error={errors.mediStock} hint="Units in hand">
+                    <input className="mr-input" type="number" min="0" placeholder="e.g. 500" {...fp("mediStock")} />
                   </Field>
                 </div>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                   <Field label="Category" required icon={Tag} error={errors.mediCategory}>
-                    <select className="mr-input"
-                      style={inp("mediCategory")}
+                    <select style={inp("mediCategory")}
                       value={form.mediCategory}
-                      onFocus={() => setFocused("mediCategory")}
-                      onBlur={() => setFocused(null)}
+                      onFocus={()=>setFocused("mediCategory")}
+                      onBlur={()=>setFocused(null)}
                       onChange={e=>handleChange("mediCategory",e.target.value)}
                     >
                       <option value="">— Select category —</option>
@@ -559,18 +553,15 @@ export default function MedicineAdd() {
                     </select>
                   </Field>
                   <Field label="Manufacturer" required icon={Barcode} error={errors.mediCompany}>
-                    <input className="mr-input"
-                      placeholder="e.g. Sun Pharma, Cipla"
-                      {...fp("mediCompany")} />
+                    <input placeholder="e.g. Sun Pharma, Cipla" {...fp("mediCompany")} />
                   </Field>
                 </div>
 
                 <Field label="Assigned Pharmacy" required icon={Building2} error={errors.Pharmacy}>
-                  <select className="mr-input"
-                    style={inp("Pharmacy")}
+                  <select style={inp("Pharmacy")}
                     value={form.Pharmacy}
-                    onFocus={() => setFocused("Pharmacy")}
-                    onBlur={() => setFocused(null)}
+                    onFocus={()=>setFocused("Pharmacy")}
+                    onBlur={()=>setFocused(null)}
                     onChange={e=>handleChange("Pharmacy",e.target.value)}
                   >
                     <option value="">— Select a pharmacy —</option>
@@ -583,39 +574,82 @@ export default function MedicineAdd() {
 
             {/* STEP 2 */}
             {step===2 && (
-              <div style={{ display:"flex", flexDirection:"column", gap:22 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-                <Field label="Description" required icon={FileText} error={errors.mediDescription}
-                  hint="Usage & notes">
-                  <textarea className="mr-input"
+                <Field label="Description" required icon={FileText} error={errors.mediDescription} hint="Usage & notes">
+                  <textarea
                     placeholder="Brief description of the medicine, its usage and important notes..."
                     value={form.mediDescription}
-                    onFocus={() => setFocused("mediDescription")}
-                    onBlur={() => setFocused(null)}
+                    onFocus={()=>setFocused("mediDescription")}
+                    onBlur={()=>setFocused(null)}
                     onChange={e=>handleChange("mediDescription",e.target.value)}
                     rows={4}
                     style={{ ...inp("mediDescription"), resize:"vertical", minHeight:110, lineHeight:1.7 }}
                   />
                 </Field>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
-                  <Field label="Manufacture Date" required icon={Calendar} error={errors.mediManufactureDate}>
-                    <input className="mr-input" type="date"
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                  {/* Manufacture Date — max is yesterday (cannot pick today or future) */}
+                  <Field label="Manufacture Date" required icon={Calendar} error={errors.mediManufactureDate}
+                    hint="Must be a past date">
+                    <input type="date"
                       style={inp("mediManufactureDate")}
                       value={form.mediManufactureDate}
-                      onFocus={() => setFocused("mediManufactureDate")}
-                      onBlur={() => setFocused(null)}
-                      onChange={e=>handleChange("mediManufactureDate",e.target.value)}
+                      max={(() => { const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().split("T")[0] })()}
+                      onFocus={()=>setFocused("mediManufactureDate")}
+                      onBlur={()=>setFocused(null)}
+                      onChange={e => {
+                        handleChange("mediManufactureDate", e.target.value)
+                        // Clear expiry if it's now invalid relative to new mfg date
+                        if (form.mediExpiryDate && e.target.value && new Date(form.mediExpiryDate) <= new Date(e.target.value)) {
+                          handleChange("mediExpiryDate", "")
+                        }
+                      }}
                     />
                   </Field>
-                  <Field label="Expiry Date" required icon={Calendar} error={errors.mediExpiryDate}>
-                    <input className="mr-input" type="date"
-                      style={inp("mediExpiryDate")}
-                      value={form.mediExpiryDate}
-                      onFocus={() => setFocused("mediExpiryDate")}
-                      onBlur={() => setFocused(null)}
-                      onChange={e=>handleChange("mediExpiryDate",e.target.value)}
-                    />
+
+                  {/* Expiry Date — disabled until manufacture date chosen; min = day after manufacture date */}
+                  <Field label="Expiry Date" required icon={Calendar} error={errors.mediExpiryDate}
+                    hint={form.mediManufactureDate ? "Must be after manufacture date" : "Select manufacture date first"}>
+                    <div style={{ position:"relative" }}>
+                      <input type="date"
+                        style={{
+                          ...inp("mediExpiryDate"),
+                          opacity: form.mediManufactureDate ? 1 : 0.45,
+                          cursor:  form.mediManufactureDate ? "pointer" : "not-allowed",
+                          background: form.mediManufactureDate ? (focused==="mediExpiryDate" ? C.snow : C.white) : C.paleSlate,
+                        }}
+                        value={form.mediExpiryDate}
+                        disabled={!form.mediManufactureDate}
+                        min={(() => {
+                          if (!form.mediManufactureDate) return ""
+                          const d = new Date(form.mediManufactureDate)
+                          d.setDate(d.getDate() + 1)
+                          return d.toISOString().split("T")[0]
+                        })()}
+                        onFocus={()=>setFocused("mediExpiryDate")}
+                        onBlur={()=>setFocused(null)}
+                        onChange={e=>handleChange("mediExpiryDate",e.target.value)}
+                      />
+                      {/* Lock overlay when disabled */}
+                      {!form.mediManufactureDate && (
+                        <div style={{
+                          position:"absolute", inset:0, borderRadius:9,
+                          display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                          pointerEvents:"none",
+                        }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                            stroke={C.lilacAsh} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            style={{ opacity:0.5 }}>
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                          </svg>
+                          <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:600, opacity:0.6 }}>
+                            Enter manufacture date first
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </Field>
                 </div>
 
@@ -630,23 +664,22 @@ export default function MedicineAdd() {
                           key={ps.key} type="button"
                           onClick={()=>handleChange("mediPrescriptionStatus",ps.key)}
                           style={{
-                            padding:"14px 10px", borderRadius:12,
-                            border:`1px solid ${active ? ps.border : "rgba(144,224,239,0.1)"}`,
-                            background: active ? ps.bg : "rgba(255,255,255,0.02)",
+                            padding:"14px 10px", borderRadius:10,
+                            border:`1.5px solid ${active ? ps.border : C.paleSlate}`,
+                            background: active ? ps.bg : C.white,
                             cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
                             display:"flex", flexDirection:"column", alignItems:"center", gap:8,
                             transform: active ? "translateY(-2px)" : "none",
-                            boxShadow: active ? `0 6px 20px ${ps.color}20` : "none",
+                            boxShadow: active ? `0 6px 20px ${ps.color}18` : "0 2px 8px rgba(2,62,138,0.04)",
                           }}
-                          onMouseEnter={e=>{ if(!active){ e.currentTarget.style.borderColor=ps.border; e.currentTarget.style.background=ps.bg+"80" }}}
-                          onMouseLeave={e=>{ if(!active){ e.currentTarget.style.borderColor="rgba(144,224,239,0.1)"; e.currentTarget.style.background="rgba(255,255,255,0.02)" }}}
+                          onMouseEnter={e=>{ if(!active){ e.currentTarget.style.borderColor=ps.border; e.currentTarget.style.background=ps.bg }}}
+                          onMouseLeave={e=>{ if(!active){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.background=C.white }}}
                         >
-                          <Icon size={20} color={active ? ps.color : "rgba(144,224,239,0.3)"} strokeWidth={1.8} style={{ transition:"color 0.2s" }} />
+                          <Icon size={20} color={active ? ps.color : C.lilacAsh} strokeWidth={1.8} style={{ transition:"color 0.2s" }} />
                           <span style={{
-                            fontSize:12, fontWeight:600,
-                            color: active ? ps.color : "rgba(144,224,239,0.35)",
-                            textAlign:"center", lineHeight:1.3,
-                            transition:"color 0.2s",
+                            fontSize:11.5, fontWeight:600,
+                            color: active ? ps.color : C.blueSlate,
+                            textAlign:"center", lineHeight:1.3, transition:"color 0.2s",
                           }}>{ps.key}</span>
                         </button>
                       )
@@ -655,22 +688,21 @@ export default function MedicineAdd() {
                 </Field>
 
                 {/* Image Upload */}
-                <Field label="Medicine Image" required icon={ImagePlus} error={errors.mediImage}>
+                <Field label="Medicine Image" required={imageRequired} icon={ImagePlus} error={errors.mediImage}
+                  hint={imageRequired ? "Required for Rx medicines" : "Optional for OTC / Controlled"}>
                   <label style={{
                     display:"flex", flexDirection:"column",
                     alignItems:"center", justifyContent:"center", gap:12,
-                    border:`1.5px dashed ${errors.mediImage ? "rgba(239,68,68,0.35)" : imagePreview ? "rgba(0,180,216,0.4)" : "rgba(144,224,239,0.15)"}`,
-                    borderRadius:14, padding:"32px 24px", cursor:"pointer",
-                    background: imagePreview
-                      ? "rgba(0,180,216,0.04)"
-                      : "rgba(255,255,255,0.02)",
+                    border:`1.5px dashed ${errors.mediImage ? C.danger : imagePreview ? C.techBlue : imageRequired ? C.lilacAsh : C.paleSlate}`,
+                    borderRadius:12, padding:"32px 24px", cursor:"pointer",
+                    background: imagePreview ? "rgba(2,62,138,0.03)" : imageRequired ? "rgba(76,110,245,0.02)" : C.white,
                     transition:"all 0.25s", minHeight:150,
                     position:"relative", overflow:"hidden",
                   }}
-                    onMouseEnter={e=>{ if(!imagePreview) e.currentTarget.style.borderColor="rgba(0,180,216,0.35)" }}
-                    onMouseLeave={e=>{ if(!imagePreview) e.currentTarget.style.borderColor="rgba(144,224,239,0.15)" }}
-                    onDragOver={e=>{ e.preventDefault(); e.currentTarget.style.borderColor="rgba(0,180,216,0.5)"; e.currentTarget.style.background="rgba(0,180,216,0.06)" }}
-                    onDragLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.15)"; e.currentTarget.style.background="rgba(255,255,255,0.02)" }}
+                    onMouseEnter={e=>{ if(!imagePreview) e.currentTarget.style.borderColor=C.techBlue }}
+                    onMouseLeave={e=>{ if(!imagePreview) e.currentTarget.style.borderColor=C.paleSlate }}
+                    onDragOver={e=>{ e.preventDefault(); e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.background="rgba(2,62,138,0.04)" }}
+                    onDragLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.background=C.white }}
                   >
                     {imagePreview ? (
                       <img src={imagePreview} alt="preview"
@@ -679,19 +711,26 @@ export default function MedicineAdd() {
                       <>
                         <div style={{
                           width:52, height:52,
-                          background:"rgba(0,180,216,0.08)",
-                          borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center",
-                          border:"1px solid rgba(0,180,216,0.18)",
+                          background:"rgba(2,62,138,0.07)",
+                          borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center",
+                          border:`1.5px solid rgba(2,62,138,0.15)`,
                         }}>
-                          <Upload size={22} color="rgba(0,180,216,0.5)" strokeWidth={1.8} />
+                          <Upload size={22} color={C.techBlue} strokeWidth={1.8} />
                         </div>
                         <div style={{ textAlign:"center" }}>
-                          <p style={{ margin:0, fontSize:14, color:"rgba(202,240,248,0.7)", fontWeight:600 }}>
+                          <p style={{ margin:0, fontSize:14, color:C.blueSlate, fontWeight:600 }}>
                             Click or drag to upload
                           </p>
-                          <p style={{ margin:"4px 0 0", fontSize:11.5, color:"rgba(144,224,239,0.25)" }}>
+                          <p style={{ margin:"4px 0 0", fontSize:11.5, color:C.lilacAsh }}>
                             PNG, JPG up to 5MB
                           </p>
+                          {!imageRequired && (
+                            <p style={{ margin:"8px 0 0", fontSize:11, color:C.lilacAsh, opacity:0.6,
+                              display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}>
+                              <ShieldOff size={10} strokeWidth={2} />
+                              Optional — not required for this status
+                            </p>
+                          )}
                         </div>
                       </>
                     )}
@@ -702,12 +741,13 @@ export default function MedicineAdd() {
                       onClick={()=>{ setImagePreview(null); handleChange("mediImage","") }}
                       style={{
                         background:"none", border:"none", fontSize:12,
-                        color:"rgba(239,68,68,0.6)", cursor:"pointer",
+                        color:C.danger, cursor:"pointer",
                         fontFamily:"inherit", fontWeight:600, padding:"4px 0",
-                        display:"flex", alignItems:"center", gap:5, transition:"color 0.2s"
+                        display:"flex", alignItems:"center", gap:5, transition:"opacity 0.2s",
+                        opacity:0.7,
                       }}
-                      onMouseEnter={e=>e.currentTarget.style.color=C.danger}
-                      onMouseLeave={e=>e.currentTarget.style.color="rgba(239,68,68,0.6)"}
+                      onMouseEnter={e=>e.currentTarget.style.opacity="1"}
+                      onMouseLeave={e=>e.currentTarget.style.opacity="0.7"}
                     >
                       <X size={13} /> Remove image
                     </button>
@@ -720,41 +760,39 @@ export default function MedicineAdd() {
 
           {/* ── Footer ── */}
           <div style={{
-            padding:"18px 30px",
-            borderTop:"1px solid rgba(144,224,239,0.06)",
-            background:"rgba(0,0,0,0.15)",
+            padding:"16px 28px",
+            borderTop:`1.5px solid ${C.paleSlate}`,
+            background:C.snow,
             display:"flex", alignItems:"center", justifyContent:"space-between",
           }}>
             {/* Step dots */}
             <div style={{ display:"flex", gap:6, alignItems:"center" }}>
               {[1,2].map(i=>(
                 <div key={i} style={{
-                  width:i===step?26:8, height:8, borderRadius:99,
-                  background: i===step
-                    ? `linear-gradient(90deg, ${C.ocean}, ${C.sky})`
-                    : "rgba(144,224,239,0.1)",
-                  boxShadow: i===step ? `0 0 10px ${C.sky}50` : "none",
+                  width:i===step?24:8, height:8, borderRadius:99,
+                  background: i===step ? C.techBlue : C.paleSlate,
+                  boxShadow: i===step ? `0 0 10px rgba(2,62,138,0.35)` : "none",
                   transition:"all 0.35s cubic-bezier(0.4,0,0.2,1)",
                 }} />
               ))}
-              <span style={{ marginLeft:10, fontSize:11.5, color:"rgba(144,224,239,0.25)", fontWeight:500 }}>
+              <span style={{ marginLeft:10, fontSize:11.5, color:C.lilacAsh, fontWeight:500 }}>
                 Step {step} of 2
               </span>
             </div>
 
             {/* Buttons */}
-            <div style={{ display:"flex", gap:9 }}>
+            <div style={{ display:"flex", gap:8 }}>
               {step>1 && (
                 <button type="button" onClick={()=>setStep(1)} style={{
-                  padding:"10px 20px", borderRadius:10,
-                  border:"1px solid rgba(144,224,239,0.12)",
-                  background:"rgba(144,224,239,0.04)",
-                  color:"rgba(202,240,248,0.55)", fontWeight:600, fontSize:13.5,
+                  padding:"9px 20px", borderRadius:9,
+                  border:`1.5px solid ${C.paleSlate}`,
+                  background:C.white,
+                  color:C.blueSlate, fontWeight:600, fontSize:13.5,
                   cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
-                  display:"flex", alignItems:"center", gap:7,
+                  display:"flex", alignItems:"center", gap:6,
                 }}
-                  onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.25)"; e.currentTarget.style.color="rgba(202,240,248,0.8)" }}
-                  onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.12)"; e.currentTarget.style.color="rgba(202,240,248,0.55)" }}
+                  onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                  onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
                 >
                   <ArrowLeft size={14} /> Back
                 </button>
@@ -762,35 +800,33 @@ export default function MedicineAdd() {
 
               {step===1 ? (
                 <button type="button" onClick={()=>setStep(2)} style={{
-                  padding:"10px 24px", borderRadius:10, border:"none",
-                  background:`linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
-                  color:C.white, fontWeight:600, fontSize:13.5,
+                  padding:"9px 24px", borderRadius:9, border:"none",
+                  background:C.techBlue,
+                  color:C.snow, fontWeight:600, fontSize:13.5,
                   cursor:"pointer", fontFamily:"inherit",
-                  boxShadow:"0 6px 22px rgba(0,180,216,0.3)",
+                  boxShadow:`0 4px 18px rgba(2,62,138,0.28)`,
                   transition:"all 0.22s",
                   display:"flex", alignItems:"center", gap:7,
                 }}
-                  onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}
-                  onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}
+                  onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=`0 8px 28px rgba(2,62,138,0.38)` }}
+                  onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 4px 18px rgba(2,62,138,0.28)` }}
                 >
                   Continue <ChevronRight size={15} strokeWidth={2.5} />
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmit} disabled={submitting} style={{
-                  padding:"10px 24px", borderRadius:10, border:"none",
-                  background: submitting
-                    ? "rgba(0,180,216,0.15)"
-                    : `linear-gradient(135deg, ${C.ocean}, ${C.sky})`,
-                  color: submitting ? "rgba(144,224,239,0.4)" : C.white,
+                  padding:"9px 24px", borderRadius:9, border:"none",
+                  background: submitting ? C.paleSlate : C.techBlue,
+                  color: submitting ? C.lilacAsh : C.snow,
                   fontWeight:600, fontSize:13.5,
                   cursor:submitting ? "not-allowed" : "pointer",
                   fontFamily:"inherit",
-                  boxShadow: submitting ? "none" : "0 6px 22px rgba(0,180,216,0.3)",
+                  boxShadow: submitting ? "none" : `0 4px 18px rgba(2,62,138,0.28)`,
                   transition:"all 0.22s",
                   display:"flex", alignItems:"center", gap:8,
                 }}
-                  onMouseEnter={e=>{ if(!submitting){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 30px rgba(0,180,216,0.4)" }}}
-                  onMouseLeave={e=>{ if(!submitting){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 22px rgba(0,180,216,0.3)" }}}
+                  onMouseEnter={e=>{ if(!submitting){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=`0 8px 28px rgba(2,62,138,0.38)` }}}
+                  onMouseLeave={e=>{ if(!submitting){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 4px 18px rgba(2,62,138,0.28)` }}}
                 >
                   {submitting ? (
                     <>

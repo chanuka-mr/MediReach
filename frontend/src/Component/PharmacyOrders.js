@@ -10,17 +10,17 @@ import {
   ShieldAlert, SendHorizonal, ThumbsDown
 } from 'lucide-react'
 
+// ── Palette — matches InventoryDashboard ─────────────────────────
 const C = {
-  navy:   "#03045e",
-  ocean:  "#0077b6",
-  sky:    "#00b4d8",
-  mist:   "#90e0ef",
-  foam:   "#caf0f8",
-  white:  "#ffffff",
-  warn:   "#f59e0b",
-  danger: "#ef4444",
-  green:  "#22c55e",
-  purple: "#a78bfa",
+  snow:      "#FFFFFF",
+  white:     "#F7F9FC",
+  paleSlate: "#DDE3ED",
+  techBlue:  "#023E8A",
+  lilacAsh:  "#4C6EF5",
+  blueSlate: "#4A5568",
+  success:   "#0E7C5B",
+  warn:      "#B45309",
+  danger:    "#C0392B",
 }
 
 const INITIAL_ORDERS = [
@@ -42,13 +42,13 @@ const INITIAL_ORDERS = [
 ]
 
 const STATUS_CFG = {
-  pending:    { label:"Pending",    color:"#f59e0b", bg:"rgba(245,158,11,0.1)",  border:"rgba(245,158,11,0.25)",  icon:Hourglass    },
-  processing: { label:"Processing", color:C.sky,     bg:"rgba(0,180,216,0.1)",   border:"rgba(0,180,216,0.25)",   icon:CircleDot    },
-  in_transit: { label:"In Transit", color:C.purple,  bg:"rgba(167,139,250,0.1)", border:"rgba(167,139,250,0.25)", icon:Truck        },
-  delivered:  { label:"Delivered",  color:C.green,   bg:"rgba(34,197,94,0.1)",   border:"rgba(34,197,94,0.25)",   icon:CheckCircle2 },
-  cancelled:  { label:"Cancelled",  color:C.danger,  bg:"rgba(239,68,68,0.1)",   border:"rgba(239,68,68,0.25)",   icon:Ban          },
-  dispatched: { label:"Dispatched", color:"#34d399", bg:"rgba(52,211,153,0.1)",  border:"rgba(52,211,153,0.25)",  icon:SendHorizonal},
-  rejected:   { label:"Rejected",   color:"#fb7185", bg:"rgba(251,113,133,0.1)", border:"rgba(251,113,133,0.25)", icon:ThumbsDown   },
+  pending:    { label:"Pending",    color:"#92400E", bg:"rgba(180,83,9,0.08)",    border:"rgba(180,83,9,0.22)",    icon:Hourglass     },
+  processing: { label:"Processing", color:C.lilacAsh,bg:"rgba(76,110,245,0.08)", border:"rgba(76,110,245,0.22)", icon:CircleDot     },
+  in_transit: { label:"In Transit", color:"#5B21B6", bg:"rgba(91,33,182,0.08)",  border:"rgba(91,33,182,0.22)",  icon:Truck         },
+  delivered:  { label:"Delivered",  color:C.success, bg:"rgba(14,124,91,0.08)",  border:"rgba(14,124,91,0.22)",  icon:CheckCircle2  },
+  cancelled:  { label:"Cancelled",  color:C.danger,  bg:"rgba(192,57,43,0.08)",  border:"rgba(192,57,43,0.22)",  icon:Ban           },
+  dispatched: { label:"Dispatched", color:"#065F46", bg:"rgba(6,95,70,0.08)",    border:"rgba(6,95,70,0.22)",    icon:SendHorizonal },
+  rejected:   { label:"Rejected",   color:C.danger,  bg:"rgba(192,57,43,0.08)",  border:"rgba(192,57,43,0.22)",  icon:ThumbsDown    },
 }
 
 const CAN_ACT    = ["pending","processing","in_transit"]
@@ -57,223 +57,149 @@ const categories = ["All", ...new Set(INITIAL_ORDERS.map(o => o.category))]
 const fmtDate    = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—"
 const totalVal   = (o) => o.qty * o.unitPrice
 
-// ─────────────────────────────────────────────────────────────────
-// Toast
-// ─────────────────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 4000)
-    return () => clearTimeout(t)
-  }, [onClose])
-
-  const isDispatched = toast.type === "dispatched"
-  const accent = isDispatched ? C.green : C.danger
+  useEffect(() => { const t = setTimeout(onClose,4000); return ()=>clearTimeout(t) },[onClose])
+  const isDispatched = toast.type==="dispatched"
+  const accent = isDispatched ? C.success : C.danger
   const Icon   = isDispatched ? SendHorizonal : ThumbsDown
-
   return (
     <div style={{
       position:"fixed", bottom:32, right:32, zIndex:1000,
       display:"flex", alignItems:"flex-start", gap:14,
-      padding:"16px 20px 18px", borderRadius:16,
-      background: isDispatched
-        ? "linear-gradient(135deg,rgba(34,197,94,0.14),rgba(52,211,153,0.07))"
-        : "linear-gradient(135deg,rgba(239,68,68,0.14),rgba(251,113,133,0.07))",
-      border:`1px solid ${accent}35`,
-      boxShadow:`0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px ${accent}12`,
-      backdropFilter:"blur(20px)",
-      minWidth:320, maxWidth:400,
+      padding:"16px 20px 18px", borderRadius:14,
+      background:C.white, border:`1.5px solid ${isDispatched ? "rgba(14,124,91,0.3)" : "rgba(192,57,43,0.3)"}`,
+      boxShadow:`0 16px 48px rgba(2,62,138,0.14)`,
+      minWidth:300, maxWidth:380,
       animation:"toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
       overflow:"hidden",
     }}>
       <div style={{
-        width:42, height:42, borderRadius:"50%", flexShrink:0,
-        background:`${accent}18`, border:`1px solid ${accent}35`,
+        width:40, height:40, borderRadius:"50%", flexShrink:0,
+        background: isDispatched ? "rgba(14,124,91,0.1)" : "rgba(192,57,43,0.1)",
+        border:`1px solid ${isDispatched ? "rgba(14,124,91,0.25)" : "rgba(192,57,43,0.25)"}`,
         display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow:`0 0 20px ${accent}30`,
       }}>
-        <Icon size={18} color={accent} strokeWidth={2} />
+        <Icon size={17} color={accent} strokeWidth={2} />
       </div>
-
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{
-          margin:"0 0 3px", fontSize:14.5, fontWeight:700,
-          color:C.white, fontFamily:"'Plus Jakarta Sans',sans-serif", letterSpacing:"-0.2px",
-        }}>
+        <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
           {isDispatched ? "Order Dispatched" : "Order Rejected"}
         </p>
-        <p style={{ margin:0, fontSize:12.5, color:`${accent}cc`, fontWeight:500 }}>
-          {toast.orderId} · {toast.medicine}
-        </p>
-        <p style={{ margin:"3px 0 0", fontSize:12, color:"rgba(144,224,239,0.4)" }}>
-          {toast.pharmacy}
-        </p>
+        <p style={{ margin:0, fontSize:12, color:accent, fontWeight:600 }}>{toast.orderId} · {toast.medicine}</p>
+        <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{toast.pharmacy}</p>
       </div>
-
-      {/* Countdown bar */}
-      <div style={{
-        position:"absolute", bottom:0, left:0, right:0, height:2, overflow:"hidden",
-      }}>
-        <div style={{
-          height:"100%",
-          background:`linear-gradient(90deg, ${accent}, ${accent}55)`,
-          animation:"toastProgress 4s linear forwards",
-        }} />
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, overflow:"hidden" }}>
+        <div style={{ height:"100%", background:accent, animation:"toastProgress 4s linear forwards" }} />
       </div>
-
-      <button onClick={onClose} style={{
-        background:"none", border:"none", cursor:"pointer",
-        color:"rgba(144,224,239,0.3)", padding:0, flexShrink:0,
-        display:"flex", alignItems:"flex-start", paddingTop:2, transition:"color 0.2s",
-      }}
-        onMouseEnter={e=>e.currentTarget.style.color="rgba(144,224,239,0.7)"}
-        onMouseLeave={e=>e.currentTarget.style.color="rgba(144,224,239,0.3)"}
-      >
+      <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:C.paleSlate, padding:0, flexShrink:0, display:"flex" }}>
         <X size={15} />
       </button>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Confirm Modal
-// ─────────────────────────────────────────────────────────────────
+// ── Confirm Modal ─────────────────────────────────────────────────
 function ConfirmModal({ modal, onConfirm, onClose }) {
   const [reason, setReason] = useState("")
-  const isAccept = modal.action === "dispatch"
-  const accent   = isAccept ? C.green : C.danger
+  const isAccept = modal.action==="dispatch"
+  const accent   = isAccept ? C.success : C.danger
   const Icon     = isAccept ? SendHorizonal : ThumbsDown
-  const canSubmit = isAccept || reason.trim().length > 0
+  const canSubmit = isAccept || reason.trim().length>0
 
   return (
-    <div
-      onClick={e=>{ if(e.target===e.currentTarget) onClose() }}
-      style={{
-        position:"fixed", inset:0, zIndex:500,
-        background:"rgba(0,0,0,0.72)",
-        backdropFilter:"blur(10px)",
-        display:"flex", alignItems:"center", justifyContent:"center", padding:24,
-        animation:"fadeIn 0.2s ease both",
-      }}
-    >
+    <div onClick={e=>{ if(e.target===e.currentTarget) onClose() }} style={{
+      position:"fixed", inset:0, zIndex:500,
+      background:"rgba(2,62,138,0.18)", backdropFilter:"blur(6px)",
+      display:"flex", alignItems:"center", justifyContent:"center", padding:24,
+      animation:"fadeIn 0.2s ease both",
+    }}>
       <div style={{
-        width:"100%", maxWidth:460,
-        borderRadius:22,
-        background:"linear-gradient(160deg, #040f28 0%, #020c1e 100%)",
-        border:`1px solid ${accent}22`,
-        boxShadow:`0 48px 120px rgba(0,0,0,0.75), 0 0 0 1px ${accent}08`,
-        overflow:"hidden",
-        animation:"modalIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both",
+        width:"100%", maxWidth:460, borderRadius:20,
+        background:C.snow, border:`1.5px solid ${C.paleSlate}`,
+        boxShadow:"0 32px 80px rgba(2,62,138,0.18)",
+        overflow:"hidden", animation:"modalIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both",
       }}>
-
         {/* Top stripe */}
-        <div style={{ height:3, background:`linear-gradient(90deg, transparent 0%, ${accent} 50%, transparent 100%)` }} />
+        <div style={{ height:3, background:isAccept
+          ? `linear-gradient(90deg, ${C.techBlue}, ${C.success})`
+          : `linear-gradient(90deg, ${C.techBlue}, ${C.danger})` }} />
 
         {/* Header */}
-        <div style={{ padding:"26px 28px 20px", borderBottom:"1px solid rgba(144,224,239,0.06)" }}>
-          <div style={{ display:"flex", alignItems:"flex-start", gap:16 }}>
+        <div style={{ padding:"24px 26px 18px", borderBottom:`1px solid ${C.paleSlate}` }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
             <div style={{
-              width:54, height:54, borderRadius:16, flexShrink:0,
-              background:`${accent}12`, border:`1px solid ${accent}28`,
+              width:50, height:50, borderRadius:14, flexShrink:0,
+              background: isAccept ? "rgba(14,124,91,0.08)" : "rgba(192,57,43,0.08)",
+              border:`1.5px solid ${isAccept ? "rgba(14,124,91,0.22)" : "rgba(192,57,43,0.22)"}`,
               display:"flex", alignItems:"center", justifyContent:"center",
-              boxShadow:`0 8px 28px ${accent}18`,
             }}>
-              <Icon size={26} color={accent} strokeWidth={1.8} />
+              <Icon size={24} color={accent} strokeWidth={1.8} />
             </div>
             <div style={{ flex:1, paddingTop:2 }}>
-              <h3 style={{
-                margin:"0 0 6px", fontSize:21, fontWeight:800,
-                color:C.white, letterSpacing:"-0.5px",
-                fontFamily:"'Plus Jakarta Sans',sans-serif",
-              }}>
+              <h3 style={{ margin:"0 0 5px", fontSize:20, fontWeight:800, color:C.blueSlate,
+                letterSpacing:"-0.5px", fontFamily:"'Sora',sans-serif" }}>
                 {isAccept ? "Dispatch This Order?" : "Reject This Order?"}
               </h3>
-              <p style={{ margin:0, fontSize:13, color:"rgba(144,224,239,0.38)", fontWeight:400, lineHeight:1.5 }}>
+              <p style={{ margin:0, fontSize:13, color:C.lilacAsh, lineHeight:1.5 }}>
                 {isAccept
                   ? "Confirming will mark this order as dispatched and notify the pharmacy."
                   : "Rejecting is permanent. The pharmacy will be notified immediately."}
               </p>
             </div>
-            <button onClick={onClose} style={{
-              background:"none", border:"none", cursor:"pointer", flexShrink:0,
-              color:"rgba(144,224,239,0.22)", display:"flex", padding:0, transition:"color 0.2s",
-            }}
-              onMouseEnter={e=>e.currentTarget.style.color="rgba(144,224,239,0.6)"}
-              onMouseLeave={e=>e.currentTarget.style.color="rgba(144,224,239,0.22)"}
-            >
+            <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:C.paleSlate, display:"flex", padding:0 }}>
               <X size={18} />
             </button>
           </div>
         </div>
 
         {/* Order summary */}
-        <div style={{ padding:"18px 28px", borderBottom:"1px solid rgba(144,224,239,0.06)" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ padding:"16px 26px", borderBottom:`1px solid ${C.paleSlate}` }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
             {[
               { label:"Order ID",  value:modal.order.id },
               { label:"Pharmacy",  value:modal.order.pharmacy.split(" ").slice(0,3).join(" ") },
               { label:"Medicine",  value:modal.order.medicine },
               { label:"Quantity",  value:`${modal.order.qty.toLocaleString()} units` },
             ].map((d,i)=>(
-              <div key={i} style={{
-                padding:"10px 14px", borderRadius:10,
-                background:"rgba(144,224,239,0.025)",
-                border:"1px solid rgba(144,224,239,0.07)",
-              }}>
-                <p style={{ margin:"0 0 3px", fontSize:9.5, fontWeight:700,
-                  color:"rgba(144,224,239,0.28)", letterSpacing:"0.12em", textTransform:"uppercase" }}>
-                  {d.label}
-                </p>
-                <p style={{ margin:0, fontSize:13, fontWeight:600, color:"rgba(202,240,248,0.85)" }}>
-                  {d.value}
-                </p>
+              <div key={i} style={{ padding:"9px 12px", borderRadius:9, background:C.white, border:`1px solid ${C.paleSlate}` }}>
+                <p style={{ margin:"0 0 2px", fontSize:9.5, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase" }}>{d.label}</p>
+                <p style={{ margin:0, fontSize:13, fontWeight:600, color:C.blueSlate }}>{d.value}</p>
               </div>
             ))}
           </div>
-
-          {/* Rejection reason textarea */}
           {!isAccept && (
-            <div style={{ marginTop:14 }}>
-              <label style={{
-                fontSize:10, fontWeight:700, color:"rgba(144,224,239,0.35)",
-                letterSpacing:"0.12em", textTransform:"uppercase",
-                display:"block", marginBottom:7,
-              }}>
-                Rejection Reason <span style={{ color:"rgba(239,68,68,0.7)" }}>*</span>
+            <div style={{ marginTop:12 }}>
+              <label style={{ fontSize:10, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase", display:"block", marginBottom:6 }}>
+                Rejection Reason <span style={{ color:C.danger }}>*</span>
               </label>
-              <textarea
-                value={reason}
-                onChange={e=>setReason(e.target.value)}
+              <textarea value={reason} onChange={e=>setReason(e.target.value)}
                 placeholder="Explain why this order is being rejected..."
                 rows={3}
                 style={{
-                  width:"100%", padding:"11px 14px", borderRadius:10,
-                  border:`1px solid ${reason.trim()?"rgba(239,68,68,0.35)":"rgba(144,224,239,0.1)"}`,
-                  background:"rgba(255,255,255,0.03)", color:C.white,
-                  fontSize:13, outline:"none", fontFamily:"inherit",
-                  resize:"none", lineHeight:1.6, boxSizing:"border-box",
+                  width:"100%", padding:"10px 13px", borderRadius:9,
+                  border:`1.5px solid ${reason.trim() ? C.danger : C.paleSlate}`,
+                  background:C.white, color:C.blueSlate, fontSize:13, outline:"none",
+                  fontFamily:"inherit", resize:"none", lineHeight:1.6, boxSizing:"border-box",
                   transition:"border-color 0.2s",
                 }}
-                onFocus={e=>e.target.style.borderColor="rgba(239,68,68,0.5)"}
-                onBlur={e=>e.target.style.borderColor=reason.trim()?"rgba(239,68,68,0.35)":"rgba(144,224,239,0.1)"}
+                onFocus={e=>e.target.style.borderColor=C.danger}
+                onBlur={e=>e.target.style.borderColor=reason.trim()?C.danger:C.paleSlate}
               />
               {!reason.trim() && (
-                <p style={{ margin:"5px 0 0", fontSize:11, color:"rgba(239,68,68,0.5)", fontWeight:500 }}>
-                  A reason is required to reject an order.
-                </p>
+                <p style={{ margin:"4px 0 0", fontSize:11, color:C.danger, fontWeight:500 }}>A reason is required to reject an order.</p>
               )}
             </div>
           )}
         </div>
 
         {/* Notice */}
-        <div style={{ padding:"14px 28px", borderBottom:"1px solid rgba(144,224,239,0.06)" }}>
-          <div style={{
-            display:"flex", alignItems:"center", gap:9,
-            padding:"10px 14px", borderRadius:10,
-            background:`${accent}08`, border:`1px solid ${accent}18`,
-          }}>
-            <ShieldAlert size={14} color={accent} strokeWidth={2} style={{ flexShrink:0 }} />
-            <p style={{ margin:0, fontSize:12, color:`${accent}aa`, fontWeight:500, lineHeight:1.5 }}>
+        <div style={{ padding:"12px 26px", borderBottom:`1px solid ${C.paleSlate}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:9, padding:"10px 13px", borderRadius:9,
+            background: isAccept ? "rgba(14,124,91,0.06)" : "rgba(192,57,43,0.06)",
+            border:`1px solid ${isAccept ? "rgba(14,124,91,0.18)" : "rgba(192,57,43,0.18)"}` }}>
+            <ShieldAlert size={13} color={accent} strokeWidth={2} style={{ flexShrink:0 }} />
+            <p style={{ margin:0, fontSize:12, color:accent, fontWeight:500, lineHeight:1.5 }}>
               {isAccept
                 ? "Stock records will be updated and the pharmacy will receive a dispatch confirmation."
                 : "The pharmacy will receive an immediate rejection notification with your reason."}
@@ -282,39 +208,29 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
         </div>
 
         {/* Buttons */}
-        <div style={{ padding:"18px 28px", display:"flex", gap:10, justifyContent:"flex-end" }}>
+        <div style={{ padding:"16px 26px", display:"flex", gap:9, justifyContent:"flex-end" }}>
           <button onClick={onClose} style={{
-            padding:"10px 22px", borderRadius:11, cursor:"pointer", fontFamily:"inherit",
-            border:"1px solid rgba(144,224,239,0.1)", background:"rgba(144,224,239,0.04)",
-            color:"rgba(202,240,248,0.45)", fontWeight:600, fontSize:13.5, transition:"all 0.2s",
+            padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+            border:`1.5px solid ${C.paleSlate}`, background:C.white,
+            color:C.blueSlate, fontWeight:600, fontSize:13.5, transition:"all 0.2s",
           }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.22)"; e.currentTarget.style.color="rgba(202,240,248,0.75)" }}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.1)"; e.currentTarget.style.color="rgba(202,240,248,0.45)" }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+            onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
+          >Cancel</button>
+          <button onClick={()=>{ if(canSubmit) onConfirm(reason) }} disabled={!canSubmit} style={{
+            padding:"9px 24px", borderRadius:9,
+            cursor:canSubmit?"pointer":"not-allowed",
+            border:"none", fontFamily:"inherit", fontWeight:700, fontSize:13.5,
+            display:"flex", alignItems:"center", gap:7, transition:"all 0.2s",
+            background: !canSubmit ? C.paleSlate : isAccept ? C.success : C.danger,
+            color: !canSubmit ? C.lilacAsh : C.snow,
+            boxShadow: !canSubmit ? "none" : `0 4px 18px ${accent}30`,
+            opacity: !canSubmit ? 0.6 : 1,
+          }}
+            onMouseEnter={e=>{ if(canSubmit){ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 8px 26px ${accent}40` }}}
+            onMouseLeave={e=>{ if(canSubmit){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 4px 18px ${accent}30` }}}
           >
-            Cancel
-          </button>
-
-          <button
-            onClick={()=>{ if(canSubmit) onConfirm(reason) }}
-            disabled={!canSubmit}
-            style={{
-              padding:"10px 26px", borderRadius:11,
-              cursor:canSubmit?"pointer":"not-allowed",
-              border:"none", fontFamily:"inherit", fontWeight:700, fontSize:13.5,
-              display:"flex", alignItems:"center", gap:8, transition:"all 0.2s",
-              background: !canSubmit
-                ? "rgba(144,224,239,0.05)"
-                : isAccept
-                  ? `linear-gradient(135deg, #16a34a, ${C.green})`
-                  : `linear-gradient(135deg, #dc2626, ${C.danger})`,
-              color: !canSubmit ? "rgba(144,224,239,0.2)" : C.white,
-              boxShadow: !canSubmit ? "none" : `0 6px 22px ${accent}30`,
-              opacity: !canSubmit ? 0.5 : 1,
-            }}
-            onMouseEnter={e=>{ if(canSubmit){ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 10px 30px ${accent}42` }}}
-            onMouseLeave={e=>{ if(canSubmit){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 6px 22px ${accent}30` }}}
-          >
-            <Icon size={15} strokeWidth={2.5} />
+            <Icon size={14} strokeWidth={2.5} />
             {isAccept ? "Confirm Dispatch" : "Confirm Rejection"}
           </button>
         </div>
@@ -323,48 +239,53 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Stat Card
-// ─────────────────────────────────────────────────────────────────
-function StatCard({ icon:Icon, value, label, accent, sub }) {
+// ── Stat Card ─────────────────────────────────────────────────────
+function StatCard({ icon:Icon, value, label, accent, sub, delay }) {
+  const [hov, setHov] = useState(false)
   return (
-    <div style={{
-      flex:1, padding:"20px 22px", borderRadius:16,
-      background:"rgba(255,255,255,0.02)",
-      border:`1px solid ${accent}20`, position:"relative", overflow:"hidden",
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{
+      flex:1, padding:"22px 20px", borderRadius:16, cursor:"default",
+      transition:"all 0.28s cubic-bezier(0.4,0,0.2,1)",
+      background: hov ? C.techBlue : C.white,
+      border:`1.5px solid ${hov ? C.techBlue : C.paleSlate}`,
+      boxShadow: hov ? "0 16px 40px rgba(2,62,138,0.18)" : "0 2px 12px rgba(74,85,104,0.07)",
+      transform: hov ? "translateY(-3px)" : "none",
+      animation:`fadeUp 0.5s ease ${delay||"0s"} both`,
+      position:"relative", overflow:"hidden",
     }}>
-      <div style={{
-        position:"absolute", right:-18, bottom:-18, width:80, height:80, borderRadius:"50%",
-        background:`radial-gradient(circle, ${accent}18 0%, transparent 70%)`, pointerEvents:"none",
-      }} />
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+      {hov && <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+        backgroundImage:`radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)`,
+        backgroundSize:"20px 20px" }} />}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative" }}>
         <div>
-          <p style={{ margin:"0 0 8px", fontSize:10, fontWeight:700, color:"rgba(144,224,239,0.35)",
-            letterSpacing:"0.15em", textTransform:"uppercase" }}>{label}</p>
-          <p style={{ margin:0, fontSize:34, fontWeight:800, color:C.white, letterSpacing:"-1.5px",
-            lineHeight:1, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{value}</p>
-          {sub && <p style={{ margin:"6px 0 0", fontSize:11, color:"rgba(144,224,239,0.3)" }}>{sub}</p>}
+          <p style={{ margin:"0 0 7px", fontSize:10.5, fontWeight:700,
+            color: hov ? "rgba(255,255,255,0.6)" : C.lilacAsh,
+            letterSpacing:"0.14em", textTransform:"uppercase" }}>{label}</p>
+          <p style={{ margin:0, fontSize:38, fontWeight:700, letterSpacing:"-2px", lineHeight:1,
+            color: hov ? C.snow : C.techBlue, fontFamily:"'Sora',sans-serif", transition:"color 0.28s" }}>{value}</p>
+          {sub && <p style={{ margin:"6px 0 0", fontSize:12, color: hov ? "rgba(255,255,255,0.5)" : C.lilacAsh }}>{sub}</p>}
         </div>
         <div style={{
-          width:40, height:40, borderRadius:11,
-          background:`${accent}15`, border:`1px solid ${accent}25`,
-          display:"flex", alignItems:"center", justifyContent:"center",
+          width:44, height:44, borderRadius:11,
+          background: hov ? "rgba(255,255,255,0.15)" : `rgba(2,62,138,0.07)`,
+          border:`1.5px solid ${hov ? "rgba(255,255,255,0.25)" : "rgba(2,62,138,0.12)"}`,
+          display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.28s",
         }}>
-          <Icon size={18} color={accent} strokeWidth={1.8} />
+          <Icon size={19} color={hov ? C.snow : C.techBlue} strokeWidth={1.8} />
         </div>
       </div>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Order Row
-// ─────────────────────────────────────────────────────────────────
+// ── Order Row ─────────────────────────────────────────────────────
 function OrderRow({ order, index, expanded, onToggle, onAction }) {
   const [rowHov, setRowHov] = useState(false)
+  const [invHov, setInvHov] = useState(false)
+  const [rejHov, setRejHov] = useState(false)
   const st     = STATUS_CFG[order.status]
   const StI    = st.icon
-  const isOpen = expanded === order.id
+  const isOpen = expanded===order.id
   const canAct = CAN_ACT.includes(order.status)
   const initials = order.pharmacy.split(" ").slice(0,2).map(w=>w[0]).join("")
 
@@ -374,21 +295,30 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
         onMouseEnter={()=>setRowHov(true)}
         onMouseLeave={()=>setRowHov(false)}
         style={{
-          borderBottom:"1px solid rgba(144,224,239,0.04)",
-          background: isOpen?"rgba(0,180,216,0.04)":rowHov?"rgba(144,224,239,0.02)":"transparent",
+          borderBottom:`1px solid ${C.snow}`,
+          background: isOpen ? `rgba(2,62,138,0.03)` : rowHov ? `rgba(2,62,138,0.02)` : C.white,
           transition:"background 0.15s",
           animation:`fadeUp 0.4s ease ${index*0.04}s both`,
+          position:"relative",
         }}
       >
-        {/* ID */}
-        <td style={{ padding:"13px 16px 13px 20px", whiteSpace:"nowrap" }}>
+        {/* ID — left accent bar lives inside this first td as an absolute div, no extra td */}
+        <td style={{ padding:"13px 16px 13px 22px", whiteSpace:"nowrap", position:"relative" }}>
+          {/* Left accent bar: absolutely positioned inside first cell, never affects column widths */}
+          {(rowHov || isOpen) && (
+            <div style={{
+              position:"absolute", left:0, top:"15%", bottom:"15%",
+              width:3, borderRadius:"0 3px 3px 0",
+              background: isOpen ? C.lilacAsh : C.techBlue,
+              pointerEvents:"none",
+            }} />
+          )}
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
             {order.priority==="urgent" && (
               <div style={{ width:6, height:6, borderRadius:"50%", background:C.danger,
-                boxShadow:`0 0 6px ${C.danger}`, flexShrink:0 }} />
+                boxShadow:`0 0 5px ${C.danger}80`, flexShrink:0 }} />
             )}
-            <span style={{ fontSize:12, fontWeight:700, color:"rgba(144,224,239,0.3)",
-              fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{order.id}</span>
+            <span style={{ fontSize:12, fontWeight:700, color:C.lilacAsh, fontFamily:"'Sora',sans-serif" }}>{order.id}</span>
           </div>
         </td>
 
@@ -397,21 +327,21 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{
               width:34, height:34, borderRadius:9, flexShrink:0,
-              background:`linear-gradient(135deg, ${C.navy}cc, ${C.ocean})`,
+              background: rowHov||isOpen ? `linear-gradient(135deg, ${C.techBlue}, #3d74c4)` : `linear-gradient(135deg, ${C.paleSlate}, ${C.lilacAsh})`,
               display:"flex", alignItems:"center", justifyContent:"center",
-              color:C.mist, fontWeight:800, fontSize:11,
-              border:"1px solid rgba(0,180,216,0.2)",
-              fontFamily:"'Plus Jakarta Sans',sans-serif",
+              color:C.snow, fontWeight:700, fontSize:11,
+              border:`1.5px solid ${rowHov||isOpen ? C.techBlue+"40" : C.paleSlate}`,
+              transition:"all 0.2s",
+              boxShadow: rowHov||isOpen ? "0 4px 14px rgba(2,62,138,0.2)" : "none",
+              fontFamily:"'Sora',sans-serif", letterSpacing:"0.5px",
             }}>{initials}</div>
             <div>
               <p style={{ margin:0, fontSize:13, fontWeight:600,
-                color:rowHov||isOpen?C.white:"rgba(202,240,248,0.85)",
+                color: rowHov||isOpen ? C.techBlue : C.blueSlate,
                 whiteSpace:"nowrap", transition:"color 0.15s" }}>{order.pharmacy}</p>
               <div style={{ display:"flex", alignItems:"center", gap:3, marginTop:1 }}>
-                <MapPin size={9} color="rgba(144,224,239,0.25)" />
-                <span style={{ fontSize:11, color:"rgba(144,224,239,0.25)" }}>
-                  {order.location.split(",")[0]}
-                </span>
+                <MapPin size={9} color={C.lilacAsh} />
+                <span style={{ fontSize:11, color:C.lilacAsh }}>{order.location.split(",")[0]}</span>
               </div>
             </div>
           </div>
@@ -420,42 +350,35 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
         {/* Medicine */}
         <td style={{ padding:"13px 16px", minWidth:180 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <Pill size={13} color="rgba(0,180,216,0.4)" strokeWidth={1.8} />
+            <Pill size={13} color={C.lilacAsh} strokeWidth={1.8} />
             <div>
-              <p style={{ margin:0, fontSize:13, fontWeight:500,
-                color:"rgba(202,240,248,0.75)", whiteSpace:"nowrap" }}>{order.medicine}</p>
-              <span style={{
-                fontSize:10.5, fontWeight:600, padding:"1px 7px", borderRadius:99,
-                background:"rgba(0,180,216,0.07)", color:"rgba(0,180,216,0.6)",
-                border:"1px solid rgba(0,180,216,0.12)",
-              }}>{order.category}</span>
+              <p style={{ margin:0, fontSize:13, fontWeight:500, color:C.blueSlate, whiteSpace:"nowrap" }}>{order.medicine}</p>
+              <span style={{ fontSize:10.5, fontWeight:600, padding:"1px 7px", borderRadius:99,
+                background:"rgba(76,110,245,0.08)", color:C.lilacAsh, border:`1px solid rgba(76,110,245,0.18)` }}>
+                {order.category}
+              </span>
             </div>
           </div>
         </td>
 
         {/* Qty */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
-          <span style={{ fontSize:14, fontWeight:700, color:C.white,
-            fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{order.qty.toLocaleString()}</span>
-          <span style={{ fontSize:10.5, color:"rgba(144,224,239,0.3)", marginLeft:3 }}>units</span>
+          <span style={{ fontSize:14, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>{order.qty.toLocaleString()}</span>
+          <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>units</span>
         </td>
 
         {/* Value */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
-          <span style={{ fontSize:13.5, fontWeight:700, color:C.sky,
-            fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+          <span style={{ fontSize:13.5, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>
             {totalVal(order).toLocaleString()}
           </span>
-          <span style={{ fontSize:10.5, color:"rgba(144,224,239,0.3)", marginLeft:3 }}>LKR</span>
+          <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>LKR</span>
         </td>
 
         {/* Status */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
-          <div style={{
-            display:"inline-flex", alignItems:"center", gap:5,
-            background:st.bg, borderRadius:99, padding:"4px 10px",
-            border:`1px solid ${st.border}`,
-          }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:5,
+            background:st.bg, borderRadius:99, padding:"4px 10px", border:`1px solid ${st.border}` }}>
             <StI size={10} color={st.color} strokeWidth={2} />
             <span style={{ fontSize:11, fontWeight:700, color:st.color }}>{st.label}</span>
           </div>
@@ -464,205 +387,303 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
         {/* Priority */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           {order.priority==="urgent" ? (
-            <div style={{
-              display:"inline-flex", alignItems:"center", gap:4,
-              background:"rgba(239,68,68,0.08)", borderRadius:99, padding:"3px 9px",
-              border:"1px solid rgba(239,68,68,0.2)",
-            }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:4,
+              background:"rgba(192,57,43,0.07)", borderRadius:99, padding:"3px 9px",
+              border:"1px solid rgba(192,57,43,0.2)" }}>
               <AlertTriangle size={9} color={C.danger} strokeWidth={2.5} />
               <span style={{ fontSize:10.5, fontWeight:700, color:C.danger }}>Urgent</span>
             </div>
           ) : (
-            <span style={{ fontSize:11, color:"rgba(144,224,239,0.2)" }}>—</span>
+            <span style={{ fontSize:11, color:C.paleSlate }}>—</span>
           )}
         </td>
 
         {/* Date */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
-          <span style={{ fontSize:12, color:"rgba(144,224,239,0.4)", fontWeight:500 }}>
-            {fmtDate(order.orderedAt)}
-          </span>
+          <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:500 }}>{fmtDate(order.orderedAt)}</span>
         </td>
 
         {/* Actions */}
-        <td style={{ padding:"13px 20px 13px 16px", whiteSpace:"nowrap" }}>
+        <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
           <div style={{ display:"flex", gap:7, alignItems:"center" }}>
-
             {canAct && (
               <>
-                {/* Dispatch */}
                 <button
+                  onMouseEnter={()=>setInvHov(true)} onMouseLeave={()=>setInvHov(false)}
                   onClick={()=>onAction(order,"dispatch")}
                   style={{
-                    padding:"5px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                    border:"1px solid rgba(34,197,94,0.22)",
-                    background:"rgba(34,197,94,0.07)",
-                    color:"rgba(34,197,94,0.7)",
+                    padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                    border:`1.5px solid ${invHov ? C.success : "rgba(14,124,91,0.25)"}`,
+                    background: invHov ? C.success : "rgba(14,124,91,0.06)",
+                    color: invHov ? C.snow : C.success,
                     fontWeight:600, fontSize:12, transition:"all 0.2s",
                     display:"flex", alignItems:"center", gap:5,
+                    transform: invHov ? "translateY(-1px)" : "none",
+                    boxShadow: invHov ? "0 4px 14px rgba(14,124,91,0.22)" : "none",
                   }}
-                  onMouseEnter={e=>{ e.currentTarget.style.background="rgba(34,197,94,0.15)"; e.currentTarget.style.borderColor="rgba(34,197,94,0.5)"; e.currentTarget.style.color=C.green; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(34,197,94,0.22)" }}
-                  onMouseLeave={e=>{ e.currentTarget.style.background="rgba(34,197,94,0.07)"; e.currentTarget.style.borderColor="rgba(34,197,94,0.22)"; e.currentTarget.style.color="rgba(34,197,94,0.7)"; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
-                >
-                  <SendHorizonal size={11} strokeWidth={2.5} />
-                  Dispatch
-                </button>
+                ><SendHorizonal size={11} strokeWidth={2.5} /> Dispatch</button>
 
-                {/* Reject */}
                 <button
+                  onMouseEnter={()=>setRejHov(true)} onMouseLeave={()=>setRejHov(false)}
                   onClick={()=>onAction(order,"reject")}
                   style={{
-                    padding:"5px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                    border:"1px solid rgba(239,68,68,0.18)",
-                    background:"rgba(239,68,68,0.06)",
-                    color:"rgba(239,68,68,0.6)",
+                    padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                    border:`1.5px solid ${rejHov ? C.danger : "rgba(192,57,43,0.22)"}`,
+                    background: rejHov ? "rgba(192,57,43,0.08)" : "rgba(192,57,43,0.04)",
+                    color: rejHov ? C.danger : "rgba(192,57,43,0.7)",
                     fontWeight:600, fontSize:12, transition:"all 0.2s",
                     display:"flex", alignItems:"center", gap:5,
+                    transform: rejHov ? "translateY(-1px)" : "none",
+                    boxShadow: rejHov ? "0 4px 14px rgba(192,57,43,0.15)" : "none",
                   }}
-                  onMouseEnter={e=>{ e.currentTarget.style.background="rgba(239,68,68,0.12)"; e.currentTarget.style.borderColor="rgba(239,68,68,0.4)"; e.currentTarget.style.color=C.danger; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(239,68,68,0.18)" }}
-                  onMouseLeave={e=>{ e.currentTarget.style.background="rgba(239,68,68,0.06)"; e.currentTarget.style.borderColor="rgba(239,68,68,0.18)"; e.currentTarget.style.color="rgba(239,68,68,0.6)"; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
-                >
-                  <ThumbsDown size={11} strokeWidth={2.5} />
-                  Reject
-                </button>
+                ><ThumbsDown size={11} strokeWidth={2.5} /> Reject</button>
               </>
             )}
-
-            {/* Final state badges */}
             {order.status==="dispatched" && (
               <div style={{ display:"flex", alignItems:"center", gap:5,
-                background:"rgba(52,211,153,0.08)", borderRadius:99, padding:"4px 11px",
-                border:"1px solid rgba(52,211,153,0.2)" }}>
-                <SendHorizonal size={10} color="#34d399" strokeWidth={2} />
-                <span style={{ fontSize:11, fontWeight:700, color:"#34d399" }}>Dispatched</span>
+                background:"rgba(14,124,91,0.07)", borderRadius:99, padding:"4px 11px",
+                border:"1px solid rgba(14,124,91,0.2)" }}>
+                <SendHorizonal size={10} color={C.success} />
+                <span style={{ fontSize:11, fontWeight:700, color:C.success }}>Dispatched</span>
               </div>
             )}
             {order.status==="rejected" && (
               <div style={{ display:"flex", alignItems:"center", gap:5,
-                background:"rgba(251,113,133,0.08)", borderRadius:99, padding:"4px 11px",
-                border:"1px solid rgba(251,113,133,0.2)" }}>
-                <ThumbsDown size={10} color="#fb7185" strokeWidth={2} />
-                <span style={{ fontSize:11, fontWeight:700, color:"#fb7185" }}>Rejected</span>
+                background:"rgba(192,57,43,0.07)", borderRadius:99, padding:"4px 11px",
+                border:"1px solid rgba(192,57,43,0.2)" }}>
+                <ThumbsDown size={10} color={C.danger} />
+                <span style={{ fontSize:11, fontWeight:700, color:C.danger }}>Rejected</span>
               </div>
             )}
-
-            {/* View detail */}
-            <button
-              onClick={()=>onToggle(order.id)}
-              style={{
-                padding:"5px 11px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                border:`1px solid ${isOpen?"rgba(0,180,216,0.4)":"rgba(144,224,239,0.1)"}`,
-                background: isOpen?"rgba(0,180,216,0.1)":"rgba(144,224,239,0.04)",
-                color: isOpen?C.sky:"rgba(144,224,239,0.4)",
-                fontWeight:600, fontSize:12, transition:"all 0.2s",
-                display:"flex", alignItems:"center", gap:5,
-              }}
-              onMouseEnter={e=>{ if(!isOpen){ e.currentTarget.style.borderColor="rgba(0,180,216,0.3)"; e.currentTarget.style.color=C.sky }}}
-              onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor="rgba(144,224,239,0.1)"; e.currentTarget.style.color="rgba(144,224,239,0.4)" }}}
+            <button onClick={()=>onToggle(order.id)} style={{
+              padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+              border:`1.5px solid ${isOpen ? C.techBlue : C.paleSlate}`,
+              background: isOpen ? `rgba(2,62,138,0.07)` : C.white,
+              color: isOpen ? C.techBlue : C.lilacAsh,
+              fontWeight:600, fontSize:12, transition:"all 0.2s",
+              display:"flex", alignItems:"center", gap:5,
+            }}
+              onMouseEnter={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}}
+              onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}}
             >
               <Eye size={11} strokeWidth={2} />
+              {isOpen ? "Hide" : "View"}
             </button>
           </div>
         </td>
       </tr>
 
-      {/* Expanded detail */}
+      {/* Expanded detail — matches MedicineInventory style */}
       {isOpen && (
-        <tr style={{ borderBottom:"1px solid rgba(144,224,239,0.06)" }}>
-          <td colSpan={9} style={{ padding:"0 20px 16px" }}>
+        <tr style={{ borderBottom:`1px solid ${C.paleSlate}` }}>
+          <td colSpan={9} style={{ padding:"0 22px 16px" }}>
             <div style={{
-              borderRadius:14, padding:"20px 24px",
-              background:"rgba(0,180,216,0.04)",
-              border:"1px solid rgba(0,180,216,0.1)",
+              borderRadius:12, padding:"18px 22px",
+              background:C.white, border:`1.5px solid ${C.paleSlate}`,
               animation:"fadeUp 0.25s ease both",
             }}>
-              {/* Timeline */}
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:18 }}>
+
+              {/* Status timeline bar */}
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:20 }}>
                 {["pending","processing","in_transit","delivered"].map((s,i)=>{
-                  const steps    = ["pending","processing","in_transit","delivered"]
-                  const currIdx  = steps.indexOf(order.status)
-                  const done     = i<=currIdx && !["cancelled","rejected"].includes(order.status)
+                  const steps   = ["pending","processing","in_transit","delivered"]
+                  const currIdx = steps.indexOf(order.status)
+                  const done    = i<=currIdx && !["cancelled","rejected","dispatched"].includes(order.status)
                   const S  = STATUS_CFG[s]
                   const SI = S.icon
                   return (
                     <React.Fragment key={s}>
-                      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
+                      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                         <div style={{
                           width:32, height:32, borderRadius:"50%",
-                          background:done?`${S.color}20`:"rgba(144,224,239,0.05)",
-                          border:`1px solid ${done?S.color+"50":"rgba(144,224,239,0.1)"}`,
+                          background: done ? S.bg : C.white,
+                          border:`1.5px solid ${done ? S.border : C.paleSlate}`,
                           display:"flex", alignItems:"center", justifyContent:"center",
                         }}>
-                          <SI size={13} color={done?S.color:"rgba(144,224,239,0.2)"} strokeWidth={2} />
+                          <SI size={13} color={done ? S.color : C.paleSlate} strokeWidth={2} />
                         </div>
-                        <span style={{ fontSize:9.5, fontWeight:700,
-                          color:done?S.color:"rgba(144,224,239,0.2)",
-                          textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap" }}>{S.label}</span>
+                        <span style={{ fontSize:9.5, fontWeight:700, textTransform:"uppercase",
+                          letterSpacing:"0.08em", whiteSpace:"nowrap",
+                          color: done ? S.color : C.paleSlate }}>{S.label}</span>
                       </div>
                       {i<3 && (
                         <div style={{
-                          flex:1, height:1, marginBottom:18,
-                          background: i<currIdx&&!["cancelled","rejected"].includes(order.status)
-                            ? `linear-gradient(90deg,${STATUS_CFG[steps[i]].color}50,${STATUS_CFG[steps[i+1]].color}50)`
-                            : "rgba(144,224,239,0.07)",
+                          flex:1, height:2, borderRadius:99, marginBottom:20,
+                          background: i<currIdx && !["cancelled","rejected"].includes(order.status)
+                            ? C.techBlue : C.paleSlate,
+                          transition:"background 0.3s",
                         }} />
                       )}
                     </React.Fragment>
                   )
                 })}
+
+                {/* Terminal status badge */}
                 {["dispatched","rejected","cancelled"].includes(order.status) && (
                   <div style={{
-                    marginLeft:10, display:"flex", alignItems:"center", gap:6,
+                    marginLeft:12, display:"flex", alignItems:"center", gap:6,
                     borderRadius:99, padding:"5px 14px",
-                    background: order.status==="dispatched"?"rgba(52,211,153,0.1)":"rgba(239,68,68,0.08)",
-                    border:`1px solid ${order.status==="dispatched"?"rgba(52,211,153,0.25)":"rgba(239,68,68,0.2)"}`,
+                    background: order.status==="dispatched" ? "rgba(14,124,91,0.08)"
+                              : "rgba(192,57,43,0.08)",
+                    border:`1px solid ${order.status==="dispatched" ? "rgba(14,124,91,0.25)" : "rgba(192,57,43,0.22)"}`,
                   }}>
-                    {order.status==="dispatched" && <SendHorizonal size={11} color="#34d399" />}
-                    {order.status==="rejected"   && <ThumbsDown    size={11} color="#fb7185" />}
+                    {order.status==="dispatched" && <SendHorizonal size={11} color={C.success} />}
+                    {order.status==="rejected"   && <ThumbsDown    size={11} color={C.danger} />}
                     {order.status==="cancelled"  && <Ban            size={11} color={C.danger} />}
-                    <span style={{ fontSize:11, fontWeight:700,
-                      color:order.status==="dispatched"?"#34d399":order.status==="rejected"?"#fb7185":C.danger }}>
+                    <span style={{ fontSize:11.5, fontWeight:700,
+                      color: order.status==="dispatched" ? C.success : C.danger }}>
                       Order {order.status.charAt(0).toUpperCase()+order.status.slice(1)}
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Detail grid */}
+              {/* Detail grid — identical layout to MedicineInventory */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:18 }}>
                 {[
-                  { icon:ClipboardList, label:"Order ID",   value:order.id },
-                  { icon:Building2,    label:"Pharmacy",    value:order.pharmacy },
-                  { icon:Pill,         label:"Medicine",    value:order.medicine },
-                  { icon:Hash,         label:"Quantity",    value:`${order.qty.toLocaleString()} units` },
-                  { icon:DollarSign,   label:"Unit Price",  value:`LKR ${order.unitPrice.toLocaleString()}` },
-                  { icon:DollarSign,   label:"Total Value", value:`LKR ${totalVal(order).toLocaleString()}` },
-                  { icon:Calendar,     label:"Ordered",     value:fmtDate(order.orderedAt) },
-                  { icon:Calendar,     label:"Delivered",   value:fmtDate(order.deliveredAt) },
+                  { icon:ClipboardList, label:"Order ID",    value:order.id },
+                  { icon:Building2,    label:"Pharmacy",     value:order.pharmacy },
+                  { icon:Pill,         label:"Medicine",     value:order.medicine },
+                  { icon:Hash,         label:"Quantity",     value:`${order.qty.toLocaleString()} units` },
+                  { icon:DollarSign,   label:"Unit Price",   value:`LKR ${order.unitPrice.toLocaleString()}` },
+                  { icon:DollarSign,   label:"Total Value",  value:`LKR ${totalVal(order).toLocaleString()}` },
+                  { icon:Calendar,     label:"Ordered",      value:fmtDate(order.orderedAt) },
+                  { icon:Calendar,     label:"Delivered",    value:fmtDate(order.deliveredAt) },
                 ].map((d,i)=>(
                   <div key={i} style={{ display:"flex", flexDirection:"column", gap:5 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                      <d.icon size={10} color="rgba(144,224,239,0.28)" strokeWidth={2} />
-                      <span style={{ fontSize:9.5, fontWeight:700, color:"rgba(144,224,239,0.28)",
+                      <d.icon size={10} color={C.lilacAsh} strokeWidth={2} />
+                      <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
                         letterSpacing:"0.12em", textTransform:"uppercase" }}>{d.label}</span>
                     </div>
-                    <span style={{ fontSize:13, fontWeight:600, color:"rgba(202,240,248,0.8)" }}>{d.value}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:C.blueSlate }}>{d.value}</span>
                   </div>
                 ))}
+
+                {/* Notes */}
                 {order.notes && (
-                  <div style={{ gridColumn:"1/-1", paddingTop:12, borderTop:"1px solid rgba(144,224,239,0.07)",
-                    display:"flex", flexDirection:"column", gap:5 }}>
-                    <span style={{ fontSize:9.5, fontWeight:700, color:"rgba(144,224,239,0.28)",
+                  <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
+                    display:"flex", flexDirection:"column", gap:4 }}>
+                    <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
                       letterSpacing:"0.12em", textTransform:"uppercase" }}>Notes</span>
                     <span style={{ fontSize:13, color:C.warn, fontWeight:500 }}>{order.notes}</span>
                   </div>
                 )}
+
+                {/* Rejection reason */}
                 {order.rejectionReason && (
-                  <div style={{ gridColumn:"1/-1", paddingTop:12, borderTop:"1px solid rgba(144,224,239,0.07)",
-                    display:"flex", flexDirection:"column", gap:5 }}>
-                    <span style={{ fontSize:9.5, fontWeight:700, color:"rgba(251,113,133,0.5)",
+                  <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
+                    display:"flex", flexDirection:"column", gap:4 }}>
+                    <span style={{ fontSize:9.5, fontWeight:700, color:C.danger,
                       letterSpacing:"0.12em", textTransform:"uppercase" }}>Rejection Reason</span>
-                    <span style={{ fontSize:13, color:"#fb7185", fontWeight:500 }}>{order.rejectionReason}</span>
+                    <div style={{ display:"flex", alignItems:"center", gap:8,
+                      padding:"10px 14px", borderRadius:8,
+                      background:"rgba(192,57,43,0.05)", border:"1px solid rgba(192,57,43,0.18)" }}>
+                      <ThumbsDown size={13} color={C.danger} strokeWidth={2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:13, color:C.danger, fontWeight:500 }}>{order.rejectionReason}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons inside expanded panel */}
+                {canAct && (
+                  <div style={{
+                    gridColumn:"1/-1", paddingTop:16,
+                    borderTop:`1.5px solid ${C.paleSlate}`,
+                    display:"flex", alignItems:"center", gap:10,
+                  }}>
+                    <span style={{ fontSize:10.5, fontWeight:700, color:C.lilacAsh,
+                      letterSpacing:"0.12em", textTransform:"uppercase", marginRight:4 }}>
+                      Actions
+                    </span>
+
+                    {/* Dispatch */}
+                    <button
+                      onClick={()=>onAction(order,"dispatch")}
+                      style={{
+                        padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+                        border:`1.5px solid rgba(14,124,91,0.3)`,
+                        background:"rgba(14,124,91,0.07)",
+                        color:C.success,
+                        fontWeight:600, fontSize:13, transition:"all 0.2s",
+                        display:"flex", alignItems:"center", gap:7,
+                      }}
+                      onMouseEnter={e=>{
+                        e.currentTarget.style.background=C.success
+                        e.currentTarget.style.borderColor=C.success
+                        e.currentTarget.style.color=C.snow
+                        e.currentTarget.style.transform="translateY(-1px)"
+                        e.currentTarget.style.boxShadow="0 6px 18px rgba(14,124,91,0.28)"
+                      }}
+                      onMouseLeave={e=>{
+                        e.currentTarget.style.background="rgba(14,124,91,0.07)"
+                        e.currentTarget.style.borderColor="rgba(14,124,91,0.3)"
+                        e.currentTarget.style.color=C.success
+                        e.currentTarget.style.transform="none"
+                        e.currentTarget.style.boxShadow="none"
+                      }}
+                    >
+                      <SendHorizonal size={14} strokeWidth={2.2} />
+                      Dispatch Order
+                    </button>
+
+                    {/* Reject */}
+                    <button
+                      onClick={()=>onAction(order,"reject")}
+                      style={{
+                        padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+                        border:`1.5px solid rgba(192,57,43,0.25)`,
+                        background:"rgba(192,57,43,0.05)",
+                        color:C.danger,
+                        fontWeight:600, fontSize:13, transition:"all 0.2s",
+                        display:"flex", alignItems:"center", gap:7,
+                      }}
+                      onMouseEnter={e=>{
+                        e.currentTarget.style.background="rgba(192,57,43,0.1)"
+                        e.currentTarget.style.borderColor=C.danger
+                        e.currentTarget.style.transform="translateY(-1px)"
+                        e.currentTarget.style.boxShadow="0 6px 18px rgba(192,57,43,0.18)"
+                      }}
+                      onMouseLeave={e=>{
+                        e.currentTarget.style.background="rgba(192,57,43,0.05)"
+                        e.currentTarget.style.borderColor="rgba(192,57,43,0.25)"
+                        e.currentTarget.style.transform="none"
+                        e.currentTarget.style.boxShadow="none"
+                      }}
+                    >
+                      <ThumbsDown size={14} strokeWidth={2.2} />
+                      Reject Order
+                    </button>
+
+                    <span style={{ fontSize:12, color:C.lilacAsh, marginLeft:4 }}>
+                      Order placed {fmtDate(order.orderedAt)} · {order.priority==="urgent"
+                        ? <span style={{ color:C.danger, fontWeight:600 }}>⚡ Urgent</span>
+                        : "Normal priority"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Final state — dispatched or rejected summary */}
+                {(order.status==="dispatched" || order.status==="rejected" || order.status==="cancelled") && (
+                  <div style={{
+                    gridColumn:"1/-1", paddingTop:16,
+                    borderTop:`1.5px solid ${C.paleSlate}`,
+                    display:"flex", alignItems:"center", gap:10,
+                  }}>
+                    <div style={{
+                      display:"flex", alignItems:"center", gap:8,
+                      padding:"9px 18px", borderRadius:9,
+                      background: order.status==="dispatched" ? "rgba(14,124,91,0.07)" : "rgba(192,57,43,0.06)",
+                      border:`1.5px solid ${order.status==="dispatched" ? "rgba(14,124,91,0.22)" : "rgba(192,57,43,0.2)"}`,
+                    }}>
+                      {order.status==="dispatched" && <SendHorizonal size={14} color={C.success} strokeWidth={2} />}
+                      {order.status==="rejected"   && <ThumbsDown    size={14} color={C.danger}  strokeWidth={2} />}
+                      {order.status==="cancelled"  && <Ban            size={14} color={C.danger}  strokeWidth={2} />}
+                      <span style={{ fontSize:13, fontWeight:700,
+                        color: order.status==="dispatched" ? C.success : C.danger }}>
+                        This order has been {order.status} — no further actions available.
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -674,9 +695,7 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────
 export default function PharmacyOrders() {
   const [orderData,    setOrderData]    = useState(INITIAL_ORDERS)
   const [search,       setSearch]       = useState("")
@@ -691,6 +710,7 @@ export default function PharmacyOrders() {
   const [showFilters,  setShowFilters]  = useState(false)
   const [modal,        setModal]        = useState(null)
   const [toast,        setToast]        = useState(null)
+  const [focusSearch,  setFocusSearch]  = useState(false)
   const PER_PAGE = 8
 
   const handleSort   = (key) => { if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc"); else { setSortKey(key); setSortDir("asc") } }
@@ -737,285 +757,287 @@ export default function PharmacyOrders() {
     totalValue: orderData.reduce((s,o)=>s+totalVal(o),0),
   }
 
-  const SortIcon = ({col}) => {
-    if(sortKey!==col) return <ArrowUpDown size={10} color="rgba(144,224,239,0.2)"/>
-    return sortDir==="asc"?<ChevronUp size={10} color={C.sky}/>:<ChevronDown size={10} color={C.sky}/>
-  }
-
   const thStyle = {
     padding:"10px 16px", textAlign:"left", fontWeight:700, fontSize:9.5,
-    letterSpacing:"0.13em", textTransform:"uppercase",
-    color:"rgba(144,224,239,0.3)", whiteSpace:"nowrap",
-    borderBottom:"1px solid rgba(144,224,239,0.06)",
-    background:"rgba(0,180,216,0.03)",
+    letterSpacing:"0.13em", textTransform:"uppercase", color:C.lilacAsh,
+    whiteSpace:"nowrap", borderBottom:`1.5px solid ${C.paleSlate}`,
+    background:C.snow,
+  }
+
+  const SortIcon = ({col}) => {
+    if(sortKey!==col) return <ArrowUpDown size={10} color={C.paleSlate}/>
+    return sortDir==="asc"?<ChevronUp size={10} color={C.techBlue}/>:<ChevronDown size={10} color={C.techBlue}/>
   }
 
   const ColHead = ({col,label,style={}}) => (
     <th onClick={()=>handleSort(col)} style={{...thStyle,cursor:"pointer",userSelect:"none",transition:"color 0.15s",...style}}
-      onMouseEnter={e=>e.currentTarget.style.color="rgba(144,224,239,0.6)"}
-      onMouseLeave={e=>e.currentTarget.style.color="rgba(144,224,239,0.3)"}
+      onMouseEnter={e=>e.currentTarget.style.color=C.techBlue}
+      onMouseLeave={e=>e.currentTarget.style.color=C.lilacAsh}
     >
       <div style={{ display:"flex", alignItems:"center", gap:5 }}>{label}<SortIcon col={col}/></div>
     </th>
   )
 
   return (
-    <div style={{ minHeight:"100vh", background:"transparent", fontFamily:"'DM Sans',sans-serif", padding:"36px 36px 56px" }}>
+    <div style={{ minHeight:"100vh", background:C.snow, fontFamily:"'DM Sans',sans-serif", padding:"36px 40px 56px", position:"relative" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
         * { box-sizing:border-box; }
-        ::-webkit-scrollbar { width:3px; height:3px; }
-        ::-webkit-scrollbar-thumb { background:rgba(0,180,216,0.18); border-radius:99px; }
+        ::-webkit-scrollbar { width:4px; height:4px; }
+        ::-webkit-scrollbar-thumb { background:${C.paleSlate}; border-radius:99px; }
         @keyframes fadeUp  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-        @keyframes modalIn { from{opacity:0;transform:scale(0.9) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
-        @keyframes toastIn { from{opacity:0;transform:translateX(40px) scale(0.95)} to{opacity:1;transform:translateX(0) scale(1)} }
+        @keyframes modalIn { from{opacity:0;transform:scale(0.92) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes toastIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
         @keyframes toastProgress { from{width:100%} to{width:0%} }
-        input::placeholder,textarea::placeholder { color:rgba(144,224,239,0.18); }
-        select option { background:#020e28; color:#caf0f8; }
+        input::placeholder,textarea::placeholder { color:${C.lilacAsh}; opacity:0.55; }
+        select option { background:${C.snow}; color:${C.blueSlate}; }
         table { border-collapse:collapse; width:100%; }
       `}</style>
 
-      <div style={{ height:2, background:`linear-gradient(90deg,${C.navy},${C.ocean} 30%,${C.sky} 60%,${C.mist} 85%,transparent)` }} />
+      {/* Top palette stripe */}
+      <div style={{ position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
+        background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
 
-      {/* Header */}
-      <div style={{ marginBottom:28, paddingTop:32, animation:"fadeUp 0.4s ease both" }}>
-        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:16 }}>
-          <div>
-            <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
-              <div style={{ width:28, height:28, borderRadius:8,
-                background:`linear-gradient(135deg,${C.ocean},${C.sky})`,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                boxShadow:"0 4px 12px rgba(0,180,216,0.3)" }}>
-                <ShoppingCart size={14} color="white" strokeWidth={2} />
+      {/* Dot grid bg */}
+      <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+        backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
+        backgroundSize:"28px 28px", opacity:0.35 }} />
+
+      <div style={{ position:"relative", zIndex:1 }}>
+        {/* Header */}
+        <div style={{ marginBottom:28, paddingTop:4, animation:"fadeUp 0.4s ease both" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:16 }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:C.techBlue,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  boxShadow:`0 4px 12px rgba(2,62,138,0.28)` }}>
+                  <ShoppingCart size={14} color={C.snow} strokeWidth={2} />
+                </div>
+                <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:400 }}>MediReach</span>
+                <ChevronRight size={11} color={C.paleSlate} />
+                <span style={{ fontSize:11.5, color:C.techBlue, fontWeight:700,
+                  background:"rgba(2,62,138,0.08)", padding:"2px 10px", borderRadius:99,
+                  border:`1px solid rgba(2,62,138,0.15)` }}>Pharmacy Orders</span>
               </div>
-              <span style={{ fontSize:11.5, color:"rgba(144,224,239,0.3)", fontWeight:500 }}>MediReach</span>
-              <ChevronRight size={11} color="rgba(144,224,239,0.15)" />
-              <span style={{ fontSize:11.5, color:C.sky, fontWeight:700,
-                background:"rgba(0,180,216,0.1)", padding:"2px 9px", borderRadius:99,
-                border:"1px solid rgba(0,180,216,0.18)" }}>Pharmacy Orders</span>
+              <h1 style={{ margin:0, fontSize:32, fontWeight:700, letterSpacing:"-1.4px",
+                color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>Order Management</h1>
+              <p style={{ margin:"7px 0 0", color:C.lilacAsh, fontSize:14 }}>
+                Review, dispatch or reject medicine orders from the pharmacy network
+              </p>
             </div>
-            <h1 style={{ margin:0, fontSize:30, fontWeight:800, color:C.white,
-              letterSpacing:"-1.2px", lineHeight:1.1, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-              Order Management
-            </h1>
-            <p style={{ margin:"7px 0 0", color:"rgba(144,224,239,0.3)", fontSize:13.5 }}>
-              Review, dispatch or reject medicine orders from the pharmacy network
-            </p>
-          </div>
-          <div style={{ display:"flex", gap:9 }}>
-            <button style={{ padding:"9px 16px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-              border:"1px solid rgba(144,224,239,0.1)", background:"rgba(144,224,239,0.04)",
-              color:"rgba(144,224,239,0.5)", fontWeight:600, fontSize:12.5,
-              display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(0,180,216,0.3)"; e.currentTarget.style.color=C.sky }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(144,224,239,0.1)"; e.currentTarget.style.color="rgba(144,224,239,0.5)" }}
-            ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
-            <button style={{ padding:"9px 16px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-              border:"none", background:`linear-gradient(135deg,${C.ocean},${C.sky})`,
-              color:C.white, fontWeight:600, fontSize:12.5,
-              display:"flex", alignItems:"center", gap:6,
-              boxShadow:"0 4px 16px rgba(0,180,216,0.25)", transition:"all 0.2s" }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(0,180,216,0.35)" }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 16px rgba(0,180,216,0.25)" }}
-            ><Download size={13} strokeWidth={2}/> Export</button>
+            <div style={{ display:"flex", gap:9, flexShrink:0 }}>
+              <button style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
+                fontWeight:600, fontSize:13, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}
+                onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
+              ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
+              <button style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                border:"none", background:C.techBlue, color:C.snow, fontWeight:600, fontSize:13,
+                display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
+                boxShadow:`0 4px 18px rgba(2,62,138,0.28)` }}
+                onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}
+                onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 18px rgba(2,62,138,0.28)" }}
+              ><Download size={13} strokeWidth={2}/> Export</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
-        <StatCard icon={ClipboardList} value={stats.total}      label="Total Orders"  accent={C.sky}    sub="All time" />
-        <StatCard icon={Hourglass}     value={stats.pending}    label="Pending"       accent={C.warn}   sub="Awaiting action" />
-        <StatCard icon={Truck}         value={stats.inTransit}  label="In Transit"    accent={C.purple} sub="On the way" />
-        <StatCard icon={SendHorizonal} value={stats.dispatched} label="Dispatched"    accent={C.green}  sub="Confirmed" />
-        <StatCard icon={AlertTriangle} value={stats.urgent}     label="Urgent"        accent={C.danger} sub="Need attention" />
-      </div>
+        {/* Stats */}
+        <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
+          <StatCard icon={ClipboardList} value={stats.total}      label="Total Orders"  sub="All time"          delay="0.07s" />
+          <StatCard icon={Hourglass}     value={stats.pending}    label="Pending"       sub="Awaiting action"   delay="0.1s" />
+          <StatCard icon={Truck}         value={stats.inTransit}  label="In Transit"    sub="On the way"        delay="0.13s" />
+          <StatCard icon={SendHorizonal} value={stats.dispatched} label="Dispatched"    sub="Confirmed"         delay="0.16s" />
+          <StatCard icon={AlertTriangle} value={stats.urgent}     label="Urgent"        sub="Need attention"    delay="0.19s" />
+        </div>
 
-      {/* Value strip */}
-      <div style={{ padding:"12px 18px", borderRadius:12, marginBottom:22,
-        background:"rgba(0,180,216,0.04)", border:"1px solid rgba(0,180,216,0.1)",
-        display:"flex", alignItems:"center", gap:10, animation:"fadeUp 0.4s ease 0.1s both" }}>
-        <TrendingUp size={14} color={C.sky} />
-        <span style={{ fontSize:13, color:"rgba(144,224,239,0.5)", fontWeight:500 }}>Total order value:</span>
-        <span style={{ fontSize:16, fontWeight:800, color:C.sky,
-          fontFamily:"'Plus Jakarta Sans',sans-serif", letterSpacing:"-0.5px" }}>
-          LKR {stats.totalValue.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Search + filters */}
-      <div style={{ marginBottom:16, animation:"fadeUp 0.4s ease 0.12s both" }}>
-        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-          <div style={{ position:"relative", flex:1, minWidth:220 }}>
-            <Search size={13} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} color="rgba(144,224,239,0.3)" />
-            <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}
-              placeholder="Search by order ID, pharmacy or medicine..."
-              style={{ width:"100%", padding:"9px 14px 9px 34px", borderRadius:10,
-                border:"1px solid rgba(144,224,239,0.1)", background:"rgba(255,255,255,0.03)",
-                fontSize:13, outline:"none", fontFamily:"inherit", color:C.white, transition:"border-color 0.2s" }}
-              onFocus={e=>{ e.target.style.borderColor="rgba(0,180,216,0.4)"; e.target.style.background="rgba(0,180,216,0.05)" }}
-              onBlur={e=>{ e.target.style.borderColor="rgba(144,224,239,0.1)"; e.target.style.background="rgba(255,255,255,0.03)" }}
-            />
-          </div>
-          <div style={{ display:"flex", gap:6 }}>
-            {["All","pending","in_transit","dispatched","rejected","cancelled"].map(s=>{
-              const cfg = s==="All"?null:STATUS_CFG[s]
-              const active = statusFilter===s
-              return (
-                <button key={s} onClick={()=>{ setStatusFilter(s); setPage(1) }} style={{
-                  padding:"7px 12px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                  border:`1px solid ${active?(cfg?cfg.border:"rgba(0,180,216,0.4)"):"rgba(144,224,239,0.08)"}`,
-                  background:active?(cfg?cfg.bg:"rgba(0,180,216,0.1)"):"rgba(144,224,239,0.03)",
-                  color:active?(cfg?cfg.color:C.sky):"rgba(144,224,239,0.35)",
-                  fontWeight:600, fontSize:11.5, transition:"all 0.15s",
-                  display:"flex", alignItems:"center", gap:5,
-                }}>
-                  {cfg && <cfg.icon size={10} strokeWidth={2.5}/>}
-                  {s==="All"?"All":STATUS_CFG[s].label}
-                </button>
-              )
-            })}
-          </div>
-          <button onClick={()=>setShowFilters(f=>!f)} style={{
-            padding:"8px 14px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-            border:`1px solid ${showFilters?"rgba(0,180,216,0.4)":"rgba(144,224,239,0.1)"}`,
-            background:showFilters?"rgba(0,180,216,0.1)":"rgba(144,224,239,0.04)",
-            color:showFilters?C.sky:"rgba(144,224,239,0.45)",
-            fontWeight:600, fontSize:12.5, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}>
-            <Filter size={12} strokeWidth={2}/>
-            {activeFilters>0 && (
-              <span style={{ width:15, height:15, borderRadius:"50%", background:C.sky,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:9, fontWeight:800, color:C.navy }}>{activeFilters}</span>
-            )}
-          </button>
-          <span style={{ fontSize:12, color:"rgba(144,224,239,0.25)" }}>
-            {filtered.length} of {orderData.length} orders
+        {/* Value strip */}
+        <div style={{ padding:"11px 18px", borderRadius:10, marginBottom:20,
+          background:C.white, border:`1.5px solid ${C.paleSlate}`,
+          display:"flex", alignItems:"center", gap:10, animation:"fadeUp 0.4s ease 0.1s both",
+          boxShadow:"0 2px 8px rgba(2,62,138,0.05)" }}>
+          <TrendingUp size={14} color={C.techBlue} />
+          <span style={{ fontSize:13, color:C.lilacAsh, fontWeight:500 }}>Total order value:</span>
+          <span style={{ fontSize:16, fontWeight:800, color:C.techBlue,
+            fontFamily:"'Sora',sans-serif", letterSpacing:"-0.5px" }}>
+            LKR {stats.totalValue.toLocaleString()}
           </span>
         </div>
 
-        {showFilters && (
-          <div style={{ display:"flex", gap:12, marginTop:10, flexWrap:"wrap",
-            padding:"14px 16px", borderRadius:12,
-            background:"rgba(0,180,216,0.03)", border:"1px solid rgba(144,224,239,0.07)",
-            animation:"fadeUp 0.25s ease both" }}>
-            {[
-              { label:"Pharmacy", val:pharmFilter, set:setPharmFilter, opts:pharmacies },
-              { label:"Category", val:catFilter,   set:setCatFilter,   opts:categories },
-              { label:"Priority", val:prioFilter,  set:setPrioFilter,  opts:["All","urgent","normal"] },
-            ].map(f=>(
-              <div key={f.label} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                <label style={{ fontSize:9.5, fontWeight:700, color:"rgba(144,224,239,0.3)",
-                  letterSpacing:"0.12em", textTransform:"uppercase" }}>{f.label}</label>
-                <select value={f.val} onChange={e=>{ f.set(e.target.value); setPage(1) }} style={{
-                  padding:"7px 28px 7px 10px", borderRadius:8,
-                  border:"1px solid rgba(144,224,239,0.12)",
-                  background:"rgba(255,255,255,0.04)", color:"rgba(202,240,248,0.75)",
-                  fontSize:12.5, outline:"none", fontFamily:"inherit", cursor:"pointer", minWidth:160,
-                  appearance:"none", WebkitAppearance:"none",
-                  backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2390e0ef' stroke-opacity='.4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-                  backgroundRepeat:"no-repeat", backgroundPosition:"right 9px center" }}>
-                  {f.opts.map(o=><option key={o} value={o}>{o==="All"?`All ${f.label}s`:o.charAt(0).toUpperCase()+o.slice(1)}</option>)}
-                </select>
-              </div>
-            ))}
-            <div style={{ display:"flex", alignItems:"flex-end" }}>
-              <button onClick={()=>{ setPharmFilter("All"); setCatFilter("All"); setPrioFilter("All"); setStatusFilter("All"); setPage(1) }} style={{
-                padding:"7px 12px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                border:"1px solid rgba(239,68,68,0.2)", background:"rgba(239,68,68,0.06)",
-                color:"rgba(239,68,68,0.6)", fontWeight:600, fontSize:12, transition:"all 0.2s" }}
-                onMouseEnter={e=>{ e.currentTarget.style.background="rgba(239,68,68,0.12)"; e.currentTarget.style.color=C.danger }}
-                onMouseLeave={e=>{ e.currentTarget.style.background="rgba(239,68,68,0.06)"; e.currentTarget.style.color="rgba(239,68,68,0.6)" }}
-              >Clear all</button>
+        {/* Search + filters */}
+        <div style={{ marginBottom:14, animation:"fadeUp 0.4s ease 0.12s both" }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+            <div style={{ position:"relative", flex:1, minWidth:220 }}>
+              <Search size={13} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)" }}
+                color={focusSearch ? C.techBlue : C.lilacAsh} />
+              <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}
+                placeholder="Search by order ID, pharmacy or medicine..."
+                onFocus={()=>setFocusSearch(true)} onBlur={()=>setFocusSearch(false)}
+                style={{ width:"100%", padding:"9px 14px 9px 33px", borderRadius:9,
+                  border:`1.5px solid ${focusSearch ? C.techBlue : C.paleSlate}`,
+                  background:C.white, fontSize:13, outline:"none", fontFamily:"inherit", color:C.blueSlate,
+                  transition:"border-color 0.2s",
+                  boxShadow: focusSearch ? `0 0 0 3px rgba(2,62,138,0.08)` : "none" }}
+              />
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Table */}
-      <div style={{ borderRadius:18, overflow:"hidden",
-        border:"1px solid rgba(144,224,239,0.07)",
-        background:"rgba(255,255,255,0.02)",
-        boxShadow:"0 8px 40px rgba(0,0,0,0.3)",
-        animation:"fadeUp 0.4s ease 0.15s both" }}>
-        <div style={{ overflowX:"auto" }}>
-          <table>
-            <thead>
-              <tr>
-                <ColHead col="id"        label="Order ID"  style={{ paddingLeft:20 }} />
-                <ColHead col="pharmacy"  label="Pharmacy" />
-                <ColHead col="medicine"  label="Medicine" />
-                <ColHead col="qty"       label="Qty" />
-                <ColHead col="unitPrice" label="Value" />
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Priority</th>
-                <ColHead col="orderedAt" label="Ordered" />
-                <th style={{ ...thStyle, paddingRight:20 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageData.length===0 ? (
-                <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
-                    <div style={{ width:52, height:52, borderRadius:14,
-                      background:"rgba(144,224,239,0.05)", border:"1px solid rgba(144,224,239,0.1)",
-                      display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <ShoppingCart size={22} color="rgba(144,224,239,0.2)" />
-                    </div>
-                    <p style={{ margin:0, fontSize:15, fontWeight:600, color:"rgba(202,240,248,0.4)" }}>No orders found</p>
-                  </div>
-                </td></tr>
-              ) : pageData.map((order,idx)=>(
-                <OrderRow key={order.id} order={order} index={idx}
-                  expanded={expanded}
-                  onToggle={id=>setExpanded(e=>e===id?null:id)}
-                  onAction={handleAction}
-                />
+            {/* Status pills */}
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {["All","pending","in_transit","dispatched","rejected","cancelled"].map(s=>{
+                const cfg = s==="All" ? null : STATUS_CFG[s]
+                const active = statusFilter===s
+                return (
+                  <button key={s} onClick={()=>{ setStatusFilter(s); setPage(1) }} style={{
+                    padding:"7px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                    border:`1.5px solid ${active ? (cfg ? cfg.border : C.techBlue) : C.paleSlate}`,
+                    background: active ? (cfg ? cfg.bg : `rgba(2,62,138,0.07)`) : C.white,
+                    color: active ? (cfg ? cfg.color : C.techBlue) : C.blueSlate,
+                    fontWeight:600, fontSize:11.5, transition:"all 0.15s",
+                    display:"flex", alignItems:"center", gap:5,
+                    boxShadow: active ? `0 2px 8px rgba(2,62,138,0.1)` : "none",
+                  }}>
+                    {cfg && <cfg.icon size={10} strokeWidth={2.5}/>}
+                    {s==="All" ? "All" : STATUS_CFG[s].label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button onClick={()=>setShowFilters(f=>!f)} style={{
+              padding:"8px 14px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+              border:`1.5px solid ${showFilters ? C.techBlue : C.paleSlate}`,
+              background: showFilters ? `rgba(2,62,138,0.07)` : C.white,
+              color: showFilters ? C.techBlue : C.blueSlate,
+              fontWeight:600, fontSize:12.5, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}>
+              <Filter size={12} strokeWidth={2}/>
+              {activeFilters>0 && (
+                <span style={{ width:15, height:15, borderRadius:"50%", background:C.techBlue,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:9, fontWeight:800, color:C.snow }}>{activeFilters}</span>
+              )}
+            </button>
+            <span style={{ fontSize:12, color:C.lilacAsh }}>{filtered.length} of {orderData.length} orders</span>
+          </div>
+
+          {showFilters && (
+            <div style={{ display:"flex", gap:12, marginTop:10, flexWrap:"wrap",
+              padding:"14px 16px", borderRadius:10,
+              background:C.white, border:`1.5px solid ${C.paleSlate}`,
+              boxShadow:"0 2px 12px rgba(2,62,138,0.06)",
+              animation:"fadeUp 0.25s ease both" }}>
+              {[
+                { label:"Pharmacy", val:pharmFilter, set:setPharmFilter, opts:pharmacies },
+                { label:"Category", val:catFilter,   set:setCatFilter,   opts:categories },
+                { label:"Priority", val:prioFilter,  set:setPrioFilter,  opts:["All","urgent","normal"] },
+              ].map(f=>(
+                <div key={f.label} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                  <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
+                    letterSpacing:"0.12em", textTransform:"uppercase" }}>{f.label}</label>
+                  <select value={f.val} onChange={e=>{ f.set(e.target.value); setPage(1) }} style={{
+                    padding:"7px 28px 7px 10px", borderRadius:8,
+                    border:`1.5px solid ${C.paleSlate}`, background:C.snow,
+                    color:C.blueSlate, fontSize:12.5, outline:"none", fontFamily:"inherit",
+                    cursor:"pointer", minWidth:160, appearance:"none", WebkitAppearance:"none",
+                    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234C6EF5' stroke-opacity='.5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                    backgroundRepeat:"no-repeat", backgroundPosition:"right 9px center" }}>
+                    {f.opts.map(o=><option key={o} value={o}>{o==="All"?`All ${f.label}s`:o.charAt(0).toUpperCase()+o.slice(1)}</option>)}
+                  </select>
+                </div>
               ))}
-            </tbody>
-          </table>
+              <div style={{ display:"flex", alignItems:"flex-end" }}>
+                <button onClick={()=>{ setPharmFilter("All"); setCatFilter("All"); setPrioFilter("All"); setStatusFilter("All"); setPage(1) }} style={{
+                  padding:"7px 12px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                  border:`1.5px solid rgba(192,57,43,0.22)`, background:"rgba(192,57,43,0.05)",
+                  color:C.danger, fontWeight:600, fontSize:12, transition:"all 0.2s" }}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(192,57,43,0.1)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="rgba(192,57,43,0.05)"}
+                >Clear all</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {totalPages>1 && (
-          <div style={{ padding:"12px 20px", borderTop:"1px solid rgba(144,224,239,0.05)",
-            background:"rgba(0,0,0,0.15)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <span style={{ fontSize:12, color:"rgba(144,224,239,0.25)" }}>
-              Page {page} of {totalPages} · {filtered.length} results
-            </span>
-            <div style={{ display:"flex", gap:6 }}>
-              <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
-                width:32, height:32, borderRadius:8, cursor:page===1?"not-allowed":"pointer",
-                border:"1px solid rgba(144,224,239,0.1)", background:"rgba(144,224,239,0.04)",
-                color:page===1?"rgba(144,224,239,0.15)":"rgba(144,224,239,0.5)",
-                display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <ChevronLeft size={14} strokeWidth={2.5}/>
-              </button>
-              {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
-                <button key={p} onClick={()=>setPage(p)} style={{
-                  width:32, height:32, borderRadius:8, cursor:"pointer",
-                  border:`1px solid ${p===page?"rgba(0,180,216,0.4)":"rgba(144,224,239,0.08)"}`,
-                  background:p===page?`linear-gradient(135deg,${C.ocean},${C.sky})`:"rgba(144,224,239,0.03)",
-                  color:p===page?C.white:"rgba(144,224,239,0.4)",
-                  fontWeight:700, fontSize:12.5, fontFamily:"'Plus Jakarta Sans',sans-serif",
-                  boxShadow:p===page?"0 4px 14px rgba(0,180,216,0.25)":"none" }}>{p}</button>
-              ))}
-              <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{
-                width:32, height:32, borderRadius:8, cursor:page===totalPages?"not-allowed":"pointer",
-                border:"1px solid rgba(144,224,239,0.1)", background:"rgba(144,224,239,0.04)",
-                color:page===totalPages?"rgba(144,224,239,0.15)":"rgba(144,224,239,0.5)",
-                display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <ChevronRight size={14} strokeWidth={2.5}/>
-              </button>
-            </div>
+        {/* Table */}
+        <div style={{ borderRadius:16, overflow:"hidden", border:`1.5px solid ${C.paleSlate}`,
+          background:C.white, boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
+          animation:"fadeUp 0.4s ease 0.15s both" }}>
+          <div style={{ overflowX:"auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <ColHead col="id"        label="Order ID"  style={{ paddingLeft:22 }} />
+                  <ColHead col="pharmacy"  label="Pharmacy"  />
+                  <ColHead col="medicine"  label="Medicine"  />
+                  <ColHead col="qty"       label="Qty"       />
+                  <ColHead col="unitPrice" label="Value"     />
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Priority</th>
+                  <ColHead col="orderedAt" label="Ordered"   />
+                  <th style={{ ...thStyle, paddingRight:22 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageData.length===0 ? (
+                  <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
+                      <div style={{ width:52, height:52, borderRadius:14, background:C.white,
+                        border:`1.5px solid ${C.paleSlate}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <ShoppingCart size={22} color={C.lilacAsh} />
+                      </div>
+                      <p style={{ margin:0, fontSize:15, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>No orders found</p>
+                      <p style={{ margin:0, fontSize:12.5, color:C.lilacAsh }}>Try adjusting your search or filters</p>
+                    </div>
+                  </td></tr>
+                ) : pageData.map((order,idx)=>(
+                  <OrderRow key={order.id} order={order} index={idx}
+                    expanded={expanded}
+                    onToggle={id=>setExpanded(e=>e===id?null:id)}
+                    onAction={handleAction}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {totalPages>1 && (
+            <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
+              background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span style={{ fontSize:12, color:C.lilacAsh }}>
+                Page {page} of {totalPages} · {filtered.length} results
+              </span>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
+                  width:32, height:32, borderRadius:8, cursor:page===1?"not-allowed":"pointer",
+                  border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                  color:page===1?C.paleSlate:C.lilacAsh, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <ChevronLeft size={14} strokeWidth={2.5}/>
+                </button>
+                {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
+                  <button key={p} onClick={()=>setPage(p)} style={{
+                    width:32, height:32, borderRadius:8, cursor:"pointer",
+                    border:`1.5px solid ${p===page?C.techBlue:C.paleSlate}`,
+                    background:p===page?C.techBlue:C.white,
+                    color:p===page?C.snow:C.blueSlate,
+                    fontWeight:700, fontSize:12.5, fontFamily:"'Sora',sans-serif",
+                    boxShadow:p===page?`0 4px 14px rgba(2,62,138,0.25)`:"none",
+                    transition:"all 0.15s" }}>{p}</button>
+                ))}
+                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{
+                  width:32, height:32, borderRadius:8, cursor:page===totalPages?"not-allowed":"pointer",
+                  border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                  color:page===totalPages?C.paleSlate:C.lilacAsh, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <ChevronRight size={14} strokeWidth={2.5}/>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Confirm Modal */}
       {modal && <ConfirmModal modal={modal} onConfirm={handleConfirm} onClose={()=>setModal(null)} />}
-
-      {/* Toast */}
       {toast && <Toast toast={toast} onClose={()=>setToast(null)} />}
     </div>
   )
