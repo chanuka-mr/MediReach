@@ -17,6 +17,11 @@ const userSchema = new Schema(
       lowercase: true,
     },
 
+    contactNumber: {
+      type: String,
+      required: true,
+    },
+
     password: {
       type: String,
       required: true,

@@ -12,11 +12,11 @@ const generateToken = (id, role) => {
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
-  const { name, email, password, role, pharmacyName, licenseNumber } = req.body;
+  const { name, email, password, role, pharmacyName, licenseNumber, contactNumber } = req.body;
 
   try {
     // Basic validation
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password || !role || !contactNumber) {
       return res.status(400).json({ message: "Please enter all required fields" });
     }
 
@@ -44,6 +44,7 @@ const registerUser = async (req, res) => {
       email,
       password,
       role,
+      contactNumber,
       pharmacyName: role === "pharmacy" ? pharmacyName : undefined,
       licenseNumber: role === "pharmacy" ? licenseNumber : undefined,
     });
