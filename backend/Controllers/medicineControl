@@ -15,6 +15,7 @@ const getAllMedicines = async (req, res) => {
 //Medicine Insert
 const  addmedicine = async (req, res, next) => {
     const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus,Pharmacy } = req.body;
+    let medicine;
     try {
         medicine = new Medicine({
             mediName,

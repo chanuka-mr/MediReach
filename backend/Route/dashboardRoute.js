@@ -3,9 +3,6 @@ const express  = require("express");
 const router   = express.Router();
 const Medicine = require("../Model/medicineModel");
 
-// ── You'll add these models when ready ────────────────────────────
-// const Pharmacy          = require("../Model/pharmacyModel");
-// const MedicationRequest = require("../Model/medicationRequestModel");
 
 // ── GET /api/dashboard/stats ──────────────────────────────────────
 router.get("/stats", async (req, res) => {
