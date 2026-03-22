@@ -7,7 +7,7 @@ import {
   TrendingDown, RefreshCw, Download, Eye,
   ShieldCheck, ShieldOff, ShieldAlert, Hash,
   ChevronLeft, ChevronRight,
-  Beaker, Clock, Layers, Loader2, PencilLine
+  Beaker, Clock, Layers, Loader2, PencilLine, Trash2
 } from 'lucide-react'
 
 // ── Palette — matches InventoryDashboard ─────────────────────────
@@ -112,12 +112,103 @@ function StatCard({ icon:Icon, value, label, sub, delay }) {
   )
 }
 
+// ── Delete Confirmation Modal ─────────────────────────────────────
+function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:1000,
+      background:"rgba(4,18,38,0.55)", backdropFilter:"blur(4px)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      animation:"fadeUp 0.2s ease both",
+    }}>
+      <div style={{
+        width:"100%", maxWidth:420, borderRadius:18,
+        background:C.snow, border:`1.5px solid ${C.paleSlate}`,
+        boxShadow:"0 32px 80px rgba(2,62,138,0.22)",
+        overflow:"hidden", animation:"fadeUp 0.25s ease both",
+      }}>
+        {/* Red top stripe */}
+        <div style={{ height:3, background:`linear-gradient(90deg, ${C.danger}, rgba(192,57,43,0.4))` }} />
+
+        <div style={{ padding:"28px 28px 24px" }}>
+          {/* Icon + title */}
+          <div style={{ display:"flex", alignItems:"center", gap:13, marginBottom:16 }}>
+            <div style={{
+              width:46, height:46, borderRadius:13, flexShrink:0,
+              background:"rgba(192,57,43,0.08)", border:`1.5px solid rgba(192,57,43,0.22)`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <Trash2 size={20} color={C.danger} strokeWidth={1.8} />
+            </div>
+            <div>
+              <p style={{ margin:0, fontSize:16, fontWeight:700, color:C.blueSlate,
+                fontFamily:"'Sora',sans-serif", letterSpacing:"-0.4px" }}>Delete Medicine</p>
+              <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>This action cannot be undone</p>
+            </div>
+          </div>
+
+          {/* Medicine info card */}
+          <div style={{
+            borderRadius:10, padding:"12px 14px", marginBottom:20,
+            background:"rgba(192,57,43,0.04)", border:`1px solid rgba(192,57,43,0.16)`,
+          }}>
+            <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate }}>{medicine.name}</p>
+            <p style={{ margin:0, fontSize:12, color:C.lilacAsh }}>
+              {medicine.category} · {medicine.company} · {medicine.stock.toLocaleString()} units in stock
+            </p>
+          </div>
+
+          <p style={{ margin:"0 0 22px", fontSize:13, color:C.blueSlate, lineHeight:1.6 }}>
+            Are you sure you want to permanently remove <strong>{medicine.name}</strong> from the inventory? All associated data will be deleted.
+          </p>
+
+          {/* Actions */}
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+            <button
+              onClick={onCancel}
+              disabled={deleting}
+              style={{
+                padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+                border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                color:C.blueSlate, fontWeight:600, fontSize:13, transition:"all 0.2s",
+                opacity: deleting ? 0.5 : 1,
+              }}
+              onMouseEnter={e=>{ if(!deleting){ e.currentTarget.style.borderColor=C.blueSlate }}}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={deleting}
+              style={{
+                padding:"9px 20px", borderRadius:9, cursor: deleting ? "not-allowed" : "pointer",
+                fontFamily:"inherit", border:"none",
+                background: deleting ? "rgba(192,57,43,0.5)" : C.danger,
+                color:C.snow, fontWeight:600, fontSize:13, transition:"all 0.2s",
+                display:"flex", alignItems:"center", gap:7,
+                boxShadow: deleting ? "none" : "0 4px 16px rgba(192,57,43,0.32)",
+              }}
+              onMouseEnter={e=>{ if(!deleting){ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(192,57,43,0.42)" }}}
+              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=deleting?"none":"0 4px 16px rgba(192,57,43,0.32)" }}
+            >
+              {deleting
+                ? <><Loader2 size={13} style={{ animation:"spin 0.9s linear infinite" }} /> Deleting...</>
+                : <><Trash2 size={13} strokeWidth={2} /> Delete</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────
 export default function MedicineInventory() {
   const navigate   = useNavigate()
   const location   = useLocation()
 
-  // Read ?pharmacy= param passed from InventoryDashboard Inventory button
   const urlPharmacy = new URLSearchParams(location.search).get("pharmacy") || "All"
 
   const [allMedicines, setAllMedicines] = useState([])
@@ -134,16 +225,20 @@ export default function MedicineInventory() {
   const [expanded,     setExpanded]     = useState(null)
   const [showFilters,  setShowFilters]  = useState(false)
   const [focusSearch,  setFocusSearch]  = useState(false)
+
+  // Delete state
+  const [deleteTarget,  setDeleteTarget]  = useState(null)   // medicine object to delete
+  const [deleting,      setDeleting]      = useState(false)  // spinner flag
+  const [deleteSuccess, setDeleteSuccess] = useState(null)   // success toast message
+
   const PER_PAGE = 8
 
-  // Fetch all medicines from MongoDB
   const fetchMedicines = async () => {
     setLoading(true); setFetchError(null)
     try {
       const res  = await fetch(API)
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || "Failed to fetch")
-      // API returns { medicines: [...] } — extract the array
       const list = Array.isArray(data) ? data : (data.medicines || [])
       setAllMedicines(list.map(normalise))
     } catch (err) {
@@ -155,15 +250,40 @@ export default function MedicineInventory() {
 
   React.useEffect(() => { fetchMedicines() }, [])
 
-  // Re-sync URL pharmacy param whenever navigation changes
   React.useEffect(() => {
     setPharmFilter(urlPharmacy)
     setPage(1)
   }, [urlPharmacy])
 
-  // Derive filter options dynamically from live data
-  const categories  = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.category).filter(Boolean))], [allMedicines])
-  const pharmacies  = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.pharmacy).filter(Boolean))], [allMedicines])
+  // ── Delete handler ───────────────────────────────────────────────
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`${API}/${deleteTarget.id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || "Failed to delete")
+
+      // Remove from local state instantly — no need to re-fetch
+      setAllMedicines(prev => prev.filter(m => m.id !== deleteTarget.id))
+
+      // Close modal & show success toast
+      setDeleteTarget(null)
+      setDeleteSuccess(`"${deleteTarget.name}" was deleted successfully.`)
+      setTimeout(() => setDeleteSuccess(null), 3500)
+
+      // If current page becomes empty after deletion, step back
+      setPage(p => Math.max(1, p))
+    } catch (err) {
+      setFetchError(err.message)
+      setDeleteTarget(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const categories = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.category).filter(Boolean))], [allMedicines])
+  const pharmacies = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.pharmacy).filter(Boolean))], [allMedicines])
 
   const handleSort = (key) => {
     if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc")
@@ -232,6 +352,7 @@ export default function MedicineInventory() {
         ::-webkit-scrollbar-thumb { background:${C.paleSlate}; border-radius:99px; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes slideIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
         input::placeholder { color:${C.lilacAsh}; opacity:0.55; }
         select option { background:${C.snow}; color:${C.blueSlate}; }
         table { border-collapse:collapse; width:100%; }
@@ -245,6 +366,40 @@ export default function MedicineInventory() {
       <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
         backgroundSize:"28px 28px", opacity:0.35 }} />
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <DeleteModal
+          medicine={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+          deleting={deleting}
+        />
+      )}
+
+      {/* Success toast */}
+      {deleteSuccess && (
+        <div style={{
+          position:"fixed", top:24, right:28, zIndex:999,
+          padding:"12px 18px", borderRadius:11,
+          background:C.snow, border:`1.5px solid rgba(14,124,91,0.3)`,
+          boxShadow:"0 8px 32px rgba(14,124,91,0.18)",
+          display:"flex", alignItems:"center", gap:10,
+          animation:"slideIn 0.3s ease both", maxWidth:360,
+        }}>
+          <div style={{
+            width:30, height:30, borderRadius:8, flexShrink:0,
+            background:"rgba(14,124,91,0.1)", border:"1.5px solid rgba(14,124,91,0.25)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <CheckCircle2 size={15} color={C.success} strokeWidth={2} />
+          </div>
+          <div>
+            <p style={{ margin:0, fontSize:12.5, fontWeight:700, color:C.success }}>Deleted successfully</p>
+            <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{deleteSuccess}</p>
+          </div>
+        </div>
+      )}
 
       <div style={{ position:"relative", zIndex:1 }}>
         {/* Header */}
@@ -270,7 +425,7 @@ export default function MedicineInventory() {
               </p>
             </div>
             <div style={{ display:"flex", gap:9, flexShrink:0 }}>
-              <button style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+              <button onClick={fetchMedicines} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
                 border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
                 fontWeight:600, fontSize:13, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}
                 onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
@@ -316,7 +471,7 @@ export default function MedicineInventory() {
           <StatCard icon={Clock}         value={loading ? "—" : stats.expiring} label="Expiring Soon"   sub="Within 6 months"       delay="0.19s" />
         </div>
 
-        {/* Pharmacy context banner — shown when navigated from a specific pharmacy */}
+        {/* Pharmacy context banner */}
         {pharmFilter !== "All" && (
           <div style={{
             display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -327,9 +482,7 @@ export default function MedicineInventory() {
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <Building2 size={15} color={C.techBlue} strokeWidth={2} />
               <div>
-                <span style={{ fontSize:13, fontWeight:700, color:C.techBlue }}>
-                  {pharmFilter}
-                </span>
+                <span style={{ fontSize:13, fontWeight:700, color:C.techBlue }}>{pharmFilter}</span>
                 <span style={{ fontSize:12, color:C.lilacAsh, marginLeft:8 }}>
                   — showing medicines registered to this pharmacy only
                 </span>
@@ -472,7 +625,7 @@ export default function MedicineInventory() {
                 ) : pageData.map((med,idx)=>{
                   const ss    = stockStatus(med.stock)
                   const rx    = rxConfig[med.rxStatus]
-                  const RxI   = rx.icon
+                  const RxI   = rx?.icon ?? ShieldOff
                   const StI   = ss.icon
                   const exp   = isExpired(med.expDate)
                   const expSn = isExpiringSoon(med.expDate)
@@ -545,8 +698,8 @@ export default function MedicineInventory() {
                         {/* Rx status */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                            <RxI size={13} color={rx.color} strokeWidth={1.8} />
-                            <span style={{ fontSize:11.5, color:rx.color, fontWeight:600 }}>
+                            <RxI size={13} color={rx?.color ?? C.lilacAsh} strokeWidth={1.8} />
+                            <span style={{ fontSize:11.5, color:rx?.color ?? C.lilacAsh, fontWeight:600 }}>
                               {med.rxStatus==="Prescription Required"?"Rx Required":med.rxStatus==="Over The Counter"?"OTC":"Controlled"}
                             </span>
                           </div>
@@ -615,6 +768,35 @@ export default function MedicineInventory() {
                               onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}}
                             >
                               <Eye size={12} strokeWidth={2} /> {isOpen ? "Hide" : "View"}
+                            </button>
+
+                            {/* ── Delete ── */}
+                            <button
+                              onClick={()=>setDeleteTarget(med)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid rgba(192,57,43,0.28)`,
+                                background:"rgba(192,57,43,0.06)",
+                                color:C.danger,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
+                              onMouseEnter={e=>{
+                                e.currentTarget.style.background=C.danger
+                                e.currentTarget.style.borderColor=C.danger
+                                e.currentTarget.style.color=C.snow
+                                e.currentTarget.style.transform="translateY(-1px)"
+                                e.currentTarget.style.boxShadow="0 4px 14px rgba(192,57,43,0.32)"
+                              }}
+                              onMouseLeave={e=>{
+                                e.currentTarget.style.background="rgba(192,57,43,0.06)"
+                                e.currentTarget.style.borderColor="rgba(192,57,43,0.28)"
+                                e.currentTarget.style.color=C.danger
+                                e.currentTarget.style.transform="none"
+                                e.currentTarget.style.boxShadow="none"
+                              }}
+                            >
+                              <Trash2 size={12} strokeWidth={2} /> Delete
                             </button>
 
                           </div>
