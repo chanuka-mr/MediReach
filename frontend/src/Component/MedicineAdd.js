@@ -127,15 +127,23 @@ export default function MedicineAdd() {
 
   const validate = () => {
     const errs = {}
-    Object.keys(initialForm).forEach(k => {
-      if (k === "mediImage") {
-        if (imageRequired && !form[k]) errs[k] = "Image is required for prescription medicines"
-      } else {
-        if (!form[k]) errs[k] = "This field is required"
+    // Check all fields except mediImage
+    const requiredFields = Object.keys(initialForm).filter(k => k !== "mediImage")
+    requiredFields.forEach(k => {
+      if (!form[k] || (typeof form[k] === "string" && !form[k].trim())) {
+        errs[k] = "This field is required"
       }
     })
-    if (form.mediPrice && isNaN(form.mediPrice)) errs.mediPrice = "Must be a number"
-    if (form.mediStock  && isNaN(form.mediStock))  errs.mediStock  = "Must be a number"
+    // mediImage: only required for Prescription Required
+    if (imageRequired && !form.mediImage) {
+      errs.mediImage = "Image is required for prescription medicines"
+    }
+    // Numeric checks
+    if (form.mediPrice && isNaN(Number(form.mediPrice))) errs.mediPrice = "Must be a valid number"
+    if (form.mediStock  && isNaN(Number(form.mediStock)))  errs.mediStock  = "Must be a valid number"
+    if (Number(form.mediPrice) < 0)  errs.mediPrice = "Price cannot be negative"
+    if (Number(form.mediStock)  < 0)  errs.mediStock  = "Stock cannot be negative"
+    // Date check
     if (form.mediManufactureDate && form.mediExpiryDate) {
       if (new Date(form.mediExpiryDate) <= new Date(form.mediManufactureDate))
         errs.mediExpiryDate = "Expiry date must be after the manufacture date"
@@ -153,16 +161,45 @@ export default function MedicineAdd() {
     }
     setSubmitting(true); setApiError(null)
     try {
+      // Build payload — mediImage defaults to "N/A" when not required and not uploaded
+      const payload = {
+        mediName:               form.mediName.trim(),
+        mediPrice:              Number(form.mediPrice),
+        mediDescription:        form.mediDescription.trim(),
+        mediImage:              form.mediImage || "N/A",
+        mediCategory:           form.mediCategory,
+        mediStock:              Number(form.mediStock),
+        mediCompany:            form.mediCompany.trim(),
+        mediExpiryDate:         form.mediExpiryDate,
+        mediManufactureDate:    form.mediManufactureDate,
+        mediPrescriptionStatus: form.mediPrescriptionStatus,
+        Pharmacy:               form.Pharmacy,
+      }
+
+      console.log("Submitting medicine:", payload)   // helpful for debugging
+
       const res = await fetch(API, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ ...form, mediPrice:Number(form.mediPrice), mediStock:Number(form.mediStock) }),
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Failed to save medicine")
+
+      let data = {}
+      try { data = await res.json() } catch(_) {}
+
+      if (!res.ok) {
+        // Show the exact server error message if available
+        const msg = data.message || data.error || `Server error ${res.status}`
+        throw new Error(msg)
+      }
       setSubmitted(true)
     } catch(err) {
-      setApiError(err.message)
+      // Distinguish network errors from server errors
+      if (err.name === "TypeError") {
+        setApiError("Cannot reach the server. Make sure the backend is running on http://localhost:5000")
+      } else {
+        setApiError(err.message)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -422,23 +459,40 @@ export default function MedicineAdd() {
         {/* ── API Error ── */}
         {apiError && (
           <div style={{
-            background:"rgba(192,57,43,0.06)", border:`1px solid rgba(192,57,43,0.22)`,
-            borderRadius:10, padding:"13px 18px", marginBottom:22,
-            display:"flex", alignItems:"center", gap:12,
+            background:"rgba(192,57,43,0.06)", border:`1.5px solid rgba(192,57,43,0.28)`,
+            borderRadius:12, padding:"16px 20px", marginBottom:22,
             animation:"fadeUp 0.3s ease both",
           }}>
-            <AlertCircle size={18} color={C.danger} strokeWidth={2} />
-            <div>
-              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13.5 }}>Failed to save medicine</p>
-              <p style={{ margin:"2px 0 0", color:C.danger, fontSize:12, opacity:0.7 }}>{apiError}</p>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+              <div style={{
+                width:36, height:36, borderRadius:"50%", flexShrink:0,
+                background:"rgba(192,57,43,0.1)", border:"1px solid rgba(192,57,43,0.25)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>
+                <AlertCircle size={17} color={C.danger} strokeWidth={2} />
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ margin:"0 0 4px", fontWeight:700, color:C.danger, fontSize:14 }}>
+                  Failed to save medicine
+                </p>
+                <p style={{ margin:0, color:C.danger, fontSize:12.5, opacity:0.8, lineHeight:1.5 }}>
+                  {apiError}
+                </p>
+                <div style={{ marginTop:10, padding:"8px 12px", borderRadius:8,
+                  background:"rgba(192,57,43,0.05)", border:"1px solid rgba(192,57,43,0.15)" }}>
+                  <p style={{ margin:0, fontSize:11, color:C.danger, opacity:0.6, fontWeight:500 }}>
+                    Checklist: ① Backend running on port 5000 &nbsp;·&nbsp; ② CORS enabled &nbsp;·&nbsp; ③ MongoDB connected &nbsp;·&nbsp; ④ All required fields filled
+                  </p>
+                </div>
+              </div>
+              <button onClick={()=>setApiError(null)} style={{
+                background:"none", border:"none", cursor:"pointer",
+                color:C.danger, opacity:0.5, flexShrink:0,
+                display:"flex", alignItems:"center", padding:0,
+              }}>
+                <X size={16} />
+              </button>
             </div>
-            <button onClick={()=>setApiError(null)} style={{
-              marginLeft:"auto", background:"none", border:"none",
-              cursor:"pointer", color:C.danger, opacity:0.5, fontFamily:"inherit",
-              display:"flex", alignItems:"center",
-            }}>
-              <X size={16} />
-            </button>
           </div>
         )}
 

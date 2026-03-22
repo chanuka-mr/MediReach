@@ -142,23 +142,25 @@ export default function MedicineUpdate() {
         const res  = await fetch(`${API}/${id}`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.message || "Medicine not found")
+        // API returns { medicine: {...} } — extract the object
+        const m = data.medicine || data
         const loaded = {
-          mediName:             data.mediName             || "",
-          mediPrice:            data.mediPrice            ? String(data.mediPrice) : "",
-          mediDescription:      data.mediDescription      || "",
-          mediImage:            data.mediImage            || "",
-          mediCategory:         data.mediCategory         || "",
-          mediStock:            data.mediStock            ? String(data.mediStock) : "",
-          mediCompany:          data.mediCompany          || "",
-          mediExpiryDate:       data.mediExpiryDate       || "",
-          mediManufactureDate:  data.mediManufactureDate  || "",
-          mediPrescriptionStatus: data.mediPrescriptionStatus || "",
-          Pharmacy:             data.Pharmacy             || "",
+          mediName:               m.mediName               || "",
+          mediPrice:              m.mediPrice              ? String(m.mediPrice) : "",
+          mediDescription:        m.mediDescription        || "",
+          mediImage:              m.mediImage              || "",
+          mediCategory:           m.mediCategory           || "",
+          mediStock:              m.mediStock              ? String(m.mediStock) : "",
+          mediCompany:            m.mediCompany            || "",
+          mediExpiryDate:         m.mediExpiryDate         ? m.mediExpiryDate.split("T")[0] : "",
+          mediManufactureDate:    m.mediManufactureDate    ? m.mediManufactureDate.split("T")[0] : "",
+          mediPrescriptionStatus: m.mediPrescriptionStatus || "",
+          Pharmacy:               m.Pharmacy               || "",
         }
         setOriginal(loaded)
         setForm(loaded)
-        if (data.mediImage && data.mediImage.startsWith("http")) {
-          setImagePreview(data.mediImage)
+        if (m.mediImage && m.mediImage.startsWith("http")) {
+          setImagePreview(m.mediImage)
         }
       } catch (err) {
         setApiError(err.message)
@@ -237,7 +239,9 @@ export default function MedicineUpdate() {
       if (!res.ok) throw new Error(data.message || "Failed to update medicine")
       setOriginal({ ...form })
       setSaved(true)
-      setTimeout(() => setSaved(false), 3500)
+      // Navigate to inventory after 1.5s so toast is visible
+      // Navigate to the specific pharmacy's inventory page after save
+      setTimeout(() => navigate(`/medicineInventory?pharmacy=${encodeURIComponent(form.Pharmacy)}`), 1500)
     } catch (err) {
       setApiError(err.message)
     } finally {

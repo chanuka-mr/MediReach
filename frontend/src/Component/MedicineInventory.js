@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search, Filter, Package, AlertTriangle, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, ArrowUpDown,
@@ -7,7 +7,7 @@ import {
   TrendingDown, RefreshCw, Download, Eye,
   ShieldCheck, ShieldOff, ShieldAlert, Hash,
   ChevronLeft, ChevronRight,
-  Beaker, Clock, Layers,PencilLine
+  Beaker, Clock, Layers, Loader2, PencilLine
 } from 'lucide-react'
 
 // ── Palette — matches InventoryDashboard ─────────────────────────
@@ -23,23 +23,23 @@ const C = {
   danger:    "#C0392B",
 }
 
-const medicines = [
-  { id:"MED-001", name:"Amoxicillin 500mg",      category:"Antibiotic",      company:"Sun Pharma",     pharmacy:"Kandy Central Pharmacy",   price:145,  stock:820,  mfgDate:"2024-01-15", expDate:"2026-01-15", rxStatus:"Prescription Required" },
-  { id:"MED-002", name:"Metformin 850mg",         category:"Antidiabetic",    company:"Cipla Ltd",      pharmacy:"Galle Fort MedPoint",      price:95,   stock:44,   mfgDate:"2024-03-10", expDate:"2026-03-10", rxStatus:"Prescription Required" },
-  { id:"MED-003", name:"Amlodipine 5mg",          category:"Cardiovascular",  company:"GSK",            pharmacy:"Kandy Central Pharmacy",   price:210,  stock:310,  mfgDate:"2023-11-20", expDate:"2025-11-20", rxStatus:"Prescription Required" },
-  { id:"MED-004", name:"Salbutamol Inhaler",      category:"Respiratory",     company:"AstraZeneca",    pharmacy:"Jaffna Community Rx",      price:680,  stock:18,   mfgDate:"2024-02-05", expDate:"2026-02-05", rxStatus:"Prescription Required" },
-  { id:"MED-005", name:"Paracetamol 500mg",       category:"Analgesic",       company:"Hemas Pharma",   pharmacy:"Matara Rural Clinic",      price:35,   stock:1250, mfgDate:"2024-05-01", expDate:"2027-05-01", rxStatus:"Over The Counter" },
-  { id:"MED-006", name:"ORS Sachets",             category:"Rehydration",     company:"Nestle Health",  pharmacy:"Batticaloa MedStore",      price:25,   stock:940,  mfgDate:"2024-04-12", expDate:"2026-04-12", rxStatus:"Over The Counter" },
-  { id:"MED-007", name:"Oseltamivir 75mg",        category:"Antiviral",       company:"Roche",          pharmacy:"Kurunegala Health Hub",    price:1250, stock:72,   mfgDate:"2024-01-30", expDate:"2026-01-30", rxStatus:"Prescription Required" },
-  { id:"MED-008", name:"Fluconazole 150mg",       category:"Antifungal",      company:"Pfizer",         pharmacy:"Trincomalee Bay Pharmacy", price:320,  stock:165,  mfgDate:"2024-06-15", expDate:"2026-06-15", rxStatus:"Prescription Required" },
-  { id:"MED-009", name:"Cetirizine 10mg",         category:"Antihistamine",   company:"UCB Pharma",     pharmacy:"Galle Fort MedPoint",      price:55,   stock:690,  mfgDate:"2024-03-22", expDate:"2027-03-22", rxStatus:"Over The Counter" },
-  { id:"MED-010", name:"Vitamin D3 1000 IU",      category:"Supplement",      company:"Hemas Pharma",   pharmacy:"Anuradhapura PharmaCare",  price:120,  stock:0,    mfgDate:"2024-02-18", expDate:"2026-02-18", rxStatus:"Over The Counter" },
-  { id:"MED-011", name:"Morphine Sulfate 10mg",   category:"Analgesic",       company:"Neon Labs",      pharmacy:"Kandy Central Pharmacy",   price:890,  stock:32,   mfgDate:"2024-04-01", expDate:"2025-10-01", rxStatus:"Controlled Substance" },
-  { id:"MED-012", name:"Azithromycin 500mg",      category:"Antibiotic",      company:"Cipla Ltd",      pharmacy:"Matara Rural Clinic",      price:280,  stock:445,  mfgDate:"2024-05-20", expDate:"2026-05-20", rxStatus:"Prescription Required" },
-  { id:"MED-013", name:"Ibuprofen 400mg",         category:"Analgesic",       company:"Sun Pharma",     pharmacy:"Batticaloa MedStore",      price:65,   stock:875,  mfgDate:"2024-04-08", expDate:"2027-04-08", rxStatus:"Over The Counter" },
-  { id:"MED-014", name:"Atorvastatin 20mg",       category:"Cardiovascular",  company:"Torrent Pharma", pharmacy:"Trincomalee Bay Pharmacy", price:175,  stock:22,   mfgDate:"2023-12-10", expDate:"2025-12-10", rxStatus:"Prescription Required" },
-  { id:"MED-015", name:"Omeprazole 20mg",         category:"Other",           company:"AstraZeneca",    pharmacy:"Jaffna Community Rx",      price:88,   stock:510,  mfgDate:"2024-06-01", expDate:"2026-06-01", rxStatus:"Over The Counter" },
-]
+const API = "http://localhost:5000/medicines"
+
+// Map DB field names → normalised shape used in the UI
+function normalise(m) {
+  return {
+    id:       m._id || m.id || "",
+    name:     m.mediName     || m.name     || "",
+    category: m.mediCategory || m.category || "",
+    company:  m.mediCompany  || m.company  || "",
+    pharmacy: m.Pharmacy     || m.pharmacy || "",
+    price:    Number(m.mediPrice || m.price || 0),
+    stock:    Number(m.mediStock || m.stock || 0),
+    mfgDate:  m.mediManufactureDate || m.mfgDate || "",
+    expDate:  m.mediExpiryDate      || m.expDate || "",
+    rxStatus: m.mediPrescriptionStatus || m.rxStatus || "",
+  }
+}
 
 const stockStatus = (qty) => {
   if (qty===0)  return { label:"Out of Stock", color:C.danger,  bg:"rgba(192,57,43,0.07)",  border:"rgba(192,57,43,0.22)",  icon:XCircle }
@@ -55,9 +55,7 @@ const rxConfig = {
 
 const isExpiringSoon = (d) => { const diff=(new Date(d)-new Date())/(1000*60*60*24); return diff>0&&diff<=180 }
 const isExpired      = (d) => new Date(d)<new Date()
-const fmtDate        = (d) => new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})
-const categories     = ["All",...new Set(medicines.map(m=>m.category))]
-const pharmacies     = ["All",...new Set(medicines.map(m=>m.pharmacy))]
+const fmtDate        = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—"
 
 // ── Stock Bar ─────────────────────────────────────────────────────
 function StockBar({ qty }) {
@@ -116,19 +114,56 @@ function StatCard({ icon:Icon, value, label, sub, delay }) {
 
 // ── Main ──────────────────────────────────────────────────────────
 export default function MedicineInventory() {
-  const navigate = useNavigate()
-  const [search,      setSearch]      = useState("")
-  const [catFilter,   setCatFilter]   = useState("All")
-  const [pharmFilter, setPharmFilter] = useState("All")
-  const [rxFilter,    setRxFilter]    = useState("All")
-  const [stockFilter, setStockFilter] = useState("All")
-  const [sortKey,     setSortKey]     = useState("name")
-  const [sortDir,     setSortDir]     = useState("asc")
-  const [page,        setPage]        = useState(1)
-  const [expanded,    setExpanded]    = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
-  const [focusSearch, setFocusSearch] = useState(false)
+  const navigate   = useNavigate()
+  const location   = useLocation()
+
+  // Read ?pharmacy= param passed from InventoryDashboard Inventory button
+  const urlPharmacy = new URLSearchParams(location.search).get("pharmacy") || "All"
+
+  const [allMedicines, setAllMedicines] = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [fetchError,   setFetchError]   = useState(null)
+  const [search,       setSearch]       = useState("")
+  const [catFilter,    setCatFilter]    = useState("All")
+  const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)
+  const [rxFilter,     setRxFilter]     = useState("All")
+  const [stockFilter,  setStockFilter]  = useState("All")
+  const [sortKey,      setSortKey]      = useState("name")
+  const [sortDir,      setSortDir]      = useState("asc")
+  const [page,         setPage]         = useState(1)
+  const [expanded,     setExpanded]     = useState(null)
+  const [showFilters,  setShowFilters]  = useState(false)
+  const [focusSearch,  setFocusSearch]  = useState(false)
   const PER_PAGE = 8
+
+  // Fetch all medicines from MongoDB
+  const fetchMedicines = async () => {
+    setLoading(true); setFetchError(null)
+    try {
+      const res  = await fetch(API)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || "Failed to fetch")
+      // API returns { medicines: [...] } — extract the array
+      const list = Array.isArray(data) ? data : (data.medicines || [])
+      setAllMedicines(list.map(normalise))
+    } catch (err) {
+      setFetchError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => { fetchMedicines() }, [])
+
+  // Re-sync URL pharmacy param whenever navigation changes
+  React.useEffect(() => {
+    setPharmFilter(urlPharmacy)
+    setPage(1)
+  }, [urlPharmacy])
+
+  // Derive filter options dynamically from live data
+  const categories  = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.category).filter(Boolean))], [allMedicines])
+  const pharmacies  = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.pharmacy).filter(Boolean))], [allMedicines])
 
   const handleSort = (key) => {
     if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc")
@@ -136,10 +171,10 @@ export default function MedicineInventory() {
   }
 
   const filtered = useMemo(()=>{
-    return medicines
+    return allMedicines
       .filter(m=>
         (m.name.toLowerCase().includes(search.toLowerCase()) ||
-         m.id.toLowerCase().includes(search.toLowerCase()) ||
+         String(m.id).toLowerCase().includes(search.toLowerCase()) ||
          m.company.toLowerCase().includes(search.toLowerCase())) &&
         (catFilter==="All"    || m.category===catFilter) &&
         (pharmFilter==="All"  || m.pharmacy===pharmFilter) &&
@@ -154,17 +189,17 @@ export default function MedicineInventory() {
         if(typeof av==="string"){av=av.toLowerCase();bv=bv.toLowerCase()}
         return sortDir==="asc"?(av>bv?1:-1):(av<bv?1:-1)
       })
-  },[search,catFilter,pharmFilter,rxFilter,stockFilter,sortKey,sortDir])
+  },[allMedicines,search,catFilter,pharmFilter,rxFilter,stockFilter,sortKey,sortDir])
 
   const totalPages = Math.ceil(filtered.length/PER_PAGE)
   const pageData   = filtered.slice((page-1)*PER_PAGE,page*PER_PAGE)
 
   const stats = {
-    total:    medicines.length,
-    inStock:  medicines.filter(m=>m.stock>50).length,
-    low:      medicines.filter(m=>m.stock>0&&m.stock<=50).length,
-    out:      medicines.filter(m=>m.stock===0).length,
-    expiring: medicines.filter(m=>isExpiringSoon(m.expDate)).length,
+    total:    allMedicines.length,
+    inStock:  allMedicines.filter(m=>m.stock>50).length,
+    low:      allMedicines.filter(m=>m.stock>0&&m.stock<=50).length,
+    out:      allMedicines.filter(m=>m.stock===0).length,
+    expiring: allMedicines.filter(m=>isExpiringSoon(m.expDate)).length,
   }
 
   const thStyle = {
@@ -196,6 +231,7 @@ export default function MedicineInventory() {
         ::-webkit-scrollbar { width:4px; height:4px; }
         ::-webkit-scrollbar-thumb { background:${C.paleSlate}; border-radius:99px; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
         input::placeholder { color:${C.lilacAsh}; opacity:0.55; }
         select option { background:${C.snow}; color:${C.blueSlate}; }
         table { border-collapse:collapse; width:100%; }
@@ -251,14 +287,69 @@ export default function MedicineInventory() {
           </div>
         </div>
 
+        {/* Fetch error banner */}
+        {fetchError && (
+          <div style={{
+            padding:"12px 18px", borderRadius:10, marginBottom:20,
+            background:"rgba(192,57,43,0.06)", border:"1px solid rgba(192,57,43,0.22)",
+            display:"flex", alignItems:"center", gap:12, animation:"fadeUp 0.3s ease both",
+          }}>
+            <AlertTriangle size={16} color={C.danger} />
+            <div style={{ flex:1 }}>
+              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13 }}>Failed to load medicines</p>
+              <p style={{ margin:"2px 0 0", fontSize:12, color:C.danger, opacity:0.7 }}>{fetchError}</p>
+            </div>
+            <button onClick={fetchMedicines} style={{
+              padding:"6px 14px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+              border:"1.5px solid rgba(192,57,43,0.3)", background:"rgba(192,57,43,0.08)",
+              color:C.danger, fontWeight:600, fontSize:12,
+            }}>Retry</button>
+          </div>
+        )}
+
         {/* Stat Cards */}
         <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
-          <StatCard icon={Package}       value={stats.total}    label="Total Medicines" sub="Across all pharmacies" delay="0.07s" />
-          <StatCard icon={CheckCircle2}  value={stats.inStock}  label="In Stock"        sub="Sufficient supply"     delay="0.1s"  />
-          <StatCard icon={AlertTriangle} value={stats.low}      label="Low Stock"       sub="≤ 50 units remaining"  delay="0.13s" />
-          <StatCard icon={XCircle}       value={stats.out}      label="Out of Stock"    sub="Needs restocking"      delay="0.16s" />
-          <StatCard icon={Clock}         value={stats.expiring} label="Expiring Soon"   sub="Within 6 months"       delay="0.19s" />
+          <StatCard icon={Package}       value={loading ? "—" : stats.total}    label="Total Medicines" sub="Across all pharmacies" delay="0.07s" />
+          <StatCard icon={CheckCircle2}  value={loading ? "—" : stats.inStock}  label="In Stock"        sub="Sufficient supply"     delay="0.1s"  />
+          <StatCard icon={AlertTriangle} value={loading ? "—" : stats.low}      label="Low Stock"       sub="≤ 50 units remaining"  delay="0.13s" />
+          <StatCard icon={XCircle}       value={loading ? "—" : stats.out}      label="Out of Stock"    sub="Needs restocking"      delay="0.16s" />
+          <StatCard icon={Clock}         value={loading ? "—" : stats.expiring} label="Expiring Soon"   sub="Within 6 months"       delay="0.19s" />
         </div>
+
+        {/* Pharmacy context banner — shown when navigated from a specific pharmacy */}
+        {pharmFilter !== "All" && (
+          <div style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"11px 18px", borderRadius:10, marginBottom:14,
+            background:"rgba(2,62,138,0.06)", border:`1.5px solid rgba(2,62,138,0.18)`,
+            animation:"fadeUp 0.3s ease both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <Building2 size={15} color={C.techBlue} strokeWidth={2} />
+              <div>
+                <span style={{ fontSize:13, fontWeight:700, color:C.techBlue }}>
+                  {pharmFilter}
+                </span>
+                <span style={{ fontSize:12, color:C.lilacAsh, marginLeft:8 }}>
+                  — showing medicines registered to this pharmacy only
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={()=>{ setPharmFilter("All"); setPage(1) }}
+              style={{
+                background:"none", border:`1.5px solid rgba(2,62,138,0.22)`, borderRadius:7,
+                padding:"4px 12px", cursor:"pointer", fontFamily:"inherit",
+                color:C.techBlue, fontSize:12, fontWeight:600, transition:"all 0.2s",
+                display:"flex", alignItems:"center", gap:5,
+              }}
+              onMouseEnter={e=>{ e.currentTarget.style.background=C.techBlue; e.currentTarget.style.color=C.snow }}
+              onMouseLeave={e=>{ e.currentTarget.style.background="none"; e.currentTarget.style.color=C.techBlue }}
+            >
+              <ChevronRight size={11} style={{ transform:"rotate(180deg)" }} /> Show All
+            </button>
+          </div>
+        )}
 
         {/* Search + Filters */}
         <div style={{ marginBottom:14, animation:"fadeUp 0.4s ease 0.1s both" }}>
@@ -292,7 +383,7 @@ export default function MedicineInventory() {
                 </span>
               )}
             </button>
-            <span style={{ fontSize:12, color:C.lilacAsh }}>{filtered.length} of {medicines.length} medicines</span>
+            <span style={{ fontSize:12, color:C.lilacAsh }}>{loading ? "Loading..." : `${filtered.length} of ${allMedicines.length} medicines`}</span>
           </div>
 
           {showFilters && (
@@ -344,7 +435,6 @@ export default function MedicineInventory() {
             <table>
               <thead>
                 <tr>
-                  <ColHead col="id"       label="ID"           style={{ paddingLeft:22 }} />
                   <ColHead col="name"     label="Medicine"     />
                   <ColHead col="category" label="Category"     />
                   <ColHead col="company"  label="Manufacturer" />
@@ -356,7 +446,19 @@ export default function MedicineInventory() {
                 </tr>
               </thead>
               <tbody>
-                {pageData.length===0 ? (
+                {loading ? (
+                  <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
+                      <div style={{ width:52, height:52, borderRadius:13,
+                        background:"rgba(2,62,138,0.07)", border:"1.5px solid rgba(2,62,138,0.15)",
+                        display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Loader2 size={22} color={C.techBlue} style={{ animation:"spin 0.9s linear infinite" }} />
+                      </div>
+                      <p style={{ margin:0, fontSize:14, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>Loading medicines...</p>
+                      <p style={{ margin:0, fontSize:12, color:C.lilacAsh }}>Fetching from database</p>
+                    </div>
+                  </td></tr>
+                ) : pageData.length===0 ? (
                   <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
                     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
                       <div style={{ width:52, height:52, borderRadius:14, background:C.white,
@@ -387,11 +489,6 @@ export default function MedicineInventory() {
                         onMouseEnter={e=>{ if(!isOpen) e.currentTarget.style.background="rgba(2,62,138,0.02)" }}
                         onMouseLeave={e=>{ if(!isOpen) e.currentTarget.style.background=C.white }}
                       >
-                        {/* ID */}
-                        <td style={{ padding:"13px 16px 13px 22px", whiteSpace:"nowrap" }}>
-                          <span style={{ fontSize:11.5, fontWeight:700, color:C.lilacAsh, fontFamily:"'Sora',sans-serif" }}>{med.id}</span>
-                        </td>
-
                         {/* Name */}
                         <td style={{ padding:"13px 16px", minWidth:190 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -471,33 +568,20 @@ export default function MedicineInventory() {
                         </td>
 
                         {/* Actions */}
-                          <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
-                            <div style={{ display:"flex", gap:7, alignItems:"center" }}>
-
-                            {/* View / Hide */}
-                            <button onClick={()=>setExpanded(isOpen?null:med.id)} style={{
-                              padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                              border:`1.5px solid ${isOpen ? C.techBlue : C.paleSlate}`,
-                              background: isOpen ? "rgba(2,62,138,0.07)" : C.white,
-                              color: isOpen ? C.techBlue : C.lilacAsh,
-                              fontWeight:600, fontSize:12, transition:"all 0.2s",
-                              display:"flex", alignItems:"center", gap:5,
-                            }}
-                              onMouseEnter={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}}
-                              onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}}
-                            >
-                              <Eye size={12} strokeWidth={2} /> {isOpen ? "Hide" : "View"}
-                            </button>
+                        <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
+                          <div style={{ display:"flex", gap:7, alignItems:"center" }}>
 
                             {/* Update */}
-                            <button onClick={()=>navigate(`/updateMedicine/:id`)} style={{
-                              padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                              border:`1.5px solid rgba(76,110,245,0.28)`,
-                              background:"rgba(76,110,245,0.07)",
-                              color:C.lilacAsh,
-                              fontWeight:600, fontSize:12, transition:"all 0.2s",
-                              display:"flex", alignItems:"center", gap:5,
-                            }}
+                            <button
+                              onClick={()=>navigate(`/updateMedicine/${med.id}`)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid rgba(76,110,245,0.28)`,
+                                background:"rgba(76,110,245,0.07)",
+                                color:C.lilacAsh,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
                               onMouseEnter={e=>{
                                 e.currentTarget.style.background=C.lilacAsh
                                 e.currentTarget.style.borderColor=C.lilacAsh
@@ -516,8 +600,25 @@ export default function MedicineInventory() {
                               <PencilLine size={12} strokeWidth={2} /> Update
                             </button>
 
+                            {/* View / Hide */}
+                            <button
+                              onClick={()=>setExpanded(isOpen ? null : med.id)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid ${isOpen ? C.techBlue : C.paleSlate}`,
+                                background: isOpen ? "rgba(2,62,138,0.07)" : C.white,
+                                color: isOpen ? C.techBlue : C.lilacAsh,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
+                              onMouseEnter={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}}
+                              onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}}
+                            >
+                              <Eye size={12} strokeWidth={2} /> {isOpen ? "Hide" : "View"}
+                            </button>
+
                           </div>
-                        </td>   
+                        </td>
                       </tr>
 
                       {/* Expanded detail */}
@@ -568,7 +669,7 @@ export default function MedicineInventory() {
             <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
               background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <span style={{ fontSize:12, color:C.lilacAsh }}>
-                Page {page} of {totalPages} · {filtered.length} results
+                Page {page} of {totalPages} · {loading ? '...' : filtered.length} results
               </span>
               <div style={{ display:"flex", gap:6 }}>
                 <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
