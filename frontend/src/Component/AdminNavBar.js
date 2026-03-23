@@ -438,8 +438,8 @@ export default function Layout() {
 
             {/* Brand */}
             <div className="mr-brand" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
-              <div className="mr-logo-wrap">
-                <Stethoscope size={20} color="white" strokeWidth={2.2} />
+              <div className="mr-logo-wrap" style={{ background: 'white', padding: '4px' }}>
+                <img src="/logo.png" alt="MediReach Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 <div className="mr-logo-pulse" />
               </div>
               {!collapsed && (
