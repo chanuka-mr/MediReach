@@ -13,7 +13,7 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [userLocation, setUserLocation] = useState(null);
-  
+
   const districts = ['Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Galle', 'Matara', 'Jaffna', 'Kurunegala', 'Badulla'];
 
   const fetchPharmacies = useCallback(async (params = {}) => {
@@ -65,18 +65,18 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
         (err) => {
           console.warn('Geolocation denied, showing default view.');
           if (type === 'nearby') {
-             setError('Location access was denied. You can enable it in your browser settings to see pharmacies near you.');
+            setError('Location access was denied. You can enable it in your browser settings to see pharmacies near you.');
           } else {
-             fetchPharmacies();
+            fetchPharmacies();
           }
           setLoading(false);
         }
       );
     } else {
       if (type === 'nearby') {
-         setError('Geolocation is not supported by your browser.');
+        setError('Geolocation is not supported by your browser.');
       } else {
-         fetchPharmacies();
+        fetchPharmacies();
       }
       setLoading(false);
     }
@@ -93,22 +93,22 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
     } else {
       fetchPharmacies();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, isUserView]);
 
   const filteredPharmacies = pharmacies.filter(pharmacy => {
     const matchesSearch = pharmacy.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         pharmacy.district.toLowerCase().includes(searchTerm.toLowerCase());
+      pharmacy.district.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDistrict = selectedDistrict === 'All' || pharmacy.district === selectedDistrict;
     return matchesSearch && matchesDistrict;
   });
 
   // Mock functions for PharmacyCard compatibility
-  const handleEdit = () => {};
-  const handleDelete = () => {};
-  const handleToggleStatus = () => {};
-  const handleGenerateQR = () => {};
-  const handleToggleSelect = () => {};
+  const handleEdit = () => { };
+  const handleDelete = () => { };
+  const handleToggleStatus = () => { };
+  const handleGenerateQR = () => { };
+  const handleToggleSelect = () => { };
 
   return (
     <div className={isUserView ? "p-0" : "p-6"}>
@@ -192,9 +192,9 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 ${isUserView ? 'px-8 pb-12' : ''}`}>
           {filteredPharmacies.map(pharmacy => (
             isUserView ? (
-              <PharmacyUserCard 
-                key={pharmacy._id} 
-                pharmacy={pharmacy} 
+              <PharmacyUserCard
+                key={pharmacy._id}
+                pharmacy={pharmacy}
                 userLocation={userLocation}
                 onViewInfo={onViewInfo}
               />
