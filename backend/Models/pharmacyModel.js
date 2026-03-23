@@ -60,6 +60,10 @@ const pharmacySchema = new mongoose.Schema({
   pharmacistName: {
     type: String,
     required: [true, 'Pharmacist name is required']
+  },
+  image: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
