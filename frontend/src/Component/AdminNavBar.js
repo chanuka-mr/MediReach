@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Bell,
   Settings,
-  Stethoscope,
 } from 'lucide-react'
 
 
