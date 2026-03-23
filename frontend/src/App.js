@@ -12,6 +12,7 @@ import OpenNowPharmacies from './Component/pharmacy/OpenNowPharmacies';
 import TwentyFourSevenPharmacies from './Component/pharmacy/TwentyFourSevenPharmacies';
 import UserNavBar from './Component/pharmacyUserView/UserNavBar';
 import PharmacyUserView from './Component/pharmacyUserView/PharmacyUserView';
+import AboutUs from './Component/AboutUs';
 
 // Main Admin Dashboard
 const HomeDashboard = () => {
@@ -175,7 +176,7 @@ function App() {
         {/* User Portal Routes */}
         <Route path="/user" element={<UserNavBar />}>
           <Route index element={<UserHome />} />
-          <Route path="about" element={<div className="p-8"><h1>About Us</h1></div>} />
+          <Route path="about" element={<AboutUs />} />
           <Route path="contact" element={<div className="p-8"><h1>Contact Us</h1></div>} />
           <Route path="pharmacies" element={<PharmacyUserView />} />
           <Route path="order" element={<div className="p-8"><h1>Order Now</h1></div>} />
