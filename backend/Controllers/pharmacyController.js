@@ -1,4 +1,5 @@
 const Pharmacy = require('../Models/pharmacyModel');
+const QRCode = require('qrcode');
 
 // @desc    Get all pharmacies with pagination and filtering
 // @route   GET /api/pharmacies
@@ -261,7 +262,7 @@ exports.updatePharmacy = async (req, res) => {
     // Prevent updating certain fields
     const allowedUpdates = [
       'name', 'district', 'location', 'contactNumber', 
-      'email', 'operatingHours', 'pharmacistName'
+      'email', 'operatingHours', 'pharmacistName', 'image'
     ];
     
     // Filter out fields that are not allowed to be updated
@@ -828,7 +829,11 @@ exports.getOpenNowPharmacies = async (req, res) => {
               { $lte: [currentTime, '$operatingHours.close'] }
             ]
           }
-        }
+        },
+        // Always include 24/7 pharmacies (open: 00:00, close: 23:59 / 00:00 / 24:00)
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '23:59' },
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '00:00' },
+        { 'operatingHours.open': '00:00', 'operatingHours.close': '24:00' }
       ]
     });
 
@@ -1057,7 +1062,7 @@ exports.exportPharmaciesCSV = async (req, res) => {
   }
 };
 
-const QRCode = require('qrcode');
+
 
 // @desc    Generate QR code for pharmacy
 // @route   GET /api/pharmacies/:id/qrcode
@@ -1098,7 +1103,8 @@ exports.generatePharmacyQR = async (req, res) => {
     console.error('❌ Error generating QR code:', error);
     res.status(500).json({
       status: 'error',
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
