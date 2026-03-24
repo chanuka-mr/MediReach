@@ -15,8 +15,10 @@ const { validateRequest, schemas } = require('../Middleware/validationMiddleware
 
 // router.use(protect);
 
+const upload = require('../Config/cloudinaryConfig');
+
 // Patient routes
-router.post('/request', validateRequest(schemas.createMedRequest), createRequest);
+router.post('/request', upload.single('prescription_image'), validateRequest(schemas.createMedRequest), createRequest);
 router.get('/request', getAllRequests);
 router.get('/request/:id', getRequestById);
 router.put('/request/:id', updateRequest);

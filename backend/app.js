@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config(); // Load environment variables BEFORE other imports
 const cors = require('cors');
 const morgan = require('morgan');
 const cron = require('node-cron');
@@ -16,7 +17,8 @@ const drugRoutes = require('./Routes/drugRoutes');
 const cancellationRoutes = require('./Routes/cancellationRoutes');
 const routingRoutes = require('./Routes/routingRoutes');
 
-dotenv.config();
+
+// Connect to Database
 
 // Connect to Database
 connectDB();

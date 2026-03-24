@@ -4,6 +4,15 @@ const MedicationRequest = require('../Model/MedicationRequest');
 const createRequest = async (req, res, next) => {
     try {
         const patient_id = req.user ? req.user._id : req.body.patient_id;
+
+        // Handle file upload
+        if (req.file) {
+            req.body.prescription_image = req.file.path; // Cloudinary URL
+        } else {
+            // Remove any malformed or object data that might have come through without being processed correctly
+            delete req.body.prescription_image;
+        }
+
         const request = await romsService.createRequest(req.body, patient_id);
         res.status(201).json(request);
     } catch (error) {

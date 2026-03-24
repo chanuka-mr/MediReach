@@ -1,24 +1,30 @@
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import Navbar from './Components/Navbar';
+import OrderForm from './Pages/OrderForm';
+import OrderDashboard from './Pages/OrderDashboard';
+import OrderDetails from './Pages/OrderDetails';
+import PaymentUI from './Pages/PaymentUI';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <Navbar />
+        <main className="content">
+          <Routes>
+            <Route path="/" element={<Navigate to="/order-form" />} />
+            <Route path="/order-form" element={<OrderForm />} />
+            <Route path="/order-dashboard" element={<OrderDashboard />} />
+            <Route path="/order-details" element={<OrderDetails />} />
+            <Route path="/payment" element={<PaymentUI />} />
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/order-form" />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 

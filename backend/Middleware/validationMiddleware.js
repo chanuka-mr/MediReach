@@ -24,7 +24,8 @@ const schemas = {
         preferred_pharmacy_id: Joi.string().optional()
     }),
     processAction: Joi.object({
-        action: Joi.string().valid('Approve', 'Reject').required(),
+        action: Joi.string().valid('Approve', 'Reject', 'Ready').required(),
+        pharmacy_id: Joi.alternatives().try(Joi.string(), Joi.number()).optional(),
         notes: Joi.string().allow('')
     }),
     cancelRequest: Joi.object({

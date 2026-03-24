@@ -6,17 +6,28 @@ const RequestCancellation = require('../Model/RequestCancellation');
  * 1. Create Medication Request
  */
 const createRequest = async (requestData, patient_id) => {
-    // Default expiry: 24 hours if not provided
-    const expiry_time = requestData.expiry_time || new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Default expiry: 2 days if not provided (matching frontend requirement)
+    const expiry_time = requestData.expiry_time || new Date(Date.now() + 48 * 60 * 60 * 1000);
+    // Trim IDs to avoid mismatch
+    const pharmacy_id_to_assign = (requestData.preferred_pharmacy_id || requestData.pharmacy_id || '').trim();
+    const clean_patient_id = (patient_id || '').trim();
 
     const request = await MedicationRequest.create({
         ...requestData,
-        patient_id,
-        expiry_time
+        patient_id: clean_patient_id,
+        expiry_time,
+        pharmacy_id: pharmacy_id_to_assign,
+        status: 'Pending'
     });
 
-    // Strategy: Assign to a pharmacy if specified
-    await assignToPharmacy(request._id, requestData.preferred_pharmacy_id);
+    // Create a routing entry for the assigned pharmacy
+    if (pharmacy_id_to_assign) {
+        await RequestRouting.create({
+            request_id: request._id,
+            pharmacy_id: pharmacy_id_to_assign,
+            route_status: 'Sent'
+        });
+    }
 
     return request;
 };
@@ -44,8 +55,10 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes) => {
     const request = await MedicationRequest.findById(request_id);
 
     if (!request) throw new Error('Request not found');
-    if (request.pharmacy_id.toString() !== pharmacy_id.toString()) {
-        throw new Error('Not authorized to process this request');
+
+    // Null-safe check for pharmacy assignment
+    if (!request.pharmacy_id || request.pharmacy_id.toString() !== pharmacy_id.toString()) {
+        throw new Error('Not authorized to process this request. This order might not be assigned to your pharmacy.');
     }
 
     if (action === 'Approve') {
@@ -63,7 +76,11 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes) => {
 
         // Multi-Pharmacy Fallback
         await fallbackToNextPharmacy(request_id, pharmacy_id);
+    } else if (action === 'Ready') {
+        request.status = 'Ready';
     }
+
+    if (notes) request.notes = notes; // Append or update notes
 
     await request.save();
     return request;
