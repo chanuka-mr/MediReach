@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ForgotPasswordPage from "./ForgotPasswordPage";
 
 // ── Icons ────────────────────────────────────────────
 const GridIcon = () => (
@@ -133,6 +134,7 @@ export default function AuthPage() {
   const [showConf, setShowConf]   = useState(false);
   const [loading, setLoading]     = useState(false);
   const [remember, setRemember]   = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   const [lEmail,    setLEmail]    = useState("");
   const [lPass,     setLPass]     = useState("");
@@ -188,6 +190,10 @@ export default function AuthPage() {
 
   const DURATION = "0.38s";
   const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+  if (showForgot) {
+    return <ForgotPasswordPage onBackToLogin={() => { setShowForgot(false); setMode("login"); }} />;
+  }
 
   return (
     <div
@@ -372,7 +378,12 @@ export default function AuthPage() {
                 </div>
                 <span className="text-[12px] text-[#4A5568] select-none">Remember me</span>
               </label>
-              <a href="#" className="text-[12px] font-semibold no-underline" style={{ color: INDIGO }}>Forgot password?</a>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-[12px] font-semibold bg-transparent border-none cursor-pointer p-0 font-sans"
+                style={{ color: INDIGO }}
+              >Forgot password?</button>
             </div>
 
             <button
