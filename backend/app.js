@@ -11,9 +11,11 @@ app.use(express.json());
 
 // Import routes
 const pharmacyRoutes = require("./Routes/pharmacyRoutes");
+const inquiryRoutes = require("./Routes/inquiryRoutes");
 
 // Mount routes
 app.use("/api/pharmacies", pharmacyRoutes);
+app.use("/api/inquiries", inquiryRoutes);
 
 // SIMPLE TEST ROUTE - This MUST work
 app.get("/test", (req, res) => {

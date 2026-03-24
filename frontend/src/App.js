@@ -13,6 +13,9 @@ import TwentyFourSevenPharmacies from './Component/pharmacy/TwentyFourSevenPharm
 import UserNavBar from './Component/pharmacyUserView/UserNavBar';
 import PharmacyUserView from './Component/pharmacyUserView/PharmacyUserView';
 import AboutUs from './Component/AboutUs';
+import ContactUs from './Component/ContactUs';
+import InquiryManagement from './Component/pharmacy/InquiryManagement';
+import UserInquiryControl from './Component/pharmacyUserView/UserInquiryControl';
 
 // Main Admin Dashboard
 const HomeDashboard = () => {
@@ -170,6 +173,7 @@ function App() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="order" element={<Orders />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="inquiries" element={<InquiryManagement />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
@@ -177,7 +181,8 @@ function App() {
         <Route path="/user" element={<UserNavBar />}>
           <Route index element={<UserHome />} />
           <Route path="about" element={<AboutUs />} />
-          <Route path="contact" element={<div className="p-8"><h1>Contact Us</h1></div>} />
+          <Route path="contact" element={<ContactUs />} />
+          <Route path="inquiries" element={<UserInquiryControl />} />
           <Route path="pharmacies" element={<PharmacyUserView />} />
           <Route path="order" element={<div className="p-8"><h1>Order Now</h1></div>} />
           <Route path="chats" element={<div className="p-8"><h1>Pharmacy Chats</h1></div>} />

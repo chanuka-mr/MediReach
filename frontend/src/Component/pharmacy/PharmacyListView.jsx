@@ -82,12 +82,7 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
     }
   }, [fetchWithLocation, fetchPharmacies, type]);
 
-  const hasFetched = useRef(false);
-
   useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-
     if (type === 'nearby' || isUserView) {
       requestGeolocation();
     } else {

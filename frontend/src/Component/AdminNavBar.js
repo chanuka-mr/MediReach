@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Bell,
   Settings,
+  Mail,
 } from 'lucide-react'
 
 
@@ -45,6 +46,14 @@ const navItems = [
     tag: "Orders",
     desc: "Pharmacy order requests",
     accent: "#FB923C",
+  },
+  {
+    label: "Inquiry Management",
+    path: "/inquiries",
+    icon: Mail,
+    tag: "Support",
+    desc: "Patient inquiries",
+    accent: "#F472B6",
   },
 ]
 

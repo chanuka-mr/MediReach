@@ -18,7 +18,7 @@ export default function PharmacyUserView() {
   const [selectedPharmacy, setSelectedPharmacy] = useState(null);
 
   const handleOrder = (id) => {
-    navigate('/order');
+    navigate('/user/order');
     setSelectedPharmacy(null);
   };
 

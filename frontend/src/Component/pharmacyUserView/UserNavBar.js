@@ -13,16 +13,26 @@ import {
   Settings,
   Stethoscope,
   Home,
+  History,
 } from 'lucide-react'
 
-const navItems = [
+const generalNavItems = [
   { label: "Home", path: "/user", icon: Home, tag: "Home", desc: "Welcome & overview", accent: "#38BDF8" },
   { label: "About Us", path: "/user/about", icon: Info, tag: "About", desc: "Our mission & story", accent: "#A78BFA" },
   { label: "Contact Us", path: "/user/contact", icon: Phone, tag: "Contact", desc: "Get in touch with us", accent: "#34D399" },
+]
+
+const inquiryNavItems = [
+  { label: "My Inquiries", path: "/user/inquiries", icon: History, tag: "Trace", desc: "Manage your submissions", accent: "#3B82F6" },
+]
+
+const serviceNavItems = [
   { label: "Order Now", path: "/user/order", icon: ShoppingBag, tag: "Order", desc: "Place a medicine order", accent: "#FB923C" },
   { label: "Pharmacies", path: "/user/pharmacies", icon: Building2, tag: "Network", desc: "Find nearby pharmacies", accent: "#F472B6" },
   { label: "Chats", path: "/user/chats", icon: MessageCircle, tag: "Chat", desc: "Message your pharmacy", accent: "#FBBF24" },
 ]
+
+const navItems = [...generalNavItems, ...inquiryNavItems, ...serviceNavItems]
 
 const bottomNav = [
   { label: "Notifications", path: "/user/notifications", icon: Bell },
@@ -417,72 +427,123 @@ export default function UserNavBar() {
 
             {/* Nav */}
             <nav className="ul-nav" style={{ padding: collapsed ? '6px 10px 8px' : '6px 12px 8px' }}>
-              {navItems.map((item) => {
+              {navItems.map((item, index) => {
                 const active = location.pathname === item.path
                 const hovered = hoveredPath === item.path
                 const Icon = item.icon
                 const accent = item.accent
 
+                // Insert section dividers
+                const isFirstInquiry = item.path === '/user/inquiries'
+                const isFirstService = item.path === '/user/order'
+
                 return (
-                  <button
-                    key={item.path}
-                    className={`ul-nav-item ${active ? 'active' : ''}`}
-                    onClick={() => navigate(item.path)}
-                    onMouseEnter={() => setHoveredPath(item.path)}
-                    onMouseLeave={() => setHoveredPath(null)}
-                    style={{
-                      padding: collapsed ? '11px 0' : '9px 12px 9px 14px',
-                      justifyContent: collapsed ? 'center' : 'flex-start',
-                    }}
-                  >
-                    {active && (
-                      <div className="ul-active-strip"
-                        style={{ background: `linear-gradient(180deg, ${accent}, ${accent}88)` }}
-                      />
-                    )}
-                    {active && (
-                      <div className="ul-item-glow" style={{ background: accent }} />
-                    )}
-                    {collapsed && <div className="ul-tooltip">{item.label}</div>}
-
-                    <div className="ul-icon-wrap" style={active ? {
-                      background: `${accent}22`,
-                      borderColor: `${accent}44`,
-                      boxShadow: `0 3px 14px ${accent}28`,
-                    } : {}}>
-                      <Icon
-                        size={17}
-                        color={active ? accent : hovered ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.38)'}
-                        strokeWidth={active ? 2.2 : 1.8}
-                      />
-                    </div>
-
-                    {!collapsed && (
-                      <div className="ul-item-body">
-                        <span className="ul-item-label" style={{
-                          color: active ? '#ffffff' : hovered ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.5)',
-                          fontWeight: active ? 600 : 400,
-                        }}>
-                          {item.label}
-                        </span>
-                        <span className="ul-item-desc" style={{
-                          color: active ? `${accent}99` : 'rgba(255,255,255,0.22)',
-                        }}>
-                          {item.desc}
-                        </span>
+                  <React.Fragment key={item.path}>
+                    {isFirstInquiry && (
+                      <div style={{
+                        margin: '8px 4px',
+                        padding: collapsed ? '0' : '0 4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                        {!collapsed && (
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(59,130,246,0.6)',
+                            whiteSpace: 'nowrap',
+                          }}>My Submissions</span>
+                        )}
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
                       </div>
                     )}
 
-                    {!collapsed && active && (
-                      <span className="ul-item-badge" style={{
-                        color: accent,
-                        background: `${accent}18`,
-                        borderColor: `${accent}40`,
+                    {isFirstService && (
+                      <div style={{
+                        margin: '8px 4px',
+                        padding: collapsed ? '0' : '0 4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                       }}>
-                        {item.tag}
-                      </span>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                        {!collapsed && (
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(167,139,250,0.6)',
+                            whiteSpace: 'nowrap',
+                          }}>Medical Services</span>
+                        )}
+                        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                      </div>
                     )}
-                  </button>
+
+                    <button
+                      className={`ul-nav-item ${active ? 'active' : ''}`}
+                      onClick={() => navigate(item.path)}
+                      onMouseEnter={() => setHoveredPath(item.path)}
+                      onMouseLeave={() => setHoveredPath(null)}
+                      style={{
+                        padding: collapsed ? '11px 0' : '9px 12px 9px 14px',
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                      }}
+                    >
+                      {active && (
+                        <div className="ul-active-strip"
+                          style={{ background: `linear-gradient(180deg, ${accent}, ${accent}88)` }}
+                        />
+                      )}
+                      {active && (
+                        <div className="ul-item-glow" style={{ background: accent }} />
+                      )}
+                      {collapsed && <div className="ul-tooltip">{item.label}</div>}
+
+                      <div className="ul-icon-wrap" style={active ? {
+                        background: `${accent}22`,
+                        borderColor: `${accent}44`,
+                        boxShadow: `0 3px 14px ${accent}28`,
+                      } : {}}>
+                        <Icon
+                          size={17}
+                          color={active ? accent : hovered ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.38)'}
+                          strokeWidth={active ? 2.2 : 1.8}
+                        />
+                      </div>
+
+                      {!collapsed && (
+                        <div className="ul-item-body">
+                          <span className="ul-item-label" style={{
+                            color: active ? '#ffffff' : hovered ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.5)',
+                            fontWeight: active ? 600 : 400,
+                          }}>
+                            {item.label}
+                          </span>
+                          <span className="ul-item-desc" style={{
+                            color: active ? `${accent}99` : 'rgba(255,255,255,0.22)',
+                          }}>
+                            {item.desc}
+                          </span>
+                        </div>
+                      )}
+
+                      {!collapsed && active && (
+                        <span className="ul-item-badge" style={{
+                          color: accent,
+                          background: `${accent}18`,
+                          borderColor: `${accent}40`,
+                        }}>
+                          {item.tag}
+                        </span>
+                      )}
+                    </button>
+                  </React.Fragment>
                 )
               })}
 
