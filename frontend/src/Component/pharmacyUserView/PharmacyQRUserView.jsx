@@ -228,30 +228,30 @@ const PharmacyQRUserView = () => {
                                  <div
                                     key={p._id}
                                     onClick={() => setSelectedPharmacy(p)}
-                                    className="group relative bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 hover:shadow-2xl hover:shadow-slate-300/50 hover:border-blue-300 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between min-h-[180px]"
+                                    className="group relative bg-slate-50 rounded-[2rem] p-6 shadow-sm border border-blue-300 hover:shadow-2xl hover:shadow-blue-300/20 hover:border-blue-400 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between min-h-[180px]"
                                  >
                                     {/* Card Graphic Top Right corner */}
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-slate-50 to-transparent rounded-bl-full -mr-10 -mt-10 opacity-50 group-hover:from-blue-50 transition-colors duration-500" />
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-white to-transparent rounded-bl-full -mr-10 -mt-10 opacity-50 transition-colors duration-500" />
 
                                     <div className="relative z-10 flex items-start justify-between">
                                        <div>
                                           <div className="flex items-center gap-2 mb-3">
-                                             <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-100 flex items-center gap-1">
-                                                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Network
+                                             <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-200 flex items-center gap-1.5">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> NETWORK
                                              </span>
-                                             <span className="px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-widest border border-slate-100">
+                                             <span className="px-2 py-1 bg-white text-slate-500 rounded-md text-[9px] font-black uppercase tracking-widest border border-slate-100 shadow-sm">
                                                 ID: {p._id.substring(18, 24).toUpperCase()}
                                              </span>
                                           </div>
-                                          <h4 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-1 truncate max-w-[200px] sm:max-w-xs">{p.name}</h4>
-                                          <p className="text-sm font-medium text-slate-500 flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-xs">
+                                          <h4 className="text-2xl font-black text-blue-600 mb-1 truncate max-w-[200px] sm:max-w-xs">{p.name}</h4>
+                                          <p className="text-sm font-semibold text-slate-500 flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-xs">
                                              <Phone size={14} className="text-slate-400" /> {p.contactNumber || 'No phone listed'}
                                           </p>
                                        </div>
                                     </div>
 
                                     {/* Bottom Row: Metric logic and Action */}
-                                    <div className="relative z-10 flex items-end justify-between mt-8 pt-5 border-t border-slate-100 border-dashed">
+                                    <div className="relative z-10 flex items-end justify-between mt-8 pt-5 border-t border-slate-200 border-dashed">
                                        <div className="flex items-center gap-4">
                                           <div>
                                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</p>
@@ -263,7 +263,7 @@ const PharmacyQRUserView = () => {
                                              </div>
                                           </div>
                                        </div>
-                                       <div className="flex items-center gap-3 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                                       <div className="flex items-center gap-3 text-white font-bold text-sm bg-blue-600 px-5 py-2.5 rounded-[0.8rem] hover:bg-blue-700 transition-colors duration-300 shadow-md shadow-blue-500/20">
                                           View Code <QrCode size={18} />
                                        </div>
                                     </div>
@@ -285,15 +285,15 @@ const PharmacyQRUserView = () => {
                   onClick={() => setSelectedPharmacy(null)}
                />
 
-               <div className="relative bg-white w-full max-w-[420px] rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-0 animate-in zoom-in-95 font-sans duration-300 ease-out overflow-hidden flex flex-col border border-white/50 ring-1 ring-slate-900/5">
+               <div className="relative bg-white w-full max-w-[420px] max-h-[90vh] overflow-y-auto custom-scrollbar rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-0 animate-in zoom-in-95 font-sans duration-300 ease-out flex flex-col border border-white/50 ring-1 ring-slate-900/5">
 
                   {/* Modal Header Cover */}
-                  <div className="relative h-40 bg-slate-900 w-full overflow-hidden p-8">
+                  <div className="relative shrink-0 h-40 bg-slate-900 w-full overflow-hidden p-8">
                      <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 mix-blend-screen" />
                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.05]" />
                      <button
                         onClick={() => setSelectedPharmacy(null)}
-                        className="absolute top-6 right-6 p-2 bg-white/10 text-white hover:bg-white/20 rounded-full transition-colors backdrop-blur-md"
+                        className="absolute top-6 right-6 p-2 bg-white/10 text-white hover:bg-white/20 rounded-full transition-colors backdrop-blur-md z-20"
                      >
                         <X size={20} strokeWidth={2.5} />
                      </button>
@@ -310,32 +310,26 @@ const PharmacyQRUserView = () => {
                   </div>
 
                   {/* Modal Body: The QR Code */}
-                  <div className="p-10 flex flex-col items-center bg-white relative z-20 -mt-6 rounded-t-[2.5rem]">
+                  <div className="p-8 sm:p-10 flex flex-col items-center bg-white relative z-20 -mt-6 rounded-t-[2.5rem]">
 
                      <div className="relative group mb-8">
                         {/* Bounding box glow */}
                         <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 opacity-20 group-hover:opacity-40 blur-xl transition-opacity duration-700" />
 
-                        <div className="relative bg-white p-6 rounded-[2rem] border-2 border-slate-100 shadow-2xl flex items-center justify-center transform transition-transform duration-500 group-hover:scale-[1.02]">
+                        <div className="relative bg-white p-4 sm:p-6 rounded-[2rem] border-2 border-slate-100 shadow-2xl flex items-center justify-center transform transition-transform duration-500 group-hover:scale-[1.02]">
                            <QRCodeSVG
                               value={`${HOST_URL}/pharmacy-qr/${selectedPharmacy._id}`}
                               size={220}
                               bgColor={"#ffffff"}
                               fgColor={"#0f172a"}
-                              level={"H"}
-                              includeMargin={false}
-                              imageSettings={{
-                                 src: "https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_2012_logo.png", // Usually a brand logo, replaced with generic or empty
-                                 height: 0,
-                                 width: 0,
-                                 excavate: false,
-                              }}
+                              level={"M"}
+                              includeMargin={true}
                            />
                            {/* Custom Tracker crosshairs */}
-                           <div className="absolute top-4 left-4 w-4 h-4 border-t-4 border-l-4 border-blue-500 rounded-tl-lg" />
-                           <div className="absolute top-4 right-4 w-4 h-4 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
-                           <div className="absolute bottom-4 left-4 w-4 h-4 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />
-                           <div className="absolute bottom-4 right-4 w-4 h-4 border-b-4 border-r-4 border-blue-500 rounded-br-lg" />
+                           <div className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl-xl" />
+                           <div className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr-xl" />
+                           <div className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl-xl" />
+                           <div className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-blue-500 rounded-br-xl" />
                         </div>
                      </div>
 
@@ -346,7 +340,7 @@ const PharmacyQRUserView = () => {
                      {/* Action Button */}
                      <Link
                         to={`/pharmacy-qr/${selectedPharmacy._id}`}
-                        className="w-full relative py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] group/btn"
+                        className="w-full relative py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] group/btn shrink-0"
                      >
                         <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                         Launch Mobile Protocol <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
