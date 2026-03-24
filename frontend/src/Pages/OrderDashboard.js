@@ -81,6 +81,7 @@ const OrderDashboard = () => {
                             value={pharmacyId}
                             onChange={(e) => setPharmacyId(e.target.value)}
                         >
+                            <option value="ALL">🌍 Show All Branches</option>
                             <option value="PHARM-001">Kandy Central Pharmacy</option>
                             <option value="PHARM-002">Galle Fort MedPoint</option>
                             <option value="PHARM-003">Jaffna Community Rx</option>

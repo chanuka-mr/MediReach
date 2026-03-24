@@ -51,7 +51,17 @@ const OrderDetails = () => {
     }, [patientId]);
 
     const handlePayment = (orderId) => {
-        navigate(`/payment?orderId=${orderId}`);
+        navigate(`/payment?id=${orderId}`);
+    };
+
+    const handleDelete = async (orderId) => {
+        if (!window.confirm('Are you sure you want to delete this order?')) return;
+        try {
+            await api.delete(`/roms/request/${orderId}`);
+            fetchMyOrders();
+        } catch (error) {
+            alert('Failed to delete order: ' + (error.response?.data?.message || error.message));
+        }
     };
 
     const pharmacyMap = {
@@ -61,21 +71,21 @@ const OrderDetails = () => {
         'PHARM-004': 'Matara Rural Clinic'
     };
 
-    const getStatusInfo = (order) => {
-        const isExpired = order.status === 'Pending' && new Date(order.expiry_time) < new Date();
+    const getStatusInfo = (status, expiryTime) => {
+        const isExpired = status === 'Pending' && new Date(expiryTime) < new Date();
 
         if (isExpired) {
             return { color: 'var(--danger)', icon: <AlertCircle size={16} />, label: 'Expired' };
         }
 
-        switch (order.status) {
+        switch (status) {
             case 'Pending': return { color: 'var(--warning)', icon: <Clock size={16} />, label: 'Under Review' };
             case 'Approved': return { color: 'var(--primary-light)', icon: <CheckCircle2 size={16} />, label: 'Approved' };
             case 'Ready': return { color: 'var(--success)', icon: <CheckCircle2 size={16} />, label: 'Ready for Payment' };
             case 'Rejected': return { color: 'var(--danger)', icon: <XCircle size={16} />, label: 'Rejected' };
             case 'Cancelled': return { color: 'var(--text-muted)', icon: <XCircle size={16} />, label: 'Cancelled' };
             case 'Expired': return { color: 'var(--danger)', icon: <AlertCircle size={16} />, label: 'Expired' };
-            default: return { color: 'var(--text-main)', icon: <Clock size={16} />, label: order.status };
+            default: return { color: 'var(--text-main)', icon: <Clock size={16} />, label: status };
         }
     };
 
@@ -103,7 +113,7 @@ const OrderDetails = () => {
                     </div>
                 ) : (
                     orders.map((order) => {
-                        const statusInfo = getStatusInfo(order);
+                        const statusInfo = getStatusInfo(order.status, order.expiry_time);
                         return (
                             <div key={order._id} className="order-item-card">
                                 <div className="order-item-header">
@@ -111,9 +121,29 @@ const OrderDetails = () => {
                                         <span className="order-label">REQUEST ID</span>
                                         <span className="order-id">#{order._id.substring(order._id.length - 8).toUpperCase()}</span>
                                     </div>
-                                    <div className="order-status" style={{ backgroundColor: `${statusInfo.color}15`, color: statusInfo.color }}>
-                                        {statusInfo.icon}
-                                        <span>{statusInfo.label}</span>
+                                    <div className="order-status-group">
+                                        <div className="order-status" style={{ backgroundColor: `${statusInfo.color}15`, color: statusInfo.color }}>
+                                            {statusInfo.icon}
+                                            <span>{statusInfo.label}</span>
+                                        </div>
+                                        {order.status === 'Pending' && new Date(order.expiry_time) > new Date() && (
+                                            <div className="action-button-group">
+                                                <button
+                                                    className="edit-button-inline"
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/order-form?id=${order._id}`); }}
+                                                    title="Edit Order"
+                                                >
+                                                    <Info size={14} /> Edit
+                                                </button>
+                                                <button
+                                                    className="delete-button-inline"
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(order._id); }}
+                                                    title="Delete Order"
+                                                >
+                                                    <XCircle size={14} /> Delete
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -143,6 +173,13 @@ const OrderDetails = () => {
                                             </span>
                                         </div>
                                     </div>
+
+                                    {order.notes && (
+                                        <div className="notes-box">
+                                            <span className="info-label">Additional Notes:</span>
+                                            <p className="notes-text text-muted">{order.notes}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="order-item-footer">

@@ -21,7 +21,7 @@ const upload = require('../Config/cloudinaryConfig');
 router.post('/request', upload.single('prescription_image'), validateRequest(schemas.createMedRequest), createRequest);
 router.get('/request', getAllRequests);
 router.get('/request/:id', getRequestById);
-router.put('/request/:id', updateRequest);
+router.put('/request/:id', upload.single('prescription_image'), updateRequest);
 router.delete('/request/:id', deleteRequest);
 
 router.post('/:id/cancel', validateRequest(schemas.cancelRequest), cancelRequest);

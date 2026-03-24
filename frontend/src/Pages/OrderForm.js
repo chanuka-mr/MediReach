@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import './OrderForm.css';
 import { ClipboardList, Send, AlertCircle, Upload, FileCheck } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 const OrderForm = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const editId = searchParams.get('id');
+
     // Helper to get date 2 days from now in YYYY-MM-DDTHH:mm format
     const getDefaultExpiry = () => {
         const date = new Date();
@@ -11,17 +16,8 @@ const OrderForm = () => {
         return date.toISOString().slice(0, 16);
     };
 
-    useEffect(() => {
-        let storedId = localStorage.getItem('mediReach_patientId');
-        if (!storedId) {
-            storedId = 'PAT-' + Math.floor(1000 + Math.random() * 9000);
-            localStorage.setItem('mediReach_patientId', storedId);
-        }
-        setFormData(prev => ({ ...prev, patient_id: storedId }));
-    }, []);
-
     const [formData, setFormData] = useState({
-        patient_id: '', // initialized in useEffect
+        patient_id: '',
         pharmacy_id: '',
         priority_level: 'Normal',
         expiry_time: getDefaultExpiry(),
@@ -31,7 +27,44 @@ const OrderForm = () => {
 
     const [fileName, setFileName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [initLoading, setInitLoading] = useState(!!editId);
     const [message, setMessage] = useState({ type: '', text: '' });
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            // Patient ID Logic
+            let storedId = localStorage.getItem('mediReach_patientId');
+            if (!storedId) {
+                storedId = 'PAT-' + Math.floor(1000 + Math.random() * 9000);
+                localStorage.setItem('mediReach_patientId', storedId);
+            }
+
+            if (editId) {
+                try {
+                    const res = await api.get(`/roms/request/${editId}`);
+                    const order = res.data;
+                    setFormData({
+                        patient_id: order.patient_id,
+                        pharmacy_id: order.pharmacy_id,
+                        priority_level: order.priority_level,
+                        expiry_time: new Date(order.expiry_time).toISOString().slice(0, 16),
+                        notes: order.notes,
+                        prescription_image: null // Only reset if user chooses new file
+                    });
+                    if (order.prescription_image) setFileName('Current Prescription (Keep to maintain)');
+                } catch (err) {
+                    setMessage({ type: 'danger', text: 'Failed to load order for editing' });
+                } finally {
+                    setInitLoading(false);
+                }
+            } else {
+                setFormData(prev => ({ ...prev, patient_id: storedId }));
+                setInitLoading(false); // Ensure initLoading is false even if not editing
+            }
+        };
+
+        loadInitialData();
+    }, [editId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -43,6 +76,9 @@ const OrderForm = () => {
         if (file) {
             setFormData({ ...formData, prescription_image: file });
             setFileName(file.name);
+        } else {
+            setFormData({ ...formData, prescription_image: null });
+            setFileName(editId && formData.prescription_image === null ? 'Current Prescription (Keep to maintain)' : '');
         }
     };
 
@@ -54,39 +90,68 @@ const OrderForm = () => {
         try {
             const data = new FormData();
             Object.keys(formData).forEach(key => {
+                // For edit, only append image if it's a new file
+                if (key === 'prescription_image' && !(formData[key] instanceof File)) {
+                    return;
+                }
                 data.append(key, formData[key]);
             });
 
-            const res = await api.post('/roms/request', data);
+            if (editId) {
+                await api.put(`/roms/request/${editId}`, data);
+                setMessage({ type: 'success', text: 'Order updated! Redirecting...' });
+                setTimeout(() => navigate('/order-details'), 1500);
+            } else {
+                await api.post('/roms/request', data);
+                setMessage({ type: 'success', text: 'Order submitted! Redirecting...' });
+                setTimeout(() => navigate('/order-details'), 1500);
+            }
 
-            setMessage({ type: 'success', text: 'Order request submitted successfully!' });
-            console.log('Order created:', res.data);
-
-            // Reset but keep auto-filled IDs updated
-            setFormData({
-                ...formData,
-                pharmacy_id: '',
-                notes: '',
-                prescription_image: null,
-                expiry_time: getDefaultExpiry()
-            });
-            setFileName('');
+            // Reset but keep auto-filled IDs updated if not editing
+            if (!editId) {
+                setFormData({
+                    ...formData,
+                    pharmacy_id: '',
+                    notes: '',
+                    prescription_image: null,
+                    expiry_time: getDefaultExpiry()
+                });
+                setFileName('');
+            }
         } catch (error) {
             console.error('Submission Error:', error);
             setMessage({
                 type: 'danger',
-                text: error.response?.data?.message || error.message || 'Network error: Backend might be down or file is too large.'
+                text: error.response?.data?.message || error.message || 'Network error: Backend might be down.'
             });
         } finally {
             setLoading(false);
         }
     };
 
+    if (initLoading) {
+        return (
+            <div className="page-container">
+                <div className="header-section">
+                    <h1>{editId ? 'Edit Medication Order' : 'Order Medication'}</h1>
+                    <p>{editId ? 'Loading order details...' : 'Fill out the form below to submit your medication request to our pharmacy network.'}</p>
+                </div>
+                <div className="form-card">
+                    <div className="card-header">
+                        <ClipboardList size={22} className="card-icon" />
+                        <h2>Loading...</h2>
+                    </div>
+                    <div className="loading-spinner"></div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="page-container">
             <div className="header-section">
-                <h1>Order Medication</h1>
-                <p>Fill out the form below to submit your medication request to our pharmacy network.</p>
+                <h1>{editId ? 'Edit Medication Order' : 'Order Medication'}</h1>
+                <p>{editId ? 'Update your pending request details below.' : 'Fill out the form below to submit your medication request to our pharmacy network.'}</p>
             </div>
 
             <div className="form-card">
@@ -193,10 +258,10 @@ const OrderForm = () => {
 
                     <div className="form-actions">
                         <button type="submit" className="btn-primary" disabled={loading}>
-                            {loading ? 'Submitting...' : (
+                            {loading ? (editId ? 'Updating...' : 'Submitting...') : (
                                 <>
                                     <Send size={18} />
-                                    Submit Request
+                                    {editId ? 'Update Order' : 'Submit Request'}
                                 </>
                             )}
                         </button>

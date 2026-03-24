@@ -27,8 +27,12 @@ const createRequest = async (req, res, next) => {
 const getPharmacyRequests = async (req, res, next) => {
     try {
         const pharmacy_id = req.user ? req.user._id : (req.query.pharmacy_id || req.body.pharmacy_id);
-        const requests = await MedicationRequest.find({ pharmacy_id })
-            .sort({ createdAt: -1 });
+        const filter = {};
+        if (pharmacy_id && pharmacy_id !== 'ALL') {
+            filter.pharmacy_id = pharmacy_id;
+        }
+
+        const requests = await MedicationRequest.find(filter).sort({ createdAt: -1 });
         res.json(requests);
     } catch (error) {
         next(error);
@@ -90,6 +94,14 @@ const getRequestById = async (req, res, next) => {
 
 const updateRequest = async (req, res, next) => {
     try {
+        // Handle potential file upload for existing record update
+        if (req.file) {
+            req.body.prescription_image = req.file.path; // Cloudinary URL
+        } else if (req.body.prescription_image === 'null') {
+            // Ensure we don't accidentally save the string 'null'
+            delete req.body.prescription_image;
+        }
+
         const request = await MedicationRequest.findByIdAndUpdate(
             req.params.id,
             req.body,
