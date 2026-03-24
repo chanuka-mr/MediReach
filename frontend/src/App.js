@@ -17,6 +17,9 @@ import ContactUs from './Component/ContactUs';
 import InquiryManagement from './Component/pharmacy/InquiryManagement';
 import UserInquiryControl from './Component/pharmacyUserView/UserInquiryControl';
 
+import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView';
+import PharmacyQRDetail from './Component/pharmacyUserView/PharmacyQRDetail';
+
 // Main Admin Dashboard
 const HomeDashboard = () => {
   return (
@@ -189,6 +192,11 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+
+        {/* Standalone QR Directory Feature */}
+        <Route path="/pharmacy-qr" element={<PharmacyQRUserView />} />
+        <Route path="/pharmacy-qr/:id" element={<PharmacyQRDetail />} />
+
       </Routes>
     </BrowserRouter>
   );
