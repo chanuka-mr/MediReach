@@ -6,7 +6,6 @@ import {
   User, 
   AtSign, 
   MessageSquare,
-  MapPin,
   Phone,
   Mail,
   CheckCircle2,
