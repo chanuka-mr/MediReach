@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -11,10 +11,9 @@ import {
    Navigation,
    Activity,
    Phone,
-   ArrowRight,
-   Globe2
+   Globe2,
+   Download
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const HOST_URL = window.location.origin;
@@ -25,10 +24,61 @@ const PharmacyQRUserView = () => {
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedPharmacy, setSelectedPharmacy] = useState(null);
    const [activeDistrict, setActiveDistrict] = useState('');
+   const qrCodeRef = useRef();
 
    useEffect(() => {
       fetchPharmacies();
    }, []);
+
+   const downloadQRCode = () => {
+      const qrElement = qrCodeRef.current;
+      if (!qrElement) {
+         alert('QR code is not yet ready. Please wait a moment and try again.');
+         return;
+      }
+
+      try {
+         // Get the SVG element
+         const svg = qrElement.querySelector('svg');
+         if (!svg) {
+            alert('QR code is still loading. Please try again.');
+            return;
+         }
+
+         // Convert SVG to image
+         const svgData = new XMLSerializer().serializeToString(svg);
+         const canvas = document.createElement('canvas');
+         const ctx = canvas.getContext('2d');
+         const img = new Image();
+         const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+         const url = URL.createObjectURL(svgBlob);
+
+         img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const pngUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = pngUrl;
+            link.download = `${selectedPharmacy.name.replace(/\s+/g, '_')}_QR_Code.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+         };
+
+         img.onerror = () => {
+            alert('Failed to download QR code. Please try again.');
+            URL.revokeObjectURL(url);
+         };
+
+         img.src = url;
+      } catch (error) {
+         console.error('Download error:', error);
+         alert('Error downloading QR code. Please try again.');
+      }
+   };
 
    const fetchPharmacies = async () => {
       try {
@@ -312,7 +362,7 @@ const PharmacyQRUserView = () => {
                   {/* Modal Body: The QR Code */}
                   <div className="p-8 sm:p-10 flex flex-col items-center bg-white relative z-20 -mt-6 rounded-t-[2.5rem]">
 
-                     <div className="relative group mb-8">
+                     <div className="relative group mb-8" ref={qrCodeRef}>
                         {/* Bounding box glow */}
                         <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 opacity-20 group-hover:opacity-40 blur-xl transition-opacity duration-700" />
 
@@ -337,14 +387,14 @@ const PharmacyQRUserView = () => {
                         Point your mobile camera at the symbol above to establish a direct connection to this facility.
                      </p>
 
-                     {/* Action Button */}
-                     <Link
-                        to={`/pharmacy-qr/${selectedPharmacy._id}`}
-                        className="w-full relative py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] group/btn shrink-0"
+                     {/* Download Button */}
+                     <button
+                        onClick={() => downloadQRCode()}
+                        className="w-full relative py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-[0_10px_40px_-10px_rgba(37,99,235,0.5)] group/btn"
                      >
-                        <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                        Launch Mobile Protocol <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                     </Link>
+                        <Download size={16} className="group-hover/btn:translate-y-1 transition-transform" />
+                        Download QR Code
+                     </button>
                   </div>
 
                </div>
