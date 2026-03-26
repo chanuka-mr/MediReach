@@ -2,7 +2,8 @@ const express  = require("express");
 const mongoose = require("mongoose");
 const cors     = require("cors");
 const routes   = require("./Route/medicineRoute");
-const dashboardRoutes = require("./Route/dashboardRoute"); // new
+const dashboardRoutes = require("./Route/dashboardRoute"); 
+const reportRoutes = require("./routes/reportRoutes"); 
 require("dotenv").config();
 
 const app = express();
@@ -16,8 +17,9 @@ app.use(cors({
 app.use(express.json());
 
 // ── Routes ────────────────────────────────────────────────────────
-app.use("/medicines",        routes);           // existing
-app.use("/api/dashboard",    dashboardRoutes);  // new
+app.use("/medicines",        routes);           
+app.use("/api/dashboard",    dashboardRoutes);  
+app.use("/api/reports",      reportRoutes);     
 
 // ── Connect & Start ───────────────────────────────────────────────
 mongoose.connect("mongodb+srv://admin:jEvCBzBxRrHyAYJr@medireach.it1h5bs.mongodb.net/")
