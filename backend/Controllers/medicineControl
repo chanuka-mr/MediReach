@@ -14,6 +14,7 @@ const validateMedicineInput = (data) => {
         mediExpiryDate,
         mediManufactureDate,
         mediPrescriptionStatus,
+        Pharmacy,
     } = data;
 
     // mediName
@@ -52,6 +53,11 @@ const validateMedicineInput = (data) => {
     // mediCompany
     if (!mediCompany || typeof mediCompany !== 'string' || mediCompany.trim() === '') {
         errors.push('Medicine company is required.');
+    }
+
+    // Pharmacy
+    if (!Pharmacy || typeof Pharmacy !== 'string' || Pharmacy.trim() === '') {
+        errors.push('Pharmacy is required.');
     }
 
     // mediExpiryDate
@@ -187,27 +193,33 @@ const updateMedicine = async (req, res, next) => {
     const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus, Pharmacy } = req.body;
 
     try {
-        medicine = await Medicine.findByIdAndUpdate(id, {
-            mediName,
-            mediPrice,
-            mediDescription,
-            mediImage,
-            mediCategory,
-            mediStock,
-            mediCompany,
-            mediExpiryDate,
-            mediManufactureDate,
-            mediPrescriptionStatus,
-            Pharmacy
-        });
-        medicine = await medicine.save();
+        const medicine = await Medicine.findByIdAndUpdate(
+            id, 
+            {
+                mediName,
+                mediPrice,
+                mediDescription,
+                mediImage,
+                mediCategory,
+                mediStock,
+                mediCompany,
+                mediExpiryDate,
+                mediManufactureDate,
+                mediPrescriptionStatus,
+                Pharmacy
+            },
+            { new: true, runValidators: true } // Return the updated document and run validators
+        );
+        
+        if (!medicine) {
+            return res.status(404).json({ message: "No medicine found to Update" });
+        }
+        
+        return res.status(200).json({ message: "Medicine updated successfully", medicine });
     } catch (error) {
         console.error(error);
+        return res.status(500).json({ message: "Server error during update" });
     }
-    if (!medicine) {
-        return res.status(404).json({ message: "No medicine found to Update" });
-    }
-    return res.status(200).json({ medicine });
 };
 
 //Delete medicine
