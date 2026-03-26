@@ -38,9 +38,9 @@ const pharmaciesList = [
 ]
 
 const prescriptionStatuses = [
-  { key:"Prescription Required", icon:ShieldCheck, color:C.techBlue, bg:"rgba(2,62,138,0.07)",  border:"rgba(2,62,138,0.2)"  },
-  { key:"Over The Counter",      icon:ShieldOff,   color:C.success,  bg:"rgba(14,124,91,0.07)", border:"rgba(14,124,91,0.2)" },
-  { key:"Controlled Substance",  icon:ShieldAlert, color:C.warn,     bg:"rgba(180,83,9,0.07)",  border:"rgba(180,83,9,0.2)"  },
+  { key:"required", icon:ShieldCheck, color:C.techBlue, bg:"rgba(2,62,138,0.07)",  border:"rgba(2,62,138,0.2)"  },
+  { key:"not required", icon:ShieldOff,   color:C.success,  bg:"rgba(14,124,91,0.07)", border:"rgba(14,124,91,0.2)" },
+  { key:"optional", icon:ShieldAlert, color:C.warn,     bg:"rgba(180,83,9,0.07)",  border:"rgba(180,83,9,0.2)"  },
 ]
 
 const emptyForm = {
@@ -211,13 +211,79 @@ export default function MedicineUpdate() {
 
   const validate = () => {
     const errs = {}
-    Object.keys(emptyForm).forEach(k => { if (!form[k]) errs[k] = "This field is required" })
-    if (form.mediPrice && isNaN(form.mediPrice)) errs.mediPrice = "Must be a number"
-    if (form.mediStock  && isNaN(form.mediStock))  errs.mediStock  = "Must be a number"
-    if (form.mediManufactureDate && form.mediExpiryDate) {
-      if (new Date(form.mediExpiryDate) <= new Date(form.mediManufactureDate))
-        errs.mediExpiryDate = "Expiry must be after manufacture date"
+    Object.keys(emptyForm).forEach(k => { 
+      if (!form[k] || (typeof form[k] === 'string' && form[k].trim() === '')) {
+        errs[k] = "This field is required"
+      }
+    })
+    
+    // mediName validation (backend: 2-100 characters)
+    if (form.mediName && form.mediName.trim().length < 2) {
+      errs.mediName = "Medicine name must be at least 2 characters"
+    } else if (form.mediName && form.mediName.trim().length > 100) {
+      errs.mediName = "Medicine name must not exceed 100 characters"
     }
+    
+    // mediDescription validation (backend: required, max 1000 characters)
+    if (form.mediDescription && form.mediDescription.trim().length > 1000) {
+      errs.mediDescription = "Description must not exceed 1000 characters"
+    }
+    
+    // Validate numeric fields
+    if (form.mediPrice && isNaN(form.mediPrice)) {
+      errs.mediPrice = "Must be a number"
+    } else if (form.mediPrice && Number(form.mediPrice) < 0) {
+      errs.mediPrice = "Must be a non-negative number"
+    }
+    
+    if (form.mediStock && isNaN(form.mediStock)) {
+      errs.mediStock = "Must be a number"
+    } else if (form.mediStock && !Number.isInteger(Number(form.mediStock))) {
+      errs.mediStock = "Must be an integer"
+    } else if (form.mediStock && Number(form.mediStock) < 0) {
+      errs.mediStock = "Cannot be negative"
+    }
+    
+    // Date validation
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Set to midnight for fair comparison
+    
+    if (form.mediExpiryDate) {
+      const expiryDate = new Date(form.mediExpiryDate)
+      if (isNaN(Date.parse(form.mediExpiryDate))) {
+        errs.mediExpiryDate = "Must be a valid date"
+      } else if (expiryDate <= today) {
+        errs.mediExpiryDate = "Expiry date must be in the future"
+      }
+    }
+    
+    if (form.mediManufactureDate) {
+      const manufactureDate = new Date(form.mediManufactureDate)
+      if (isNaN(Date.parse(form.mediManufactureDate))) {
+        errs.mediManufactureDate = "Must be a valid date"
+      } else if (manufactureDate > today) {
+        errs.mediManufactureDate = "Manufacture date cannot be in the future"
+      }
+    }
+    
+    // Cross-field date validation
+    if (form.mediManufactureDate && form.mediExpiryDate) {
+      const manufactureDate = new Date(form.mediManufactureDate)
+      const expiryDate = new Date(form.mediExpiryDate)
+      
+      if (!isNaN(Date.parse(form.mediManufactureDate)) && !isNaN(Date.parse(form.mediExpiryDate))) {
+        if (manufactureDate >= expiryDate) {
+          errs.mediExpiryDate = "Manufacture date must be before expiry date"
+        }
+      }
+    }
+    
+    // Prescription status validation (backend: specific values allowed)
+    const validStatuses = ['required', 'not required', 'optional']
+    if (form.mediPrescriptionStatus && !validStatuses.includes(form.mediPrescriptionStatus.toLowerCase())) {
+      errs.mediPrescriptionStatus = "Invalid prescription status"
+    }
+    
     return errs
   }
 

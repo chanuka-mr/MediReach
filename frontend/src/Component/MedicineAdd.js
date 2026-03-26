@@ -36,9 +36,9 @@ const pharmaciesList = [
 ]
 
 const prescriptionStatuses = [
-  { key: "Prescription Required", icon: ShieldCheck, color: C.techBlue,  bg: "rgba(2,62,138,0.07)",   border: "rgba(2,62,138,0.2)"  },
-  { key: "Over The Counter",      icon: ShieldOff,   color: C.success,   bg: "rgba(14,124,91,0.07)",  border: "rgba(14,124,91,0.2)" },
-  { key: "Controlled Substance",  icon: ShieldAlert, color: C.warn,      bg: "rgba(180,83,9,0.07)",   border: "rgba(180,83,9,0.2)"  },
+  { key: "required", icon: ShieldCheck, color: C.techBlue,  bg: "rgba(2,62,138,0.07)",   border: "rgba(2,62,138,0.2)"  },
+  { key: "not required", icon: ShieldOff,   color: C.success,   bg: "rgba(14,124,91,0.07)",  border: "rgba(14,124,91,0.2)" },
+  { key: "optional", icon: ShieldAlert, color: C.warn,      bg: "rgba(180,83,9,0.07)",   border: "rgba(180,83,9,0.2)"  },
 ]
 
 const initialForm = {
@@ -123,7 +123,7 @@ export default function MedicineAdd() {
     }
   }
 
-  const imageRequired = form.mediPrescriptionStatus === "Prescription Required"
+  const imageRequired = form.mediPrescriptionStatus === "required"
 
   const validate = () => {
     const errs = {}
@@ -134,20 +134,71 @@ export default function MedicineAdd() {
         errs[k] = "This field is required"
       }
     })
-    // mediImage: only required for Prescription Required
+    // mediImage: only required for required prescription status
     if (imageRequired && !form.mediImage) {
       errs.mediImage = "Image is required for prescription medicines"
     }
-    // Numeric checks
-    if (form.mediPrice && isNaN(Number(form.mediPrice))) errs.mediPrice = "Must be a valid number"
-    if (form.mediStock  && isNaN(Number(form.mediStock)))  errs.mediStock  = "Must be a valid number"
-    if (Number(form.mediPrice) < 0)  errs.mediPrice = "Price cannot be negative"
-    if (Number(form.mediStock)  < 0)  errs.mediStock  = "Stock cannot be negative"
-    // Date check
-    if (form.mediManufactureDate && form.mediExpiryDate) {
-      if (new Date(form.mediExpiryDate) <= new Date(form.mediManufactureDate))
-        errs.mediExpiryDate = "Expiry date must be after the manufacture date"
+    
+    // mediName validation (backend: 2-100 characters)
+    if (form.mediName && form.mediName.trim().length < 2) {
+      errs.mediName = "Medicine name must be at least 2 characters"
+    } else if (form.mediName && form.mediName.trim().length > 100) {
+      errs.mediName = "Medicine name must not exceed 100 characters"
     }
+    
+    // mediDescription validation (backend: required, max 1000 characters)
+    if (form.mediDescription && form.mediDescription.trim().length > 1000) {
+      errs.mediDescription = "Description must not exceed 1000 characters"
+    }
+    
+    // Numeric checks (backend: non-negative for price, non-negative integer for stock)
+    if (form.mediPrice && isNaN(Number(form.mediPrice))) errs.mediPrice = "Must be a valid number"
+    else if (form.mediPrice && Number(form.mediPrice) < 0) errs.mediPrice = "Price must be non-negative"
+    
+    if (form.mediStock && isNaN(Number(form.mediStock))) errs.mediStock = "Must be a valid number"
+    else if (form.mediStock && !Number.isInteger(Number(form.mediStock))) errs.mediStock = "Must be an integer"
+    else if (form.mediStock && Number(form.mediStock) < 0) errs.mediStock = "Stock cannot be negative"
+    
+    // Date validation (backend: expiry must be future, manufacture must be past)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Set to midnight for fair comparison
+    
+    if (form.mediExpiryDate) {
+      const expiryDate = new Date(form.mediExpiryDate)
+      if (isNaN(Date.parse(form.mediExpiryDate))) {
+        errs.mediExpiryDate = "Must be a valid date"
+      } else if (expiryDate <= today) {
+        errs.mediExpiryDate = "Expiry date must be in the future"
+      }
+    }
+    
+    if (form.mediManufactureDate) {
+      const manufactureDate = new Date(form.mediManufactureDate)
+      if (isNaN(Date.parse(form.mediManufactureDate))) {
+        errs.mediManufactureDate = "Must be a valid date"
+      } else if (manufactureDate > today) {
+        errs.mediManufactureDate = "Manufacture date cannot be in the future"
+      }
+    }
+    
+    // Cross-field date validation
+    if (form.mediManufactureDate && form.mediExpiryDate) {
+      const manufactureDate = new Date(form.mediManufactureDate)
+      const expiryDate = new Date(form.mediExpiryDate)
+      
+      if (!isNaN(Date.parse(form.mediManufactureDate)) && !isNaN(Date.parse(form.mediExpiryDate))) {
+        if (manufactureDate >= expiryDate) {
+          errs.mediExpiryDate = "Manufacture date must be before expiry date"
+        }
+      }
+    }
+    
+    // Prescription status validation (backend: specific values allowed)
+    const validStatuses = ['required', 'not required', 'optional']
+    if (form.mediPrescriptionStatus && !validStatuses.includes(form.mediPrescriptionStatus.toLowerCase())) {
+      errs.mediPrescriptionStatus = "Invalid prescription status"
+    }
+    
     return errs
   }
 
