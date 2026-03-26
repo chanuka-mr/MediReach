@@ -7,8 +7,9 @@ import {
   TrendingDown, RefreshCw, Download, Eye,
   ShieldCheck, ShieldOff, ShieldAlert, Hash,
   ChevronLeft, ChevronRight,
-  Beaker, Clock, Layers, Loader2, PencilLine, Trash2
+  Beaker, Clock, Layers, Loader2, PencilLine, Trash2, X, FileText
 } from 'lucide-react'
+import ReportGenerator from './ReportGenerator'
 
 // ── Palette — matches InventoryDashboard ─────────────────────────
 const C = {
@@ -219,6 +220,7 @@ export default function MedicineInventory() {
   const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)
   const [rxFilter,     setRxFilter]     = useState("All")
   const [stockFilter,  setStockFilter]  = useState("All")
+  const [showReportGenerator, setShowReportGenerator] = useState(false)
   const [sortKey,      setSortKey]      = useState("name")
   const [sortDir,      setSortDir]      = useState("asc")
   const [page,         setPage]         = useState(1)
@@ -431,7 +433,7 @@ export default function MedicineInventory() {
                 onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
               ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
-              <button style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+              <button onClick={() => setShowReportGenerator(true)} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
                 border:"none", background:C.techBlue, color:C.snow, fontWeight:600, fontSize:13,
                 display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
                 boxShadow:`0 4px 18px rgba(2,62,138,0.28)` }}
@@ -883,6 +885,72 @@ export default function MedicineInventory() {
           )}
         </div>
       </div>
+
+      {/* Report Generator Modal */}
+      {showReportGenerator && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(4,18,38,0.55)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "fadeUp 0.2s ease both",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 600, maxHeight: "90vh", overflow: "auto",
+            borderRadius: 18, background: C.snow, border: `1.5px solid ${C.paleSlate}`,
+            boxShadow: "0 32px 80px rgba(2,62,138,0.22)",
+            animation: "fadeUp 0.25s ease both",
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "24px 28px 20px", borderBottom: `1px solid ${C.paleSlate}`,
+              display: "flex", alignItems: "center", justifyContent: "space-between"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: `${C.techBlue}15`,
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  <FileText size={20} color={C.techBlue} strokeWidth={2} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.blueSlate }}>
+                    Generate Report
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: C.lilacAsh }}>
+                    Download inventory reports in PDF or JSON format
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReportGenerator(false)}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  border: `1.5px solid ${C.paleSlate}`, background: C.white,
+                  color: C.lilacAsh, cursor: "pointer", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.techBlue; e.currentTarget.style.color = C.techBlue }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.paleSlate; e.currentTarget.style.color = C.lilacAsh }}
+              >
+                <X size={16} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Report Generator Content */}
+            <div style={{ padding: "24px 28px" }}>
+              <ReportGenerator 
+                type="inventory" 
+                filters={{
+                  pharmacy: pharmFilter === "All" ? "" : pharmFilter,
+                  category: catFilter === "All" ? "" : catFilter
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
