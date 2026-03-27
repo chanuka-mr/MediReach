@@ -26,7 +26,7 @@ const createRequest = async (req, res, next) => {
 
 const getPharmacyRequests = async (req, res, next) => {
     try {
-        const pharmacy_id = req.query.pharmacy_id || (req.user ? req.user._id : req.body.pharmacy_id);
+        const pharmacy_id = req.query?.pharmacy_id || (req.user ? req.user._id : req.body?.pharmacy_id);
         console.log(`Fetching orders for Pharmacy ID: ${pharmacy_id}`);
         const filter = {};
         
@@ -78,7 +78,7 @@ const cancelRequest = async (req, res, next) => {
 const getAllRequests = async (req, res, next) => {
     try {
         const filter = {};
-        const patient_id = req.user ? req.user._id : (req.query.patient_id || req.body.patient_id);
+        const patient_id = req.user ? req.user._id : (req.query?.patient_id || req.body?.patient_id);
 
         if (patient_id) {
             filter.patient_id = patient_id;
