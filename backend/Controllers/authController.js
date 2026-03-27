@@ -56,7 +56,13 @@ const registerUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        contactNumber: user.contactNumber,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        addresses: user.addresses,
         role: user.role,
+        pharmacyName: user.pharmacyName,
+        licenseNumber: user.licenseNumber,
         token: generateToken(user._id, user.role),
       });
     } else {
@@ -83,7 +89,13 @@ const loginUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        contactNumber: user.contactNumber,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        addresses: user.addresses,
         role: user.role,
+        pharmacyName: user.pharmacyName,
+        licenseNumber: user.licenseNumber,
         token: generateToken(user._id, user.role),
       });
     } else {
@@ -198,7 +210,13 @@ const resetPassword = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      contactNumber: user.contactNumber,
+      gender: user.gender,
+      dateOfBirth: user.dateOfBirth,
+      addresses: user.addresses,
       role: user.role,
+      pharmacyName: user.pharmacyName,
+      licenseNumber: user.licenseNumber,
       token: generateToken(user._id, user.role),
     });
   } catch (error) {

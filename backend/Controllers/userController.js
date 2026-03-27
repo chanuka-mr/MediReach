@@ -11,9 +11,15 @@ const getUserProfile = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      contactNumber: user.contactNumber,
       role: user.role,
       pharmacyName: user.pharmacyName,
       licenseNumber: user.licenseNumber,
+      gender: user.gender,
+      dateOfBirth: user.dateOfBirth,
+      addresses: user.addresses,
+      location: user.location,
+      isProfileComplete: user.isProfileComplete,
     });
   } else {
     res.status(404).json({ message: "User not found" });
@@ -29,7 +35,25 @@ const updateUserProfile = async (req, res) => {
   if (user) {
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
+    user.contactNumber = req.body.contactNumber || user.contactNumber;
     
+    // Additional profile fields
+    if (req.body.gender !== undefined) user.gender = req.body.gender;
+    if (req.body.dateOfBirth !== undefined) user.dateOfBirth = req.body.dateOfBirth;
+    if (req.body.addresses !== undefined) user.addresses = req.body.addresses;
+    
+    if (req.body.location !== undefined) {
+      if (!user.location) user.location = { type: 'Point' };
+      if (req.body.location.coordinates) {
+          user.location.coordinates = req.body.location.coordinates;
+      }
+    }
+    
+    // Check profile completeness
+    if (user.gender && user.dateOfBirth && user.location && user.location.coordinates && user.location.coordinates.length > 0) {
+       user.isProfileComplete = true;
+    }
+
     if (req.body.password) {
       user.password = req.body.password;
     }
@@ -45,9 +69,15 @@ const updateUserProfile = async (req, res) => {
       _id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
+      contactNumber: updatedUser.contactNumber,
       role: updatedUser.role,
       pharmacyName: updatedUser.pharmacyName,
       licenseNumber: updatedUser.licenseNumber,
+      gender: updatedUser.gender,
+      dateOfBirth: updatedUser.dateOfBirth,
+      addresses: updatedUser.addresses,
+      location: updatedUser.location,
+      isProfileComplete: updatedUser.isProfileComplete,
     });
   } else {
     res.status(404).json({ message: "User not found" });

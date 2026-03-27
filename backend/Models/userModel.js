@@ -45,11 +45,51 @@ const userSchema = new Schema(
       required: function() { return this.role === 'pharmacy'; }
     },
 
+    gender: {
+      type: String,
+      enum: ["male", "female", "other", "prefer_not_to_say"],
+      required: false,
+    },
+
+    dateOfBirth: {
+      type: Date,
+      required: false,
+    },
+
+    addresses: [
+      {
+        street: String,
+        city: String,
+        postalCode: String,
+        isDefault: { type: Boolean, default: false }
+      }
+    ],
+
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        required: false
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: false
+      }
+    },
+
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+    },
+
     resetPasswordOtp: String,
     resetPasswordOtpExpire: Date,
   },
   { timestamps: true }
 );
+
+// Create 2dsphere index on location for spatial queries (finding nearby pharmacies)
+userSchema.index({ location: "2dsphere" });
 
 // Encrypt password using bcrypt
 userSchema.pre("save", async function () {

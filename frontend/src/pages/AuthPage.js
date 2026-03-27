@@ -126,7 +126,7 @@ const INDIGO = "#4C6EF5";
 const NAVY   = "#023E8A";
 
 // ── Main ──────────────────────────────────────────────
-export default function AuthPage() {
+export default function AuthPage({ onLoginSuccess }) {
   const [mode, setMode]           = useState("login");
   const [mounted, setMounted]     = useState(false);
   const [focused, setFocused]     = useState(null);
@@ -175,7 +175,7 @@ export default function AuthPage() {
         if (!lEmail || !lPass) { alert("Please enter email and password"); setLoading(false); return; }
         const res = await fetch("http://localhost:8080/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: lEmail, password: lPass }) });
         const data = await res.json();
-        if (res.ok) { alert("Login successful!"); localStorage.setItem("userInfo", JSON.stringify(data)); }
+        if (res.ok) { localStorage.setItem("userInfo", JSON.stringify(data)); if (onLoginSuccess) onLoginSuccess(); }
         else alert(data.message || "Invalid credentials");
       }
     } catch (err) { console.error(err); alert("Something went wrong"); }
