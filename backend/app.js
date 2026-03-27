@@ -17,7 +17,7 @@ const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────
 app.use(cors({
-  origin: "http://localhost:3000", // your React app
+  origin: ["http://localhost:3000", "http://localhost:3001"], // your React app
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type"],
 }));
@@ -37,7 +37,7 @@ app.use("/api/dashboard",    dashboardRoutes);
 app.use("/api/reports",      reportRoutes);     
 
 // ── Connect & Start ───────────────────────────────────────────────
-mongoose.connect("mongodb+srv://admin:jEvCBzBxRrHyAYJr@medireach.it1h5bs.mongodb.net/")
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log(" Connected to MongoDB"))
   .then(() => {
     app.listen(5000, () => {

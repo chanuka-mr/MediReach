@@ -167,13 +167,13 @@ export default function AuthPage({ onLoginSuccess }) {
         if (sPass !== sConf) { alert("Passwords do not match"); setLoading(false); return; }
         const payload = { name: sName, email: sEmail, password: sPass, contactNumber: sPhone, role: sRole === "customer" ? "user" : "pharmacy" };
         if (sRole === "pharmacy") { payload.pharmacyName = sPharmacy; payload.licenseNumber = sLicense; }
-        const res = await fetch("http://localhost:8080/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const res = await fetch("http://localhost:5000/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const data = await res.json();
         if (res.ok) { alert("Signup successful! Please login."); switchMode("login"); }
         else alert(data.message || "Signup failed");
       } else {
         if (!lEmail || !lPass) { alert("Please enter email and password"); setLoading(false); return; }
-        const res = await fetch("http://localhost:8080/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: lEmail, password: lPass }) });
+        const res = await fetch("http://localhost:5000/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: lEmail, password: lPass }) });
         const data = await res.json();
         if (res.ok) { localStorage.setItem("userInfo", JSON.stringify(data)); if (onLoginSuccess) onLoginSuccess(); }
         else alert(data.message || "Invalid credentials");

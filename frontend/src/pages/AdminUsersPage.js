@@ -19,7 +19,7 @@ export default function AdminUsersPage() {
           return;
         }
 
-        const res = await fetch('http://localhost:8080/api/users', {
+        const res = await fetch(`http://localhost:5000/api/users`, {
           headers: {
             'Authorization': `Bearer ${userInfo.token}`
           }
