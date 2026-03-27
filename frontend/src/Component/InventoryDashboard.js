@@ -20,19 +20,17 @@ const C = {
   danger:    "#C0392B",
 }
 
-const API = "http://localhost:5000/medicines"
+const PHARMACY_API = 'http://localhost:5000/api/pharmacies'
+const MEDICINE_API = "http://localhost:5000/medicines"
 
-// Hard-coded sync metadata per pharmacy name
-// Only status, lastSync, orders are static — stock is always live from DB
-const PHARMACY_META = {
-  "Kandy Central Pharmacy":   { location:"Kandy, Central Province",       status:"active",  lastSync:"2 min ago",  orders:14 },
-  "Galle Fort MedPoint":      { location:"Galle, Southern Province",      status:"active",  lastSync:"5 min ago",  orders:8  },
-  "Jaffna Community Rx":      { location:"Jaffna, Northern Province",     status:"warning", lastSync:"42 min ago", orders:3  },
-  "Matara Rural Clinic":      { location:"Matara, Southern Province",     status:"active",  lastSync:"1 min ago",  orders:21 },
-  "Anuradhapura PharmaCare":  { location:"Anuradhapura, North Central",   status:"offline", lastSync:"3 hrs ago",  orders:0  },
-  "Batticaloa MedStore":      { location:"Batticaloa, Eastern Province",  status:"active",  lastSync:"8 min ago",  orders:11 },
-  "Kurunegala Health Hub":    { location:"Kurunegala, North Western",     status:"warning", lastSync:"28 min ago", orders:5  },
-  "Trincomalee Bay Pharmacy": { location:"Trincomalee, Eastern Province", status:"active",  lastSync:"3 min ago",  orders:17 },
+// ── getMockData — same as PharmacyDashboard ───────────────────────
+const getMockData = (id) => {
+  const sum = String(id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return {
+    syncMin: (sum % 59) + 1,
+    isSlow:  sum % 5 === 0,
+    orders:  sum % 30,
+  }
 }
 
 const STATUS = {
@@ -41,44 +39,40 @@ const STATUS = {
   offline: { label:"Offline",   color:"#8a3030", bg:"#fdeaea", border:"#e8b3b3", icon:WifiOff        },
 }
 
-// ── Derive pharmacy list from raw medicine docs fetched from DB ───
-function buildPharmacyList(medicines) {
-  // Group medicines by Pharmacy field
-  const map = {}
-  medicines.forEach(m => {
-    const name = m.Pharmacy || m.pharmacy || "Unknown"
-    if (!map[name]) map[name] = []
-    map[name].push(m)
-  })
+// ── Build pharmacy list from live DB pharmacies + medicines ───────
+function buildPharmacyList(pharmacies, medicines) {
+  return pharmacies.map((p, i) => {
+    const mock    = getMockData(p._id)
+    const isActive = p.isActive
 
-  return Object.entries(map).map(([name, meds], i) => {
-    const meta = PHARMACY_META[name] || {
-      location: "Unknown Location",
-      status:   "active",
-      lastSync: "Just now",
-      orders:   0,
-    }
+    // Derive status
+    const status = !isActive ? 'offline' : mock.isSlow ? 'warning' : 'active'
 
-    // Stock % = sum of all stock units / (count × 1300 max) × 100
-    const maxPossible = meds.length * 1300
-    const totalStock  = meds.reduce((s, m) => s + (Number(m.mediStock) || 0), 0)
-    const stockPct    = maxPossible > 0 ? Math.min(Math.round((totalStock / maxPossible) * 100), 99) : 0
+    // Last sync label
+    const lastSync = isActive ? `${mock.syncMin} min ago` : '2 days ago'
+
+    // Stock % from medicines belonging to this pharmacy
+    const pharmacyMeds  = medicines.filter(m => (m.Pharmacy || m.pharmacy) === p.name)
+    const maxPossible   = pharmacyMeds.length * 1300
+    const totalStock    = pharmacyMeds.reduce((s, m) => s + (Number(m.mediStock) || 0), 0)
+    const stockPct      = maxPossible > 0 ? Math.min(Math.round((totalStock / maxPossible) * 100), 99) : 0
 
     return {
-      id:       i + 1,
-      name,
-      location: meta.location,
-      status:   meta.status,
-      lastSync: meta.lastSync,
-      orders:   meta.orders,
-      stock:    stockPct,
-      medCount: meds.length,
+      id:       p._id,
+      name:     p.name,
+      location: `${p.district}, Sri Lanka`,
+      status,
+      lastSync,
+      orders:   isActive ? mock.orders : 0,
+      stock:    isActive ? stockPct : 0,
+      medCount: pharmacyMeds.length,
+      isActive,
     }
   })
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────
-function StatCard({ icon:Icon, value, label, sub, accent, delay, trend }) {
+function StatCard({ icon:Icon, value, label, sub, delay, trend }) {
   const [hov, setHov] = useState(false)
 
   return (
@@ -190,7 +184,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         position:"relative",
       }}
     >
-      {/* Left accent */}
       {rowHov && (
         <div style={{
           position:"absolute", left:0, top:"15%", bottom:"15%",
@@ -198,7 +191,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         }} />
       )}
 
-      {/* Index */}
       <span style={{
         width:32, color:C.paleSlate, fontSize:11.5, fontWeight:600,
         flexShrink:0, fontFamily:"'Sora',sans-serif",
@@ -206,7 +198,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         {String(index+1).padStart(2,"0")}
       </span>
 
-      {/* Avatar */}
       <div style={{
         width:40, height:40, borderRadius:11, flexShrink:0, marginRight:14,
         background: rowHov
@@ -223,7 +214,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         {initials}
       </div>
 
-      {/* Name + Location */}
       <div style={{ flex:1, minWidth:0, marginRight:16 }}>
         <p style={{
           margin:0, fontWeight:600, fontSize:14,
@@ -242,7 +232,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         </div>
       </div>
 
-      {/* Status */}
       <div style={{
         display:"flex", alignItems:"center", gap:5,
         background:st.bg, borderRadius:99,
@@ -253,7 +242,6 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         <span style={{ fontSize:11, fontWeight:600, color:st.color }}>{st.label}</span>
       </div>
 
-      {/* Last Sync */}
       <div style={{ marginRight:20, flexShrink:0, width:86, textAlign:"right" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
           <Clock size={10} color={C.paleSlate} />
@@ -261,12 +249,10 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         </div>
       </div>
 
-      {/* Stock — live from DB */}
       <div style={{ marginRight:20, flexShrink:0 }}>
         <StockBar value={pharmacy.stock} />
       </div>
 
-      {/* Orders */}
       <div style={{ marginRight:20, flexShrink:0, width:44, textAlign:"center" }}>
         <span style={{
           fontSize:15, fontWeight:700,
@@ -277,9 +263,7 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
           letterSpacing:"0.09em", textTransform:"uppercase" }}>orders</p>
       </div>
 
-      {/* Actions */}
       <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-        {/* Inventory — passes pharmacy name via URL query param */}
         <button
           onMouseEnter={()=>setInvHov(true)}
           onMouseLeave={()=>setInvHov(false)}
@@ -328,26 +312,36 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
 export default function InventoryDashboard() {
   const navigate = useNavigate()
 
-  const [medicines,    setMedicines]    = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [fetchError,   setFetchError]   = useState(null)
-  const [search,       setSearch]       = useState("")
-  const [filter,       setFilter]       = useState("all")
-  const [addHov,       setAddHov]       = useState(false)
-  const [focusSearch,  setFocusSearch]  = useState(false)
-  const [lastRefresh,  setLastRefresh]  = useState(new Date())
+  const [pharmacyList,  setPharmacyList]  = useState([])
+  const [medicines,     setMedicines]     = useState([])
+  const [loading,       setLoading]       = useState(true)
+  const [fetchError,    setFetchError]    = useState(null)
+  const [search,        setSearch]        = useState("")
+  const [filter,        setFilter]        = useState("all")
+  const [addHov,        setAddHov]        = useState(false)
+  const [focusSearch,   setFocusSearch]   = useState(false)
+  const [lastRefresh,   setLastRefresh]   = useState(new Date())
 
-  // ── Fetch all medicines from MongoDB via REST API ─────────────
-  const fetchMedicines = async () => {
+  // ── Fetch pharmacies (from pharmacy API) + medicines (for stock %) ─
+  const fetchData = async () => {
     setLoading(true)
     setFetchError(null)
     try {
-      const res  = await fetch(API)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Failed to fetch medicines")
-      // API returns { medicines: [...] } — extract the array
-      const list = Array.isArray(data) ? data : (data.medicines || [])
-      setMedicines(list)
+      const [pharmRes, medRes] = await Promise.all([
+        fetch(PHARMACY_API),
+        fetch(MEDICINE_API),
+      ])
+
+      const pharmData = await pharmRes.json()
+      const medData   = await medRes.json()
+
+      if (!pharmRes.ok) throw new Error(pharmData.message || "Failed to fetch pharmacies")
+
+      const pharmacies = pharmData.data?.pharmacies || []
+      const meds       = Array.isArray(medData) ? medData : (medData.medicines || [])
+
+      setPharmacyList(pharmacies)
+      setMedicines(meds)
       setLastRefresh(new Date())
     } catch (err) {
       setFetchError(err.message)
@@ -356,22 +350,22 @@ export default function InventoryDashboard() {
     }
   }
 
-  useEffect(() => { fetchMedicines() }, [])
+  useEffect(() => { fetchData() }, [])
 
-  // ── Derive pharmacy rows from live medicine data ───────────────
-  const pharmacies = useMemo(() => buildPharmacyList(medicines), [medicines])
+  // ── Build pharmacy rows combining live DB pharmacies + medicine stock ─
+  const pharmacies = useMemo(() => buildPharmacyList(pharmacyList, medicines), [pharmacyList, medicines])
 
-  // ── Real-time stats from DB data ──────────────────────────────
+  // ── Real-time stats ───────────────────────────────────────────
   const stats = useMemo(() => ({
     totalMedicines:  medicines.length,
-    totalPharmacies: pharmacies.length,
-    totalOrders:     pharmacies.reduce((s,p) => s+p.orders, 0),
+    totalPharmacies: pharmacyList.length,
+    totalOrders:     pharmacies.reduce((s,p) => s + p.orders, 0),
     lowStock:        medicines.filter(m => {
                        const q = Number(m.mediStock) || 0
                        return q > 0 && q <= 50
                      }).length,
     outOfStock:      medicines.filter(m => (Number(m.mediStock) || 0) === 0).length,
-  }), [medicines, pharmacies])
+  }), [medicines, pharmacies, pharmacyList])
 
   const counts = useMemo(() => ({
     active:  pharmacies.filter(p=>p.status==="active").length,
@@ -403,10 +397,8 @@ export default function InventoryDashboard() {
         input::placeholder { color:${C.lilacAsh}; }
       `}</style>
 
-      {/* Top accent bar */}
       <div style={{ height:3, background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
 
-      {/* Geometric bg */}
       <div style={{
         position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`
@@ -416,7 +408,6 @@ export default function InventoryDashboard() {
         `,
       }} />
 
-      {/* Dot grid */}
       <div style={{
         position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
@@ -455,9 +446,8 @@ export default function InventoryDashboard() {
             </div>
 
             <div style={{ display:"flex", gap:9, flexShrink:0, alignItems:"flex-start" }}>
-              {/* Refresh */}
               <button
-                onClick={fetchMedicines}
+                onClick={fetchData}
                 disabled={loading}
                 style={{
                   padding:"10px 16px", borderRadius:10, cursor:loading?"not-allowed":"pointer",
@@ -472,7 +462,6 @@ export default function InventoryDashboard() {
                 Refresh
               </button>
 
-              {/* Add Medicine */}
               <button
                 onMouseEnter={()=>setAddHov(true)}
                 onMouseLeave={()=>setAddHov(false)}
@@ -512,7 +501,7 @@ export default function InventoryDashboard() {
               <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13 }}>Failed to load pharmacy data</p>
               <p style={{ margin:"2px 0 0", fontSize:12, color:C.danger, opacity:0.7 }}>{fetchError}</p>
             </div>
-            <button onClick={fetchMedicines} style={{
+            <button onClick={fetchData} style={{
               padding:"6px 14px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
               border:`1.5px solid rgba(192,57,43,0.3)`, background:"rgba(192,57,43,0.08)",
               color:C.danger, fontWeight:600, fontSize:12,
@@ -520,28 +509,28 @@ export default function InventoryDashboard() {
           </div>
         )}
 
-        {/* ── Stat Cards — live from DB ── */}
+        {/* ── Stat Cards ── */}
         <div style={{ display:"flex", gap:16, marginBottom:32 }}>
           <StatCard
             icon={Activity}
             value={loading ? "—" : medicines.length.toLocaleString()}
             label="Total Medicines"
             sub="Registered in network"
-            accent={C.techBlue} delay="0.07s"
+            delay="0.07s"
           />
           <StatCard
             icon={Clock}
             value={loading ? "—" : stats.totalOrders}
             label="Pending Orders"
             sub="Awaiting fulfilment"
-            accent={C.techBlue} delay="0.13s"
+            delay="0.13s"
           />
           <StatCard
             icon={Building2}
             value={loading ? "—" : String(stats.totalPharmacies).padStart(2,"0")}
             label="Connected Pharmacies"
-            sub="With registered medicines"
-            accent={C.techBlue} delay="0.19s"
+            sub="Registered in network"
+            delay="0.19s"
           />
         </div>
 
@@ -565,7 +554,6 @@ export default function InventoryDashboard() {
             )
           })}
 
-          {/* Low / Out of stock live badges */}
           {!loading && stats.lowStock > 0 && (
             <div style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px",
               borderRadius:10, background:"#fdf4e3", border:"1px solid #e8d19a" }}>
@@ -583,7 +571,6 @@ export default function InventoryDashboard() {
 
           <div style={{ flex:1 }} />
 
-          {/* Last refreshed */}
           <div style={{
             display:"flex", alignItems:"center", gap:6, padding:"7px 14px",
             borderRadius:10, background:C.white, border:`1px solid ${C.paleSlate}`,
@@ -711,14 +698,14 @@ export default function InventoryDashboard() {
                   {pharmacies.length === 0 ? "No pharmacies registered yet" : "No pharmacies found"}
                 </p>
                 <p style={{ margin:"6px 0 0", fontSize:12.5, color:C.lilacAsh }}>
-                  {pharmacies.length === 0 ? "Add a medicine with a pharmacy name to get started" : "Try adjusting your search or filter"}
+                  {pharmacies.length === 0 ? "Add pharmacies via the Pharmacy Dashboard to get started" : "Try adjusting your search or filter"}
                 </p>
               </div>
 
             ) : (
               filtered.map((pharmacy, index)=>(
                 <PharmacyRow
-                  key={pharmacy.name}
+                  key={pharmacy.id}
                   pharmacy={pharmacy}
                   index={index}
                   total={filtered.length}

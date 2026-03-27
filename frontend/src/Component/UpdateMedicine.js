@@ -23,7 +23,8 @@ const C = {
   danger:    "#C0392B",
 }
 
-const API = "http://localhost:5000/medicines"
+const API          = "http://localhost:5000/medicines"
+const PHARMACY_API = "http://localhost:5000/api/pharmacies"
 
 const categories = [
   "Antibiotic","Antidiabetic","Cardiovascular","Respiratory",
@@ -31,16 +32,10 @@ const categories = [
   "Antihistamine","Supplement","Other"
 ]
 
-const pharmaciesList = [
-  "Kandy Central Pharmacy","Galle Fort MedPoint","Jaffna Community Rx",
-  "Matara Rural Clinic","Anuradhapura PharmaCare","Batticaloa MedStore",
-  "Kurunegala Health Hub","Trincomalee Bay Pharmacy"
-]
-
 const prescriptionStatuses = [
-  { key:"required", icon:ShieldCheck, color:C.techBlue, bg:"rgba(2,62,138,0.07)",  border:"rgba(2,62,138,0.2)"  },
+  { key:"required",     icon:ShieldCheck, color:C.techBlue, bg:"rgba(2,62,138,0.07)",  border:"rgba(2,62,138,0.2)"  },
   { key:"not required", icon:ShieldOff,   color:C.success,  bg:"rgba(14,124,91,0.07)", border:"rgba(14,124,91,0.2)" },
-  { key:"optional", icon:ShieldAlert, color:C.warn,     bg:"rgba(180,83,9,0.07)",  border:"rgba(180,83,9,0.2)"  },
+  { key:"optional",     icon:ShieldAlert, color:C.warn,     bg:"rgba(180,83,9,0.07)",  border:"rgba(180,83,9,0.2)"  },
 ]
 
 const emptyForm = {
@@ -58,7 +53,7 @@ function Field({ label, required, error, icon:Icon, hint, changed, children }) {
         <label style={{
           display:"flex", alignItems:"center", gap:5,
           fontSize:10.5, fontWeight:700,
-          color: error ? C.danger : changed ? C.lilacAsh : C.lilacAsh,
+          color: error ? C.danger : C.lilacAsh,
           letterSpacing:"0.13em", textTransform:"uppercase",
         }}>
           {Icon && <Icon size={10} strokeWidth={2.2} />}
@@ -68,8 +63,7 @@ function Field({ label, required, error, icon:Icon, hint, changed, children }) {
             <span style={{
               fontSize:8, fontWeight:800, padding:"1px 6px", borderRadius:99,
               background:"rgba(76,110,245,0.12)", color:C.lilacAsh,
-              border:"1px solid rgba(76,110,245,0.25)", letterSpacing:"0.06em",
-              marginLeft:4,
+              border:"1px solid rgba(76,110,245,0.25)", letterSpacing:"0.06em", marginLeft:4,
             }}>EDITED</span>
           )}
         </label>
@@ -105,8 +99,7 @@ function ChangeBadge({ count }) {
   if (!count) return null
   return (
     <div style={{
-      display:"flex", alignItems:"center", gap:6,
-      padding:"6px 14px", borderRadius:99,
+      display:"flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:99,
       background:"rgba(76,110,245,0.1)", border:"1px solid rgba(76,110,245,0.25)",
     }}>
       <PencilLine size={12} color={C.lilacAsh} />
@@ -134,6 +127,31 @@ export default function MedicineUpdate() {
   const [showPreview,  setShowPreview]  = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
 
+  // ── Fetch registered pharmacies from DB ───────────────────────
+  const [pharmaciesList,    setPharmaciesList]    = useState([])
+  const [loadingPharmacies, setLoadingPharmacies] = useState(true)
+  const [pharmacyError,     setPharmacyError]     = useState(null)
+
+  useEffect(() => {
+    const fetchPharmacies = async () => {
+      setLoadingPharmacies(true)
+      setPharmacyError(null)
+      try {
+        const res  = await fetch(PHARMACY_API)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || "Failed to fetch pharmacies")
+        const list = data.data?.pharmacies || []
+        // Show all pharmacies (active + inactive) in update form so existing assignments are always visible
+        setPharmaciesList(list.map(p => p.name))
+      } catch (err) {
+        setPharmacyError(err.message)
+      } finally {
+        setLoadingPharmacies(false)
+      }
+    }
+    fetchPharmacies()
+  }, [])
+
   // ── Fetch existing medicine data ──────────────────────────────
   useEffect(() => {
     const fetchMedicine = async () => {
@@ -142,7 +160,6 @@ export default function MedicineUpdate() {
         const res  = await fetch(`${API}/${id}`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.message || "Medicine not found")
-        // API returns { medicine: {...} } — extract the object
         const m = data.medicine || data
         const loaded = {
           mediName:               m.mediName               || "",
@@ -172,10 +189,7 @@ export default function MedicineUpdate() {
   }, [id])
 
   // ── Changed fields detection ──────────────────────────────────
-  const changedFields = original
-    ? Object.keys(form).filter(k => form[k] !== original[k])
-    : []
-
+  const changedFields = original ? Object.keys(form).filter(k => form[k] !== original[k]) : []
   const isChanged = (field) => original && form[field] !== original[field]
 
   // ── Handlers ─────────────────────────────────────────────────
@@ -202,88 +216,53 @@ export default function MedicineUpdate() {
 
   const handleResetAll = () => {
     if (original) {
-      setForm(original)
-      setErrors({})
-      setConfirmReset(false)
-      setSaved(false)
+      setForm(original); setErrors({}); setConfirmReset(false); setSaved(false)
     }
   }
 
   const validate = () => {
     const errs = {}
-    Object.keys(emptyForm).forEach(k => { 
+    Object.keys(emptyForm).forEach(k => {
       if (!form[k] || (typeof form[k] === 'string' && form[k].trim() === '')) {
         errs[k] = "This field is required"
       }
     })
-    
-    // mediName validation (backend: 2-100 characters)
     if (form.mediName && form.mediName.trim().length < 2) {
       errs.mediName = "Medicine name must be at least 2 characters"
     } else if (form.mediName && form.mediName.trim().length > 100) {
       errs.mediName = "Medicine name must not exceed 100 characters"
     }
-    
-    // mediDescription validation (backend: required, max 1000 characters)
     if (form.mediDescription && form.mediDescription.trim().length > 1000) {
       errs.mediDescription = "Description must not exceed 1000 characters"
     }
-    
-    // Validate numeric fields
-    if (form.mediPrice && isNaN(form.mediPrice)) {
-      errs.mediPrice = "Must be a number"
-    } else if (form.mediPrice && Number(form.mediPrice) < 0) {
-      errs.mediPrice = "Must be a non-negative number"
-    }
-    
-    if (form.mediStock && isNaN(form.mediStock)) {
-      errs.mediStock = "Must be a number"
-    } else if (form.mediStock && !Number.isInteger(Number(form.mediStock))) {
-      errs.mediStock = "Must be an integer"
-    } else if (form.mediStock && Number(form.mediStock) < 0) {
-      errs.mediStock = "Cannot be negative"
-    }
-    
-    // Date validation
+    if (form.mediPrice && isNaN(form.mediPrice)) errs.mediPrice = "Must be a number"
+    else if (form.mediPrice && Number(form.mediPrice) < 0) errs.mediPrice = "Must be a non-negative number"
+    if (form.mediStock && isNaN(form.mediStock)) errs.mediStock = "Must be a number"
+    else if (form.mediStock && !Number.isInteger(Number(form.mediStock))) errs.mediStock = "Must be an integer"
+    else if (form.mediStock && Number(form.mediStock) < 0) errs.mediStock = "Cannot be negative"
     const today = new Date()
-    today.setHours(0, 0, 0, 0) // Set to midnight for fair comparison
-    
+    today.setHours(0, 0, 0, 0)
     if (form.mediExpiryDate) {
       const expiryDate = new Date(form.mediExpiryDate)
-      if (isNaN(Date.parse(form.mediExpiryDate))) {
-        errs.mediExpiryDate = "Must be a valid date"
-      } else if (expiryDate <= today) {
-        errs.mediExpiryDate = "Expiry date must be in the future"
-      }
+      if (isNaN(Date.parse(form.mediExpiryDate))) errs.mediExpiryDate = "Must be a valid date"
+      else if (expiryDate <= today) errs.mediExpiryDate = "Expiry date must be in the future"
     }
-    
     if (form.mediManufactureDate) {
       const manufactureDate = new Date(form.mediManufactureDate)
-      if (isNaN(Date.parse(form.mediManufactureDate))) {
-        errs.mediManufactureDate = "Must be a valid date"
-      } else if (manufactureDate > today) {
-        errs.mediManufactureDate = "Manufacture date cannot be in the future"
-      }
+      if (isNaN(Date.parse(form.mediManufactureDate))) errs.mediManufactureDate = "Must be a valid date"
+      else if (manufactureDate > today) errs.mediManufactureDate = "Manufacture date cannot be in the future"
     }
-    
-    // Cross-field date validation
     if (form.mediManufactureDate && form.mediExpiryDate) {
       const manufactureDate = new Date(form.mediManufactureDate)
-      const expiryDate = new Date(form.mediExpiryDate)
-      
+      const expiryDate      = new Date(form.mediExpiryDate)
       if (!isNaN(Date.parse(form.mediManufactureDate)) && !isNaN(Date.parse(form.mediExpiryDate))) {
-        if (manufactureDate >= expiryDate) {
-          errs.mediExpiryDate = "Manufacture date must be before expiry date"
-        }
+        if (manufactureDate >= expiryDate) errs.mediExpiryDate = "Manufacture date must be before expiry date"
       }
     }
-    
-    // Prescription status validation (backend: specific values allowed)
     const validStatuses = ['required', 'not required', 'optional']
     if (form.mediPrescriptionStatus && !validStatuses.includes(form.mediPrescriptionStatus.toLowerCase())) {
       errs.mediPrescriptionStatus = "Invalid prescription status"
     }
-    
     return errs
   }
 
@@ -295,18 +274,12 @@ export default function MedicineUpdate() {
       const res = await fetch(`${API}/${id}`, {
         method: "PUT",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({
-          ...form,
-          mediPrice: Number(form.mediPrice),
-          mediStock: Number(form.mediStock),
-        }),
+        body: JSON.stringify({ ...form, mediPrice: Number(form.mediPrice), mediStock: Number(form.mediStock) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || "Failed to update medicine")
       setOriginal({ ...form })
       setSaved(true)
-      // Navigate to inventory after 1.5s so toast is visible
-      // Navigate to the specific pharmacy's inventory page after save
       setTimeout(() => navigate(`/medicineInventory?pharmacy=${encodeURIComponent(form.Pharmacy)}`), 1500)
     } catch (err) {
       setApiError(err.message)
@@ -327,12 +300,11 @@ export default function MedicineUpdate() {
   if (loading) return (
     <div style={{ minHeight:"100vh", background:C.snow, display:"flex", alignItems:"center",
       justifyContent:"center", fontFamily:"'DM Sans',sans-serif" }}>
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-        <div style={{
-          width:52, height:52, borderRadius:14,
+        <div style={{ width:52, height:52, borderRadius:14,
           background:`rgba(2,62,138,0.07)`, border:`1.5px solid rgba(2,62,138,0.15)`,
-          display:"flex", alignItems:"center", justifyContent:"center",
-        }}>
+          display:"flex", alignItems:"center", justifyContent:"center" }}>
           <Loader2 size={24} color={C.techBlue} style={{ animation:"spin 0.9s linear infinite" }} />
         </div>
         <p style={{ margin:0, fontSize:14, color:C.lilacAsh, fontWeight:500 }}>Loading medicine details...</p>
@@ -344,8 +316,7 @@ export default function MedicineUpdate() {
   const SavedToast = () => saved ? (
     <div style={{
       position:"fixed", bottom:28, right:28, zIndex:999,
-      display:"flex", alignItems:"center", gap:12,
-      padding:"13px 20px", borderRadius:12,
+      display:"flex", alignItems:"center", gap:12, padding:"13px 20px", borderRadius:12,
       background:C.snow, border:`1.5px solid rgba(14,124,91,0.3)`,
       boxShadow:"0 12px 40px rgba(2,62,138,0.14)",
       animation:"toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
@@ -403,9 +374,8 @@ export default function MedicineUpdate() {
             >Cancel</button>
             <button onClick={handleResetAll} style={{
               padding:"9px 18px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
-              border:"none", background:C.warn, color:C.snow,
-              fontWeight:700, fontSize:13, transition:"all 0.2s",
-              display:"flex", alignItems:"center", gap:6,
+              border:"none", background:C.warn, color:C.snow, fontWeight:700, fontSize:13,
+              transition:"all 0.2s", display:"flex", alignItems:"center", gap:6,
               boxShadow:"0 4px 16px rgba(180,83,9,0.3)",
             }}
               onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(180,83,9,0.38)" }}
@@ -439,16 +409,11 @@ export default function MedicineUpdate() {
         @keyframes shimmer  { 0%{left:-100%} 100%{left:200%} }
       `}</style>
 
-      {/* Top palette stripe */}
       <div style={{ position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
         background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
-
-      {/* Dot grid bg */}
       <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
         backgroundSize:"28px 28px", opacity:0.35 }} />
-
-      {/* Radial accents */}
       <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`
           radial-gradient(circle at 5% 5%, rgba(2,62,138,0.05) 0%, transparent 40%),
@@ -488,7 +453,6 @@ export default function MedicineUpdate() {
 
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:20 }}>
             <div>
-              {/* Breadcrumb */}
               <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
                 <div style={{ width:30, height:30, borderRadius:8, background:C.techBlue,
                   display:"flex", alignItems:"center", justifyContent:"center",
@@ -503,23 +467,17 @@ export default function MedicineUpdate() {
                   background:"rgba(2,62,138,0.08)", padding:"2px 10px", borderRadius:99,
                   border:`1px solid rgba(2,62,138,0.15)` }}>Edit Medicine</span>
               </div>
-
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div>
-                  <h1 style={{ margin:0, fontSize:30, fontWeight:700, letterSpacing:"-1.2px",
-                    color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>
-                    Update Medicine
-                  </h1>
-                  <p style={{ margin:"6px 0 0", color:C.lilacAsh, fontSize:13.5 }}>
-                    {original?.mediName
-                      ? <><span style={{ color:C.techBlue, fontWeight:600 }}>{original.mediName}</span> — edit and save changes below</>
-                      : "Edit the medicine details below"}
-                  </p>
-                </div>
+              <div>
+                <h1 style={{ margin:0, fontSize:30, fontWeight:700, letterSpacing:"-1.2px",
+                  color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>Update Medicine</h1>
+                <p style={{ margin:"6px 0 0", color:C.lilacAsh, fontSize:13.5 }}>
+                  {original?.mediName
+                    ? <><span style={{ color:C.techBlue, fontWeight:600 }}>{original.mediName}</span> — edit and save changes below</>
+                    : "Edit the medicine details below"}
+                </p>
               </div>
             </div>
 
-            {/* Header right: change count + actions */}
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:10, flexShrink:0 }}>
               <ChangeBadge count={changedFields.length} />
               <div style={{ display:"flex", gap:8 }}>
@@ -554,8 +512,7 @@ export default function MedicineUpdate() {
           <div style={{
             borderRadius:14, padding:"20px 24px", marginBottom:22,
             background:C.white, border:`1.5px solid ${C.paleSlate}`,
-            boxShadow:"0 4px 20px rgba(2,62,138,0.07)",
-            animation:"fadeUp 0.3s ease both",
+            boxShadow:"0 4px 20px rgba(2,62,138,0.07)", animation:"fadeUp 0.3s ease both",
           }}>
             <p style={{ margin:"0 0 14px", fontSize:10.5, fontWeight:700, color:C.lilacAsh,
               letterSpacing:"0.14em", textTransform:"uppercase", display:"flex", alignItems:"center", gap:6 }}>
@@ -563,32 +520,30 @@ export default function MedicineUpdate() {
             </p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
               {[
-                { label:"Medicine Name",       value:form.mediName },
-                { label:"Price",               value:form.mediPrice ? `LKR ${form.mediPrice}` : "—" },
-                { label:"Stock",               value:form.mediStock ? `${form.mediStock} units` : "—" },
-                { label:"Category",            value:form.mediCategory || "—" },
-                { label:"Manufacturer",        value:form.mediCompany || "—" },
-                { label:"Pharmacy",            value:form.Pharmacy || "—" },
-                { label:"Manufacture Date",    value:form.mediManufactureDate || "—" },
-                { label:"Expiry Date",         value:form.mediExpiryDate || "—" },
-                { label:"Prescription Status", value:form.mediPrescriptionStatus || "—" },
-              ].map((d,i) => {
-                const fieldKey = Object.keys(emptyForm)[i]
-                const changed  = original && form[Object.keys(emptyForm)[i]] !== original[Object.keys(emptyForm)[i]]
+                { label:"Medicine Name",       key:"mediName",               display: form.mediName },
+                { label:"Price",               key:"mediPrice",              display: form.mediPrice ? `LKR ${form.mediPrice}` : "—" },
+                { label:"Stock",               key:"mediStock",              display: form.mediStock ? `${form.mediStock} units` : "—" },
+                { label:"Category",            key:"mediCategory",           display: form.mediCategory || "—" },
+                { label:"Manufacturer",        key:"mediCompany",            display: form.mediCompany || "—" },
+                { label:"Pharmacy",            key:"Pharmacy",               display: form.Pharmacy || "—" },
+                { label:"Manufacture Date",    key:"mediManufactureDate",    display: form.mediManufactureDate || "—" },
+                { label:"Expiry Date",         key:"mediExpiryDate",         display: form.mediExpiryDate || "—" },
+                { label:"Prescription Status", key:"mediPrescriptionStatus", display: form.mediPrescriptionStatus || "—" },
+              ].map((d) => {
+                const changed = original && form[d.key] !== original[d.key]
                 return (
-                  <div key={i} style={{ display:"flex", flexDirection:"column", gap:3,
+                  <div key={d.key} style={{ display:"flex", flexDirection:"column", gap:3,
                     padding:"10px 12px", borderRadius:9,
                     background: changed ? "rgba(76,110,245,0.05)" : C.snow,
                     border:`1px solid ${changed ? "rgba(76,110,245,0.2)" : C.paleSlate}`,
                     transition:"all 0.2s",
                   }}>
-                    <span style={{ fontSize:9.5, fontWeight:700, color: changed ? C.lilacAsh : C.lilacAsh,
+                    <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
                       letterSpacing:"0.1em", textTransform:"uppercase", opacity: changed ? 1 : 0.7 }}>
-                      {d.label}
-                      {changed && " ✦"}
+                      {d.label}{changed && " ✦"}
                     </span>
                     <span style={{ fontSize:13, fontWeight:600, color: changed ? C.techBlue : C.blueSlate }}>
-                      {d.value}
+                      {d.display}
                     </span>
                   </div>
                 )
@@ -619,28 +574,21 @@ export default function MedicineUpdate() {
             display:"flex", alignItems:"center", gap:16,
             background:C.snow, position:"relative", overflow:"hidden",
           }}>
-            {/* Shimmer */}
             <div style={{ position:"absolute", top:0, left:"-100%", width:"40%", height:"100%",
               background:`linear-gradient(90deg,transparent,rgba(2,62,138,0.03),transparent)`,
               animation:"shimmer 5s ease-in-out infinite", pointerEvents:"none" }} />
-
             <div style={{ width:44, height:44, borderRadius:11, flexShrink:0,
               background:"rgba(76,110,245,0.08)", border:"1.5px solid rgba(76,110,245,0.18)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
               <PencilLine size={20} color={C.lilacAsh} strokeWidth={1.8} />
             </div>
-
             <div style={{ flex:1 }}>
               <p style={{ margin:0, color:C.blueSlate, fontWeight:700, fontSize:17,
-                letterSpacing:"-0.4px", fontFamily:"'Sora',sans-serif" }}>
-                Edit Medicine Details
-              </p>
+                letterSpacing:"-0.4px", fontFamily:"'Sora',sans-serif" }}>Edit Medicine Details</p>
               <p style={{ margin:"3px 0 0", color:C.lilacAsh, fontSize:12.5 }}>
                 Fields with an <span style={{ color:C.lilacAsh, fontWeight:700 }}>EDITED</span> badge have unsaved changes
               </p>
             </div>
-
-            {/* Progress */}
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
               <span style={{ fontSize:11, color:C.lilacAsh, fontWeight:600 }}>
                 {Object.keys(emptyForm).filter(k => form[k]).length} / {Object.keys(emptyForm).length} fields filled
@@ -666,9 +614,7 @@ export default function MedicineUpdate() {
 
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-              {/* Medicine Name */}
-              <Field label="Medicine Name" required icon={Pill} error={errors.mediName}
-                changed={isChanged("mediName")}>
+              <Field label="Medicine Name" required icon={Pill} error={errors.mediName} changed={isChanged("mediName")}>
                 <div style={{ position:"relative" }}>
                   <input placeholder="e.g. Amoxicillin 500mg" {...fp("mediName")} />
                   {isChanged("mediName") && (
@@ -683,10 +629,8 @@ export default function MedicineUpdate() {
                 </div>
               </Field>
 
-              {/* Price + Stock */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <Field label="Price (LKR)" required icon={DollarSign} error={errors.mediPrice}
-                  hint="Retail price" changed={isChanged("mediPrice")}>
+                <Field label="Price (LKR)" required icon={DollarSign} error={errors.mediPrice} hint="Retail price" changed={isChanged("mediPrice")}>
                   <div style={{ position:"relative" }}>
                     <input type="number" min="0" placeholder="e.g. 150.00" {...fp("mediPrice")} />
                     {isChanged("mediPrice") && (
@@ -700,8 +644,7 @@ export default function MedicineUpdate() {
                     )}
                   </div>
                 </Field>
-                <Field label="Stock Quantity" required icon={Hash} error={errors.mediStock}
-                  hint="Units in hand" changed={isChanged("mediStock")}>
+                <Field label="Stock Quantity" required icon={Hash} error={errors.mediStock} hint="Units in hand" changed={isChanged("mediStock")}>
                   <div style={{ position:"relative" }}>
                     <input type="number" min="0" placeholder="e.g. 500" {...fp("mediStock")} />
                     {isChanged("mediStock") && (
@@ -717,7 +660,6 @@ export default function MedicineUpdate() {
                 </Field>
               </div>
 
-              {/* Category + Manufacturer */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <Field label="Category" required icon={Tag} error={errors.mediCategory} changed={isChanged("mediCategory")}>
                   <select style={inp(!!errors.mediCategory, focused==="mediCategory", isChanged("mediCategory"))}
@@ -744,15 +686,39 @@ export default function MedicineUpdate() {
                 </Field>
               </div>
 
-              {/* Pharmacy */}
+              {/* ── Assigned Pharmacy — dynamic from DB ── */}
               <Field label="Assigned Pharmacy" required icon={Building2} error={errors.Pharmacy} changed={isChanged("Pharmacy")}>
-                <select style={inp(!!errors.Pharmacy, focused==="Pharmacy", isChanged("Pharmacy"))}
-                  value={form.Pharmacy}
-                  onFocus={()=>setFocused("Pharmacy")} onBlur={()=>setFocused(null)}
-                  onChange={e=>handleChange("Pharmacy",e.target.value)}>
-                  <option value="">— Select a pharmacy —</option>
-                  {pharmaciesList.map(p=><option key={p}>{p}</option>)}
-                </select>
+                {loadingPharmacies ? (
+                  <div style={{
+                    ...inp(!!errors.Pharmacy, false, false),
+                    display:"flex", alignItems:"center", gap:8,
+                    color:C.lilacAsh, cursor:"not-allowed",
+                  }}>
+                    <Loader2 size={14} color={C.lilacAsh} style={{ animation:"spin 0.9s linear infinite", flexShrink:0 }} />
+                    <span style={{ fontSize:13 }}>Loading pharmacies...</span>
+                  </div>
+                ) : pharmacyError ? (
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <select style={inp(true, false, false)} disabled>
+                      <option>Failed to load pharmacies</option>
+                    </select>
+                    <span style={{ fontSize:11, color:C.danger, fontWeight:600, display:"flex", alignItems:"center", gap:5 }}>
+                      <AlertCircle size={11} strokeWidth={2.5} />{pharmacyError}
+                    </span>
+                  </div>
+                ) : (
+                  <select style={inp(!!errors.Pharmacy, focused==="Pharmacy", isChanged("Pharmacy"))}
+                    value={form.Pharmacy}
+                    onFocus={()=>setFocused("Pharmacy")} onBlur={()=>setFocused(null)}
+                    onChange={e=>handleChange("Pharmacy",e.target.value)}>
+                    <option value="">— Select a pharmacy —</option>
+                    {pharmaciesList.length === 0 ? (
+                      <option disabled>No pharmacies registered</option>
+                    ) : (
+                      pharmaciesList.map(p=><option key={p} value={p}>{p}</option>)
+                    )}
+                  </select>
+                )}
               </Field>
             </div>
           </div>
@@ -770,7 +736,6 @@ export default function MedicineUpdate() {
 
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-              {/* Description */}
               <Field label="Description" required icon={FileText} error={errors.mediDescription}
                 hint="Usage & notes" changed={isChanged("mediDescription")}>
                 <textarea
@@ -784,7 +749,6 @@ export default function MedicineUpdate() {
                 />
               </Field>
 
-              {/* Dates */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <Field label="Manufacture Date" required icon={Calendar} error={errors.mediManufactureDate} changed={isChanged("mediManufactureDate")}>
                   <input type="date"
@@ -804,7 +768,6 @@ export default function MedicineUpdate() {
                 </Field>
               </div>
 
-              {/* Prescription Status */}
               <Field label="Prescription Status" required icon={ShieldCheck} error={errors.mediPrescriptionStatus} changed={isChanged("mediPrescriptionStatus")}>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
                   {prescriptionStatuses.map(ps=>{
@@ -834,7 +797,6 @@ export default function MedicineUpdate() {
                 </div>
               </Field>
 
-              {/* Image Upload */}
               <Field label="Medicine Image" required icon={ImagePlus} error={errors.mediImage} changed={isChanged("mediImage")}>
                 <label style={{
                   display:"flex", flexDirection:"column",
@@ -884,13 +846,10 @@ export default function MedicineUpdate() {
 
           {/* ── Footer ── */}
           <div style={{
-            margin:"28px 0 0",
-            padding:"18px 28px",
-            borderTop:`1.5px solid ${C.paleSlate}`,
-            background:C.snow,
+            margin:"28px 0 0", padding:"18px 28px",
+            borderTop:`1.5px solid ${C.paleSlate}`, background:C.snow,
             display:"flex", alignItems:"center", justifyContent:"space-between",
           }}>
-            {/* Left: change summary */}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               {changedFields.length > 0 ? (
                 <div style={{ display:"flex", alignItems:"center", gap:7,
@@ -911,7 +870,6 @@ export default function MedicineUpdate() {
               )}
             </div>
 
-            {/* Right: action buttons */}
             <div style={{ display:"flex", gap:9 }}>
               <button onClick={()=>navigate(-1)} style={{
                 padding:"10px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
@@ -925,9 +883,7 @@ export default function MedicineUpdate() {
                 <X size={14} /> Cancel
               </button>
 
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || changedFields.length===0}
+              <button onClick={handleSubmit} disabled={submitting || changedFields.length===0}
                 style={{
                   padding:"10px 26px", borderRadius:9, border:"none",
                   background: (submitting||changedFields.length===0) ? C.paleSlate : C.techBlue,
@@ -936,8 +892,7 @@ export default function MedicineUpdate() {
                   cursor:(submitting||changedFields.length===0)?"not-allowed":"pointer",
                   fontFamily:"inherit",
                   boxShadow:(submitting||changedFields.length===0)?"none":`0 4px 18px rgba(2,62,138,0.3)`,
-                  transition:"all 0.22s",
-                  display:"flex", alignItems:"center", gap:8,
+                  transition:"all 0.22s", display:"flex", alignItems:"center", gap:8,
                 }}
                 onMouseEnter={e=>{ if(!submitting&&changedFields.length>0){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 28px rgba(2,62,138,0.38)" }}}
                 onMouseLeave={e=>{ if(!submitting&&changedFields.length>0){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 18px rgba(2,62,138,0.3)" }}}

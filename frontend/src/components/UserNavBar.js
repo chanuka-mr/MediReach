@@ -9,8 +9,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Bell,
-  Settings,
   Stethoscope,
   Home,
 } from 'lucide-react'
@@ -20,13 +18,12 @@ const navItems = [
   { label: "About Us",   path: "/about",      icon: Info,          tag: "About",   desc: "Our mission & story",    accent: "#A78BFA" },
   { label: "Contact Us", path: "/contact",    icon: Phone,         tag: "Contact", desc: "Get in touch with us",   accent: "#34D399" },
   { label: "Order Now",  path: "/order",      icon: ShoppingBag,   tag: "Order",   desc: "Place a medicine order", accent: "#FB923C" },
-  { label: "Pharmacies", path: "/pharmacies", icon: Building2,     tag: "Network", desc: "Find nearby pharmacies", accent: "#F472B6" },
+  { label: "Pharmacies", path: "/user/pharmacies", icon: Building2,     tag: "Network", desc: "Find nearby pharmacies", accent: "#F472B6" },
   { label: "Chats",      path: "/chats",      icon: MessageCircle, tag: "Chat",    desc: "Message your pharmacy",  accent: "#FBBF24" },
 ]
 
 const bottomNav = [
-  { label: "Notifications", path: "/notifications", icon: Bell     },
-  { label: "Settings",      path: "/profile",       icon: Settings },
+  // Removed notification and profile items as requested
 ]
 
 export default function UserNavBar() {
@@ -38,7 +35,7 @@ export default function UserNavBar() {
   
   const handleLogout = () => {
     localStorage.removeItem("userInfo");
-    navigate("/auth");
+    window.location.href = "/"; // This will redirect to auth page since isLoggedIn will be false
   }
 
   // Parse user info for display

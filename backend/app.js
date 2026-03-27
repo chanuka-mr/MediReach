@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors     = require("cors");
 const routes   = require("./Route/medicineRoute");
 const dashboardRoutes = require("./Route/dashboardRoute"); 
-const reportRoutes = require("./routes/reportRoutes"); 
+const reportRoutes = require("./Routes/reportRoutes"); 
 const dns = require("dns");
 
 require("dotenv").config();
@@ -27,14 +27,31 @@ app.use(express.json());
 // routes
 const authRoutes = require("./Routes/authRoutes");
 const userRoutes = require("./Routes/userRoutes");
+const pharmacyRoutes = require("./Routes/pharmacyRoutes");
+const inquiryRoutes = require("./Routes/inquiryRoutes");
 
+// Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/pharmacies", pharmacyRoutes);
+app.use("/api/inquiries", inquiryRoutes);
 
 // ── Routes ────────────────────────────────────────────────────────
 app.use("/medicines",        routes);           
 app.use("/api/dashboard",    dashboardRoutes);  
 app.use("/api/reports",      reportRoutes);     
+
+// SIMPLE TEST ROUTE - This MUST work
+app.get("/test", (req, res) => {
+    console.log("TEST ROUTE HIT!");
+    res.json({ message: "Test route is working!" });
+});
+
+// Root route
+app.get("/", (req, res) => {
+    console.log("ROOT ROUTE HIT!");
+    res.send("MediReach API is running");
+});
 
 // ── Connect & Start ───────────────────────────────────────────────
 mongoose.connect(process.env.MONGODB_URI)
