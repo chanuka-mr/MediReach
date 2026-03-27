@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import './App.css';
 import Navbar from './Components/Navbar';
 import OrderForm from './Pages/OrderForm';
 import OrderDashboard from './Pages/OrderDashboard';
@@ -10,16 +9,15 @@ import PaymentUI from './Pages/PaymentUI';
 function App() {
   return (
     <Router>
-      <div className="App">
+      <div className="min-h-screen flex flex-col bg-bg-color font-sans text-text-main">
         <Navbar />
-        <main className="content">
+        <main className="flex-1">
           <Routes>
             <Route path="/" element={<Navigate to="/order-form" />} />
             <Route path="/order-form" element={<OrderForm />} />
             <Route path="/order-dashboard" element={<OrderDashboard />} />
             <Route path="/order-details" element={<OrderDetails />} />
             <Route path="/payment" element={<PaymentUI />} />
-            {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/order-form" />} />
           </Routes>
         </main>

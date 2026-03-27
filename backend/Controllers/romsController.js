@@ -13,28 +13,40 @@ const createRequest = async (req, res, next) => {
             delete req.body.prescription_image;
         }
 
+        console.log(`Creating order for Patient: ${patient_id}, Pharmacy: ${req.body.pharmacy_id}`);
         const request = await romsService.createRequest(req.body, patient_id);
         res.status(201).json(request);
     } catch (error) {
+        console.error('Create Request Error:', error);
         res.status(400);
         next(error);
     }
 };
 
 
-
-
 const getPharmacyRequests = async (req, res, next) => {
     try {
-        const pharmacy_id = req.user ? req.user._id : (req.query.pharmacy_id || req.body.pharmacy_id);
+        const pharmacy_id = req.query.pharmacy_id || (req.user ? req.user._id : req.body.pharmacy_id);
+        console.log(`Fetching orders for Pharmacy ID: ${pharmacy_id}`);
         const filter = {};
+        
         if (pharmacy_id && pharmacy_id !== 'ALL') {
-            filter.pharmacy_id = pharmacy_id;
+            // Support both hyphenated and underscore versions interchangeably
+            const variations = [
+                pharmacy_id,
+                pharmacy_id.replace(/-/g, '_'),
+                pharmacy_id.replace(/_/g, '-')
+            ];
+            // Unique set of variations
+            const uniqueVariations = [...new Set(variations)];
+            filter.pharmacy_id = { $in: uniqueVariations };
         }
 
         const requests = await MedicationRequest.find(filter).sort({ createdAt: -1 });
+        console.log(`Found ${requests.length} orders for ${pharmacy_id || 'ALL'}`);
         res.json(requests);
     } catch (error) {
+        console.error('Fetch Pharmacy Requests Error:', error);
         next(error);
     }
 };
