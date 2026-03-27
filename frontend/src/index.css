@@ -4,13 +4,23 @@
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
 
-@layer base {
-  html, body, #root { height: 100%; }
-  body { margin: 0; font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+body {
+  font-family: 'DM Sans', sans-serif;
 }
 
-@layer components {
-  .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded; }
+/* Custom utility classes */
+.bg-color {
+  background-color: #F7F9FC;
 }
 
-@layer utilities {}
+.text-main {
+  color: #2D3748;
+}
+
+.text-muted {
+  color: #4A5568;
+}
+
+.border-custom {
+  border-color: #DDE3ED;
+}

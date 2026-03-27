@@ -1,66 +1,155 @@
+// MediReach Backend Application
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const morgan = require('morgan');
+const cron = require('node-cron');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
+const dns = require('dns');
 
-const express  = require("express");
-const mongoose = require("mongoose");
-const cors     = require("cors");
-const routes   = require("./Route/medicineRoute");
-const dashboardRoutes = require("./Route/dashboardRoute"); 
-const reportRoutes = require("./Routes/reportRoutes"); 
-const dns = require("dns");
+// Helper: safe require to avoid startup crashes if optional modules/files aren't present
+function tryRequire(path) {
+    try {
+        return require(path);
+    } catch (err) {
+        return null;
+    }
+}
 
-require("dotenv").config();
+// Attempt to load optional project utilities
+const connectDB = tryRequire('./Config/db') || tryRequire('./config/db');
+const errorMiddleware = tryRequire('./Middleware/errorMiddleware') || tryRequire('./middleware/errorMiddleware');
+const romsService = tryRequire('./Services/romsService') || tryRequire('./services/romsService');
 
-// Override default DNS for MongoDB +srv connections (Bypasses local ISP blocks)
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+// Route modules (try multiple possible paths/ples)
+const routes_medicine = tryRequire('./Route/medicineRoute') || tryRequire('./Routes/medicineRoute') || tryRequire('./routes/medicineRoute');
+const dashboardRoutes = tryRequire('./Route/dashboardRoute') || tryRequire('./Routes/dashboardRoute') || tryRequire('./routes/dashboardRoute');
+const reportRoutes = tryRequire('./Routes/reportRoutes') || tryRequire('./routes/reportRoutes') || tryRequire('./Routes/reports') || tryRequire('./routes/reportRoutes');
+
+const authRoutes = tryRequire('./Routes/authRoutes') || tryRequire('./routes/authRoutes') || tryRequire('./routes/authRoutes.js');
+const userRoutes = tryRequire('./Routes/userRoutes') || tryRequire('./routes/userRoutes');
+const pharmacyRoutes = tryRequire('./Routes/pharmacyRoutes') || tryRequire('./routes/pharmacyRoutes');
+const inquiryRoutes = tryRequire('./Routes/inquiryRoutes') || tryRequire('./routes/inquiryRoutes');
+
+// Additional routes from other branch
+const romsRoutes = tryRequire('./Routes/romsRoutes') || tryRequire('./routes/romsRoutes');
+const drugRoutes = tryRequire('./Routes/drugRoutes') || tryRequire('./routes/drugRoutes');
+const cancellationRoutes = tryRequire('./Routes/cancellationRoutes') || tryRequire('./routes/cancellationRoutes');
+const routingRoutes = tryRequire('./Routes/routingRoutes') || tryRequire('./routes/routingRoutes');
+
+// DNS override for +srv connections (helps in some environments)
+try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {
+    // ignore if not supported in environment
+}
 
 const app = express();
 
-
-// ── Middleware ────────────────────────────────────────────────────
-app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3001"], // your React app
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type"],
-}));
-
+// Middleware
 app.use(express.json());
+// Use a permissive CORS config but prefer explicit origins if needed
+app.use(
+    cors({
+        origin: ['http://localhost:3000', 'http://localhost:3001'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+);
 
-// routes
-const authRoutes = require("./Routes/authRoutes");
-const userRoutes = require("./Routes/userRoutes");
-const pharmacyRoutes = require("./Routes/pharmacyRoutes");
-const inquiryRoutes = require("./Routes/inquiryRoutes");
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+}
 
-// Mount routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/pharmacies", pharmacyRoutes);
-app.use("/api/inquiries", inquiryRoutes);
+// Swagger (only if swagger-jsdoc is available)
+let swaggerDocs;
+try {
+    const swaggerOptions = {
+        swaggerDefinition: {
+            openapi: '3.0.0',
+            info: {
+                title: 'MediReach API',
+                version: '1.0.0',
+                description: 'MediReach Backend RESTful API',
+            },
+            servers: [{ url: `http://localhost:${process.env.PORT || 5000}` }],
+        },
+        apis: ['./Routes/*.js', './routes/*.js'],
+    };
+    swaggerDocs = swaggerJsDoc(swaggerOptions);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+} catch (e) {
+    // swagger not available — continue without docs
+}
 
-// ── Routes ────────────────────────────────────────────────────────
-app.use("/medicines",        routes);           
-app.use("/api/dashboard",    dashboardRoutes);  
-app.use("/api/reports",      reportRoutes);     
-
-// SIMPLE TEST ROUTE - This MUST work
-app.get("/test", (req, res) => {
-    console.log("TEST ROUTE HIT!");
-    res.json({ message: "Test route is working!" });
-});
-
-// Root route
-app.get("/", (req, res) => {
-    console.log("ROOT ROUTE HIT!");
-    res.send("MediReach API is running");
-});
-
-// ── Connect & Start ───────────────────────────────────────────────
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log(" Connected to MongoDB"))
-  .then(() => {
-    app.listen(5000, () => {
-      console.log(" Server is running on port 5000");
+// Scheduled background job (auto-expiry) if romsService exists
+if (romsService && romsService.expireOldRequests) {
+    cron.schedule('0 * * * *', async () => {
+        console.log('Running Auto-Expiry background task...');
+        try {
+            const result = await romsService.expireOldRequests();
+            console.log(`Auto-Expiry completed. Modified ${result.modifiedCount} requests.`);
+        } catch (error) {
+            console.error('Auto-Expiry job failed:', error.message || error);
+        }
     });
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+}
+
+// Mount known routes when present
+if (authRoutes) app.use('/api/auth', authRoutes);
+if (userRoutes) app.use('/api/users', userRoutes);
+if (pharmacyRoutes) app.use('/api/pharmacies', pharmacyRoutes);
+if (inquiryRoutes) app.use('/api/inquiries', inquiryRoutes);
+
+if (routes_medicine) app.use('/medicines', routes_medicine);
+if (dashboardRoutes) app.use('/api/dashboard', dashboardRoutes);
+if (reportRoutes) app.use('/api/reports', reportRoutes);
+
+if (romsRoutes) app.use('/api/roms', romsRoutes);
+if (drugRoutes) app.use('/api/drugs', drugRoutes);
+if (cancellationRoutes) app.use('/api/cancellations', cancellationRoutes);
+if (routingRoutes) app.use('/api/routing', routingRoutes);
+
+// Simple health/test routes
+app.get('/test', (req, res) => {
+    console.log('TEST ROUTE HIT!');
+    res.json({ message: 'Test route is working!' });
+});
+
+app.get('/', (req, res) => {
+    res.send('MediReach API is running');
+});
+
+// Error handling middleware (if available)
+if (errorMiddleware) {
+    if (errorMiddleware.notFound) app.use(errorMiddleware.notFound);
+    if (errorMiddleware.errorHandler) app.use(errorMiddleware.errorHandler);
+}
+
+// Database connection: prefer connectDB() if provided, otherwise use mongoose.connect
+const startServer = async () => {
+    const PORT = process.env.PORT || 5000;
+
+    try {
+        if (connectDB && typeof connectDB === 'function') {
+            await connectDB();
+            console.log('Connected to MongoDB via connectDB()');
+        } else if (process.env.MONGODB_URI) {
+            await mongoose.connect(process.env.MONGODB_URI);
+            console.log('Connected to MongoDB via mongoose.connect');
+        } else {
+            console.warn('No DB connection configured (no connectDB and no MONGODB_URI)');
+        }
+
+        app.listen(PORT, () => {
+            console.log(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+};
+
+startServer();

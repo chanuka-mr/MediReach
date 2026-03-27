@@ -63,7 +63,7 @@ const navItems = [
   },
   {
     label: "Orders",
-    path: "/order",
+    path: "/OrderDashboard",
     icon: ShoppingCart,
     tag: "Orders",
     desc: "Pharmacy order requests",

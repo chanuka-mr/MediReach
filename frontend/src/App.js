@@ -32,6 +32,11 @@ import UserInquiryControl from './Component/pharmacyUserView/UserInquiryControl'
 import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView';
 import PharmacyQRDetail from './Component/pharmacyUserView/PharmacyQRDetail';
 
+//Orders
+import OrderDashboard from './pages/OrderDashboard.js';
+import OrderForm from './pages/OrderForm.js';
+import Orderhistory from './pages/OrderDetails.js';
+
 // Layout Component
 function AppLayout() {
   const saved = localStorage.getItem("userInfo");
@@ -234,6 +239,10 @@ function App() {
             
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
+
+            <Route path="/OrderDashboard" element={<OrderDashboard />} />
+            <Route path="/orderform" element={<OrderForm />} />
+            <Route path="/orderhistory" element={<Orderhistory />} />
           </Route>
         )}
       </Routes>

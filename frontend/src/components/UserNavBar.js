@@ -17,10 +17,11 @@ const navItems = [
   { label: "Home",       path: "/",           icon: Home,          tag: "Home",    desc: "Welcome & overview",     accent: "#38BDF8" },
   { label: "About Us",   path: "/about",      icon: Info,          tag: "About",   desc: "Our mission & story",    accent: "#A78BFA" },
   { label: "Contact Us", path: "/contact",    icon: Phone,         tag: "Contact", desc: "Get in touch with us",   accent: "#34D399" },
-  { label: "Order Now",  path: "/order",      icon: ShoppingBag,   tag: "Order",   desc: "Place a medicine order", accent: "#FB923C" },
+  { label: "Order Now",  path: "/orderform",      icon: ShoppingBag,   tag: "Order",   desc: "Place a medicine order", accent: "#FB923C" },
   { label: "Pharmacies", path: "/user/pharmacies", icon: Building2,     tag: "Network", desc: "Find nearby pharmacies", accent: "#F472B6" },
   { label: "Chats",      path: "/chats",      icon: MessageCircle, tag: "Chat",    desc: "Message your pharmacy",  accent: "#FBBF24" },
-]
+  { label : "My Orders" , path: "/orderhistory", icon: ShoppingBag, tag: "Orders", desc: "View your order history", accent: "#34D399" },
+] 
 
 const bottomNav = [
   // Removed notification and profile items as requested
