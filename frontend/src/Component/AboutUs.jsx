@@ -12,12 +12,30 @@ import {
   Database,
   Lock,
   Layers,
-  Facebook,
-  Twitter,
-  Linkedin,
   Mail,
   Quote
 } from 'lucide-react';
+
+// ── SVG Social Icons (replacing removed lucide-react brand icons) ──
+const FacebookIcon = ({ size = 18, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+
+const TwitterIcon = ({ size = 18, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const LinkedinIcon = ({ size = 18, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
 
 const AboutUs = () => {
   const [activeFaq, setActiveFaq] = useState(null);
@@ -73,7 +91,6 @@ const AboutUs = () => {
 
       {/* ── SECTION 1: FUTURISTIC HERO ── */}
       <section className="relative pt-40 pb-56 tech-gradient overflow-hidden">
-        {/* Background Decorative Elements */}
         <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-blue-600/10 rounded-full blur-[160px] translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-emerald-600/5 rounded-full blur-[140px] -translate-x-1/2 translate-y-1/2" />
         
@@ -104,7 +121,6 @@ const AboutUs = () => {
              <div className="relative w-full aspect-square float-anim">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-emerald-500/20 rounded-[4rem] rotate-6 border border-white/10" />
                 <div className="absolute inset-8 glass-morphism rounded-[3.5rem] shadow-2xl flex items-center justify-center -rotate-3 overflow-hidden">
-                   {/* Mock UI Element */}
                    <div className="w-full h-full p-10 flex flex-col gap-6">
                       <div className="flex justify-between items-center">
                          <div className="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-600"><Activity/></div>
@@ -156,8 +172,8 @@ const AboutUs = () => {
                    <p className="text-blue-600 font-bold text-sm mb-6">{L.role}</p>
                    <p className="text-slate-500 text-sm leading-relaxed font-medium">{L.bio}</p>
                    <div className="mt-8 flex gap-4">
-                      <Linkedin size={18} className="text-slate-300 hover:text-blue-600 cursor-pointer transition-colors" />
-                      <Twitter size={18} className="text-slate-300 hover:text-blue-400 cursor-pointer transition-colors" />
+                      <LinkedinIcon size={18} className="text-slate-300 hover:text-blue-600 cursor-pointer transition-colors" />
+                      <TwitterIcon size={18} className="text-slate-300 hover:text-blue-400 cursor-pointer transition-colors" />
                    </div>
                 </div>
              </div>
@@ -169,7 +185,7 @@ const AboutUs = () => {
       <section className="py-32 bg-slate-100">
         <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
            <div>
-              <h2 className="text-4xl font-black text-slate-900 tracking-[0.05em] mb-6 tracking-tight">Hyper-Scale Technology.</h2>
+              <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-6">Hyper-Scale Technology.</h2>
               <p className="text-lg text-slate-500 font-medium mb-10 leading-relaxed">
                  We've engineered MediReach from the ground up to handle massive concurrent traffic with zero-latency synchronization. Our clinical-grade architecture ensures data integrity for life-saving operations.
               </p>
@@ -262,7 +278,7 @@ const AboutUs = () => {
       <section className="py-40 bg-slate-50">
         <div className="max-w-4xl mx-auto px-8">
            <div className="text-center mb-20">
-              <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-[0.05em] tracking-tight">Frequently Asked Questions</h2>
+              <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tight">Frequently Asked Questions</h2>
               <p className="text-slate-500 font-medium max-w-xl mx-auto">Get answers to technical and operational queries about our healthcare network.</p>
            </div>
            <div className="space-y-4">
@@ -310,7 +326,7 @@ const AboutUs = () => {
                 { icon: Globe, label: "Coverage", text: "Nationwide" },
                 { icon: Award, label: "SLMC Status", text: "Approved" },
                 { icon: Mail, label: "Help Center", text: "24/7 Support" },
-                { icon: Linkedin, label: "Network", text: "Join Today" }
+                { icon: LinkedinIcon, label: "Network", text: "Join Today" }
               ].map((item, i) => (
                 <div key={i} className="text-center group cursor-pointer">
                    <div className="w-12 h-12 rounded-xl bg-white/5 text-slate-500 flex items-center justify-center mx-auto mb-4 group-hover:text-blue-400 group-hover:bg-white/10 transition-all">
@@ -321,6 +337,7 @@ const AboutUs = () => {
                 </div>
               ))}
            </div>
+
            <div className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
               <div className="flex items-center gap-4">
                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black">M</div>
@@ -328,9 +345,9 @@ const AboutUs = () => {
               </div>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">© 2024 MEDIREACH PROTOCOL. ALL RIGHTS RESERVED.</p>
               <div className="flex gap-6">
-                 <Facebook size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
-                 <Twitter size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
-                 <Linkedin size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
+                 <FacebookIcon size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
+                 <TwitterIcon size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
+                 <LinkedinIcon size={18} className="text-slate-500 hover:text-white cursor-pointer transition-colors" />
               </div>
            </div>
         </div>

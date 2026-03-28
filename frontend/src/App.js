@@ -2,19 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Stethoscope, Clock, Building2, ShoppingBag, ChevronRight } from 'lucide-react';
 
+//MediReach Pages
+import AboutUs from './Component/AboutUs.jsx';
+import ContactUs from './Component/ContactUs.jsx';
+import Inquiry from './Component/pharmacyUserView/UserInquiryControl.jsx';
+
 // User management imports
+import PreHome from './Component/PreHome.jsx';
 import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import UserNavBar from './components/UserNavBar';
 import AdminNavBar from './components/AdminNavBar';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
 import MedicineForm from './Component/MedicineAdd';
 import MedicineInventory from './Component/MedicineInventory';
 import UpdateMedicine from './Component/UpdateMedicine';
+import MedicineCardView from './pages/MedicineCardView';
+import MedicineOrder from './Component/PharmacyOrders.js';
 
 // Pharmacy Management imports
 import PharmacyManagement from './Component/pharmacy/PharmacyManagement';
@@ -26,7 +35,6 @@ import PharmacyDetail from './Component/pharmacy/PharmacyDetail.jsx';
 import OpenNowPharmacies from './Component/pharmacy/OpenNowPharmacies';
 import TwentyFourSevenPharmacies from './Component/pharmacy/TwentyFourSevenPharmacies';
 import PharmacyUserView from './Component/pharmacyUserView/PharmacyUserView';
-import ContactUs from './Component/ContactUs';
 import InquiryManagement from './Component/pharmacy/InquiryManagement';
 import UserInquiryControl from './Component/pharmacyUserView/UserInquiryControl';
 import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView';
@@ -36,6 +44,7 @@ import PharmacyQRDetail from './Component/pharmacyUserView/PharmacyQRDetail';
 import OrderDashboard from './pages/OrderDashboard.js';
 import OrderForm from './pages/OrderForm.js';
 import Orderhistory from './pages/OrderDetails.js';
+import Payment from './pages/PaymentUI.js';
 
 // Layout Component
 function AppLayout() {
@@ -50,40 +59,7 @@ function AppLayout() {
   return <UserNavBar />;
 }
 
-// Main Admin Dashboard
-const HomeDashboard = () => {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-      <p className="text-gray-500 mt-1">Welcome to MediReach Admin Panel</p>
-      
-      <div className="mt-8 bg-white rounded-lg shadow p-6 max-w-2xl">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link to="/pharmacy" className="p-4 border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-               <span className="text-xl">🏥</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800">Pharmacy Network</h3>
-              <p className="text-sm text-gray-500">View stats and manage</p>
-            </div>
-          </Link>
-          
-          <Link to="/inventory" className="p-4 border border-green-100 rounded-lg hover:bg-green-50 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-               <span className="text-xl">📦</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800">Inventory System</h3>
-              <p className="text-sm text-gray-500">Manage medicines</p>
-            </div>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
+
 
 // Placeholder Components
 const OrdersPage = () => (
@@ -185,18 +161,30 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Authentication Route */}
+        {/* Public Routes - Always accessible */}
         {!isLoggedIn ? (
-          <Route path="*" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="/" element={<PreHome />} />
         ) : (
+          <Route path="/Home" element={<HomePage />} />
+        )}
+        
+        {/* Authentication Route */}
+        {!isLoggedIn && (
+          <Route path="/auth" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
+        )}
+        
+        {/* Protected Routes - Require Authentication */}
+        {isLoggedIn ? (
           <Route element={<AppLayout />}>
             {/* User Management Routes */}
-            <Route path="/" element={<HomePage />} />
+            <Route path="/Home" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/contact" element={<ContactUs />} />
+            <Route path="/about" element={<AboutUs />} />
             
             {/* Admin Dashboard Routes */}
-            <Route path="/admin" element={<HomeDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             
             {/* Pharmacy Management Routes */}
             <Route path="/pharmacy" element={<PharmacyLayout />}>
@@ -207,43 +195,44 @@ function App() {
               <Route path="open-now" element={<OpenNowPharmacies />} />
               <Route path="24-7" element={<TwentyFourSevenPharmacies />} />
               <Route path=":id" element={<PharmacyDetail />} />
+              
             </Route>
             
             {/* Admin/Inventory Routes */}
             <Route path="/inventory" element={<InventoryDashboard />} />
             <Route path="/medicineAdd" element={<MedicineForm />} />
             <Route path="/medicineInventory" element={<MedicineInventory />} />
-            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders" element={<MedicineOrder />} />
             <Route path="/updateMedicine/:id" element={<UpdateMedicine />} />
+            <Route path="/medicineshop" element={<MedicineCardView />} />
             
-            {/* User Portal Routes */}
+            {/* User Portal Protected Routes */}
             <Route path="/user">
-              <Route index element={<UserHome />} />
-              <Route path="contact" element={<ContactUs />} />
-              <Route path="inquiries" element={<UserInquiryControl />} />
-              <Route path="pharmacies" element={<PharmacyUserView />} />
+              <Route path="inquiries" element={<Inquiry />} />
               <Route path="order" element={<div className="p-8"><h1>Order Now</h1></div>} />
               <Route path="chats" element={<div className="p-8"><h1>Pharmacy Chats</h1></div>} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="pharmacies" element={<PharmacyUserView />} />
             </Route>
             
-            {/* Other Routes */}
+            {/* Other Protected Routes */}
             <Route path="/inquiries" element={<InquiryManagement />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
             
-            {/* Standalone QR Directory Feature */}
-            <Route path="/pharmacy-qr" element={<PharmacyQRUserView />} />
-            <Route path="/pharmacy-qr/:id" element={<PharmacyQRDetail />} />
-            
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-
+            {/* Order Routes */}
             <Route path="/OrderDashboard" element={<OrderDashboard />} />
             <Route path="/orderform" element={<OrderForm />} />
             <Route path="/orderhistory" element={<Orderhistory />} />
+            <Route path="/payment" element={<Payment />} />
+            
+            {/* Catch all for authenticated users */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
+        ) : (
+          /* Redirect unauthenticated users to auth for protected routes */
+          <Route path="*" element={<Navigate to="/auth" replace />} />
         )}
       </Routes>
     </BrowserRouter>

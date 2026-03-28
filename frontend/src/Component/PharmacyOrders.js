@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Search, Filter, ShoppingCart, Clock, Building2,
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
@@ -7,7 +8,8 @@ import {
   DollarSign, Hash, Calendar, MapPin,
   Pill, TrendingUp, ClipboardList,
   Hourglass, Ban, CircleDot, X,
-  ShieldAlert, SendHorizonal, ThumbsDown, FileText
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  ArrowLeft, Building, Loader2
 } from 'lucide-react'
 import ReportGenerator from './ReportGenerator'
 
@@ -24,23 +26,9 @@ const C = {
   danger:    "#C0392B",
 }
 
-const INITIAL_ORDERS = [
-  { id:"ORD-2841", pharmacy:"Kandy Central Pharmacy",   location:"Kandy, Central Province",       medicine:"Amoxicillin 500mg",     category:"Antibiotic",     qty:200, unitPrice:145,  status:"delivered",  priority:"normal",  orderedAt:"2025-03-01", deliveredAt:"2025-03-03", notes:"" },
-  { id:"ORD-2842", pharmacy:"Galle Fort MedPoint",      location:"Galle, Southern Province",      medicine:"Paracetamol 500mg",     category:"Analgesic",      qty:500, unitPrice:35,   status:"in_transit", priority:"normal",  orderedAt:"2025-03-05", deliveredAt:null,         notes:"" },
-  { id:"ORD-2843", pharmacy:"Jaffna Community Rx",      location:"Jaffna, Northern Province",     medicine:"Salbutamol Inhaler",    category:"Respiratory",    qty:50,  unitPrice:680,  status:"pending",    priority:"urgent",  orderedAt:"2025-03-06", deliveredAt:null,         notes:"Low supply — urgent" },
-  { id:"ORD-2844", pharmacy:"Matara Rural Clinic",      location:"Matara, Southern Province",     medicine:"Metformin 850mg",       category:"Antidiabetic",   qty:300, unitPrice:95,   status:"delivered",  priority:"normal",  orderedAt:"2025-02-28", deliveredAt:"2025-03-02", notes:"" },
-  { id:"ORD-2845", pharmacy:"Anuradhapura PharmaCare",  location:"Anuradhapura, North Central",   medicine:"ORS Sachets",           category:"Rehydration",    qty:800, unitPrice:25,   status:"cancelled",  priority:"normal",  orderedAt:"2025-03-04", deliveredAt:null,         notes:"Order cancelled by pharmacy" },
-  { id:"ORD-2846", pharmacy:"Batticaloa MedStore",      location:"Batticaloa, Eastern Province",  medicine:"Cetirizine 10mg",       category:"Antihistamine",  qty:150, unitPrice:55,   status:"processing", priority:"normal",  orderedAt:"2025-03-07", deliveredAt:null,         notes:"" },
-  { id:"ORD-2847", pharmacy:"Kurunegala Health Hub",    location:"Kurunegala, North Western",     medicine:"Amlodipine 5mg",        category:"Cardiovascular", qty:120, unitPrice:210,  status:"pending",    priority:"urgent",  orderedAt:"2025-03-07", deliveredAt:null,         notes:"Critical — stock depleted" },
-  { id:"ORD-2848", pharmacy:"Trincomalee Bay Pharmacy", location:"Trincomalee, Eastern Province", medicine:"Azithromycin 500mg",    category:"Antibiotic",     qty:80,  unitPrice:280,  status:"in_transit", priority:"normal",  orderedAt:"2025-03-06", deliveredAt:null,         notes:"" },
-  { id:"ORD-2849", pharmacy:"Kandy Central Pharmacy",   location:"Kandy, Central Province",       medicine:"Vitamin D3 1000 IU",    category:"Supplement",     qty:400, unitPrice:120,  status:"delivered",  priority:"normal",  orderedAt:"2025-02-25", deliveredAt:"2025-02-27", notes:"" },
-  { id:"ORD-2850", pharmacy:"Galle Fort MedPoint",      location:"Galle, Southern Province",      medicine:"Ibuprofen 400mg",       category:"Analgesic",      qty:600, unitPrice:65,   status:"processing", priority:"normal",  orderedAt:"2025-03-07", deliveredAt:null,         notes:"" },
-  { id:"ORD-2851", pharmacy:"Matara Rural Clinic",      location:"Matara, Southern Province",     medicine:"Fluconazole 150mg",     category:"Antifungal",     qty:60,  unitPrice:320,  status:"delivered",  priority:"normal",  orderedAt:"2025-02-20", deliveredAt:"2025-02-22", notes:"" },
-  { id:"ORD-2852", pharmacy:"Batticaloa MedStore",      location:"Batticaloa, Eastern Province",  medicine:"Omeprazole 20mg",       category:"Other",          qty:250, unitPrice:88,   status:"in_transit", priority:"urgent",  orderedAt:"2025-03-05", deliveredAt:null,         notes:"Expedited shipping" },
-  { id:"ORD-2853", pharmacy:"Jaffna Community Rx",      location:"Jaffna, Northern Province",     medicine:"Oseltamivir 75mg",      category:"Antiviral",      qty:30,  unitPrice:1250, status:"pending",    priority:"urgent",  orderedAt:"2025-03-07", deliveredAt:null,         notes:"Flu outbreak — critical" },
-  { id:"ORD-2854", pharmacy:"Trincomalee Bay Pharmacy", location:"Trincomalee, Eastern Province", medicine:"Atorvastatin 20mg",     category:"Cardiovascular", qty:180, unitPrice:175,  status:"delivered",  priority:"normal",  orderedAt:"2025-02-22", deliveredAt:"2025-02-25", notes:"" },
-  { id:"ORD-2855", pharmacy:"Kurunegala Health Hub",    location:"Kurunegala, North Western",     medicine:"Morphine Sulfate 10mg", category:"Analgesic",      qty:20,  unitPrice:890,  status:"processing", priority:"urgent",  orderedAt:"2025-03-06", deliveredAt:null,         notes:"Controlled — requires auth" },
-]
+// API endpoint for fetching orders
+const API = "http://localhost:5000/api/roms/pharmacy-tasks";
+
 
 const STATUS_CFG = {
   pending:    { label:"Pending",    color:"#92400E", bg:"rgba(180,83,9,0.08)",    border:"rgba(180,83,9,0.22)",    icon:Hourglass     },
@@ -53,8 +41,6 @@ const STATUS_CFG = {
 }
 
 const CAN_ACT    = ["pending","processing","in_transit"]
-const pharmacies = ["All", ...new Set(INITIAL_ORDERS.map(o => o.pharmacy))]
-const categories = ["All", ...new Set(INITIAL_ORDERS.map(o => o.category))]
 const fmtDate    = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—"
 const totalVal   = (o) => o.qty * o.unitPrice
 
@@ -121,12 +107,9 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
         boxShadow:"0 32px 80px rgba(2,62,138,0.18)",
         overflow:"hidden", animation:"modalIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both",
       }}>
-        {/* Top stripe */}
         <div style={{ height:3, background:isAccept
           ? `linear-gradient(90deg, ${C.techBlue}, ${C.success})`
           : `linear-gradient(90deg, ${C.techBlue}, ${C.danger})` }} />
-
-        {/* Header */}
         <div style={{ padding:"24px 26px 18px", borderBottom:`1px solid ${C.paleSlate}` }}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
             <div style={{
@@ -153,8 +136,6 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             </button>
           </div>
         </div>
-
-        {/* Order summary */}
         <div style={{ padding:"16px 26px", borderBottom:`1px solid ${C.paleSlate}` }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
             {[
@@ -193,8 +174,6 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             </div>
           )}
         </div>
-
-        {/* Notice */}
         <div style={{ padding:"12px 26px", borderBottom:`1px solid ${C.paleSlate}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:9, padding:"10px 13px", borderRadius:9,
             background: isAccept ? "rgba(14,124,91,0.06)" : "rgba(192,57,43,0.06)",
@@ -207,8 +186,6 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             </p>
           </div>
         </div>
-
-        {/* Buttons */}
         <div style={{ padding:"16px 26px", display:"flex", gap:9, justifyContent:"flex-end" }}>
           <button onClick={onClose} style={{
             padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
@@ -241,7 +218,7 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────
-function StatCard({ icon:Icon, value, label, accent, sub, delay }) {
+function StatCard({ icon:Icon, value, label, sub, delay }) {
   const [hov, setHov] = useState(false)
   return (
     <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{
@@ -303,8 +280,7 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
           position:"relative",
         }}
       >
-        {/* ID */}
-        <td style={{ padding:"13px 16px 13px 22px", whiteSpace:"nowrap", position:"relative" }}>
+        <td style={{ padding:"13px 16px 13px 22px", minWidth:200 }}>
           {(rowHov || isOpen) && (
             <div style={{
               position:"absolute", left:0, top:"15%", bottom:"15%",
@@ -313,18 +289,11 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
               pointerEvents:"none",
             }} />
           )}
-          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {order.priority==="urgent" && (
               <div style={{ width:6, height:6, borderRadius:"50%", background:C.danger,
                 boxShadow:`0 0 5px ${C.danger}80`, flexShrink:0 }} />
             )}
-            <span style={{ fontSize:12, fontWeight:700, color:C.lilacAsh, fontFamily:"'Sora',sans-serif" }}>{order.id}</span>
-          </div>
-        </td>
-
-        {/* Pharmacy */}
-        <td style={{ padding:"13px 16px", minWidth:200 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{
               width:34, height:34, borderRadius:9, flexShrink:0,
               background: rowHov||isOpen ? `linear-gradient(135deg, ${C.techBlue}, #3d74c4)` : `linear-gradient(135deg, ${C.paleSlate}, ${C.lilacAsh})`,
@@ -346,8 +315,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
             </div>
           </div>
         </td>
-
-        {/* Medicine */}
         <td style={{ padding:"13px 16px", minWidth:180 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
             <Pill size={13} color={C.lilacAsh} strokeWidth={1.8} />
@@ -360,22 +327,16 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
             </div>
           </div>
         </td>
-
-        {/* Qty */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           <span style={{ fontSize:14, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>{order.qty.toLocaleString()}</span>
           <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>units</span>
         </td>
-
-        {/* Value */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           <span style={{ fontSize:13.5, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>
             {totalVal(order).toLocaleString()}
           </span>
           <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>LKR</span>
         </td>
-
-        {/* Status */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           <div style={{ display:"inline-flex", alignItems:"center", gap:5,
             background:st.bg, borderRadius:99, padding:"4px 10px", border:`1px solid ${st.border}` }}>
@@ -383,8 +344,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
             <span style={{ fontSize:11, fontWeight:700, color:st.color }}>{st.label}</span>
           </div>
         </td>
-
-        {/* Priority */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           {order.priority==="urgent" ? (
             <div style={{ display:"inline-flex", alignItems:"center", gap:4,
@@ -397,13 +356,9 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
             <span style={{ fontSize:11, color:C.paleSlate }}>—</span>
           )}
         </td>
-
-        {/* Date */}
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
           <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:500 }}>{fmtDate(order.orderedAt)}</span>
         </td>
-
-        {/* Actions */}
         <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
           <div style={{ display:"flex", gap:7, alignItems:"center" }}>
             {canAct && (
@@ -422,7 +377,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                     boxShadow: invHov ? "0 4px 14px rgba(14,124,91,0.22)" : "none",
                   }}
                 ><SendHorizonal size={11} strokeWidth={2.5} /> Dispatch</button>
-
                 <button
                   onMouseEnter={()=>setRejHov(true)} onMouseLeave={()=>setRejHov(false)}
                   onClick={()=>onAction(order,"reject")}
@@ -473,7 +427,7 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
         </td>
       </tr>
 
-      {/* Expanded detail */}
+      {/* Expanded detail row */}
       {isOpen && (
         <tr style={{ borderBottom:`1px solid ${C.paleSlate}` }}>
           <td colSpan={9} style={{ padding:"0 22px 16px" }}>
@@ -482,7 +436,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
               background:C.white, border:`1.5px solid ${C.paleSlate}`,
               animation:"fadeUp 0.25s ease both",
             }}>
-              {/* Status timeline */}
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:20 }}>
                 {["pending","processing","in_transit","delivered"].map((s,i)=>{
                   const steps   = ["pending","processing","in_transit","delivered"]
@@ -508,15 +461,13 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                       {i<3 && (
                         <div style={{
                           flex:1, height:2, borderRadius:99, marginBottom:20,
-                          background: i<currIdx && !["cancelled","rejected"].includes(order.status)
-                            ? C.techBlue : C.paleSlate,
+                          background: i<currIdx && !["cancelled","rejected"].includes(order.status) ? C.techBlue : C.paleSlate,
                           transition:"background 0.3s",
                         }} />
                       )}
                     </React.Fragment>
                   )
                 })}
-
                 {["dispatched","rejected","cancelled"].includes(order.status) && (
                   <div style={{
                     marginLeft:12, display:"flex", alignItems:"center", gap:6,
@@ -534,8 +485,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                   </div>
                 )}
               </div>
-
-              {/* Detail grid */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:18 }}>
                 {[
                   { icon:ClipboardList, label:"Order ID",   value:order.id },
@@ -556,7 +505,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                     <span style={{ fontSize:13, fontWeight:600, color:C.blueSlate }}>{d.value}</span>
                   </div>
                 ))}
-
                 {order.notes && (
                   <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
                     display:"flex", flexDirection:"column", gap:4 }}>
@@ -565,7 +513,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                     <span style={{ fontSize:13, color:C.warn, fontWeight:500 }}>{order.notes}</span>
                   </div>
                 )}
-
                 {order.rejectionReason && (
                   <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
                     display:"flex", flexDirection:"column", gap:4 }}>
@@ -579,98 +526,66 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                     </div>
                   </div>
                 )}
-
-                {canAct && (
-                  <div style={{
-                    gridColumn:"1/-1", paddingTop:16,
-                    borderTop:`1.5px solid ${C.paleSlate}`,
-                    display:"flex", alignItems:"center", gap:10,
-                  }}>
-                    <span style={{ fontSize:10.5, fontWeight:700, color:C.lilacAsh,
-                      letterSpacing:"0.12em", textTransform:"uppercase", marginRight:4 }}>
-                      Actions
-                    </span>
-                    <button
-                      onClick={()=>onAction(order,"dispatch")}
-                      style={{
-                        padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
-                        border:"1.5px solid rgba(14,124,91,0.3)",
-                        background:"rgba(14,124,91,0.07)",
-                        color:C.success,
-                        fontWeight:600, fontSize:13, transition:"all 0.2s",
-                        display:"flex", alignItems:"center", gap:7,
-                      }}
-                      onMouseEnter={e=>{
-                        e.currentTarget.style.background=C.success
-                        e.currentTarget.style.borderColor=C.success
-                        e.currentTarget.style.color=C.snow
-                        e.currentTarget.style.transform="translateY(-1px)"
-                        e.currentTarget.style.boxShadow="0 6px 18px rgba(14,124,91,0.28)"
-                      }}
-                      onMouseLeave={e=>{
-                        e.currentTarget.style.background="rgba(14,124,91,0.07)"
-                        e.currentTarget.style.borderColor="rgba(14,124,91,0.3)"
-                        e.currentTarget.style.color=C.success
-                        e.currentTarget.style.transform="none"
-                        e.currentTarget.style.boxShadow="none"
-                      }}
-                    >
-                      <SendHorizonal size={14} strokeWidth={2.2} />
-                      Dispatch Order
-                    </button>
-                    <button
-                      onClick={()=>onAction(order,"reject")}
-                      style={{
-                        padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
-                        border:"1.5px solid rgba(192,57,43,0.25)",
-                        background:"rgba(192,57,43,0.05)",
-                        color:C.danger,
-                        fontWeight:600, fontSize:13, transition:"all 0.2s",
-                        display:"flex", alignItems:"center", gap:7,
-                      }}
-                      onMouseEnter={e=>{
-                        e.currentTarget.style.background="rgba(192,57,43,0.1)"
-                        e.currentTarget.style.borderColor=C.danger
-                        e.currentTarget.style.transform="translateY(-1px)"
-                        e.currentTarget.style.boxShadow="0 6px 18px rgba(192,57,43,0.18)"
-                      }}
-                      onMouseLeave={e=>{
-                        e.currentTarget.style.background="rgba(192,57,43,0.05)"
-                        e.currentTarget.style.borderColor="rgba(192,57,43,0.25)"
-                        e.currentTarget.style.transform="none"
-                        e.currentTarget.style.boxShadow="none"
-                      }}
-                    >
-                      <ThumbsDown size={14} strokeWidth={2.2} />
-                      Reject Order
-                    </button>
-                    <span style={{ fontSize:12, color:C.lilacAsh, marginLeft:4 }}>
-                      Order placed {fmtDate(order.orderedAt)} ·{" "}
-                      {order.priority==="urgent"
-                        ? <span style={{ color:C.danger, fontWeight:600 }}>⚡ Urgent</span>
-                        : "Normal priority"}
-                    </span>
+                {order.medicines && order.medicines.length > 0 && (
+                  <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
+                    display:"flex", flexDirection:"column", gap:4 }}>
+                    <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
+                      letterSpacing:"0.12em", textTransform:"uppercase" }}>Medicines Ordered</span>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {order.medicines.map((med, idx) => (
+                        <div key={idx} style={{
+                          padding:"12px 14px", borderRadius:8,
+                          background:"rgba(2,62,138,0.03)", border:"1px solid rgba(2,62,138,0.12)",
+                          display:"flex", alignItems:"center", gap:12
+                        }}>
+                          <div style={{ width:36, height:36, borderRadius:8, background:C.white,
+                            border:"1px solid rgba(2,62,138,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <Pill size={16} color={C.techBlue} strokeWidth={2} />
+                          </div>
+                          <div style={{ flex:1, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                            <div>
+                              <div style={{ fontSize:13, fontWeight:600, color:C.blueSlate, marginBottom:2 }}>
+                                {med.medicine_name}
+                              </div>
+                              <div style={{ fontSize:11.5, color:C.lilacAsh }}>
+                                Qty: {med.quantity} × LKR {med.unit_price.toLocaleString()}
+                              </div>
+                            </div>
+                            <div style={{ textAlign:"right" }}>
+                              <div style={{ fontSize:14, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>
+                                LKR {med.total_price.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-
+                {canAct && (
+                  <div style={{ gridColumn:"1/-1", paddingTop:16, borderTop:`1.5px solid ${C.paleSlate}`,
+                    display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize:10.5, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase", marginRight:4 }}>Actions</span>
+                    <button onClick={()=>onAction(order,"dispatch")} style={{
+                      padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+                      border:"1.5px solid rgba(14,124,91,0.3)", background:"rgba(14,124,91,0.07)", color:C.success,
+                      fontWeight:600, fontSize:13, transition:"all 0.2s", display:"flex", alignItems:"center", gap:7 }}
+                      onMouseEnter={e=>{ e.currentTarget.style.background=C.success; e.currentTarget.style.borderColor=C.success; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 18px rgba(14,124,91,0.28)" }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background="rgba(14,124,91,0.07)"; e.currentTarget.style.borderColor="rgba(14,124,91,0.3)"; e.currentTarget.style.color=C.success; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
+                    ><SendHorizonal size={14} strokeWidth={2.2} /> Dispatch Order</button>
+                  </div>
+                )}
                 {(order.status==="dispatched" || order.status==="rejected" || order.status==="cancelled") && (
-                  <div style={{
-                    gridColumn:"1/-1", paddingTop:16,
-                    borderTop:`1.5px solid ${C.paleSlate}`,
-                    display:"flex", alignItems:"center", gap:10,
-                  }}>
-                    <div style={{
-                      display:"flex", alignItems:"center", gap:8,
-                      padding:"9px 18px", borderRadius:9,
+                  <div style={{ gridColumn:"1/-1", paddingTop:16, borderTop:`1.5px solid ${C.paleSlate}`, display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", borderRadius:9,
                       background: order.status==="dispatched" ? "rgba(14,124,91,0.07)" : "rgba(192,57,43,0.06)",
-                      border:`1.5px solid ${order.status==="dispatched" ? "rgba(14,124,91,0.22)" : "rgba(192,57,43,0.2)"}`,
-                    }}>
-                      {order.status==="dispatched" && <SendHorizonal size={14} color={C.success} strokeWidth={2} />}
-                      {order.status==="rejected"   && <ThumbsDown    size={14} color={C.danger}  strokeWidth={2} />}
-                      {order.status==="cancelled"  && <Ban            size={14} color={C.danger}  strokeWidth={2} />}
+                      border:`1.5px solid ${order.status==="dispatched" ? "rgba(14,124,91,0.22)" : "rgba(192,57,43,0.2)"}` }}>
+                      {order.status==="dispatched" && <SendHorizonal size={14} color={C.success} />}
+                      {order.status==="rejected"   && <ThumbsDown    size={14} color={C.danger} />}
+                      {order.status==="cancelled"  && <Ban            size={14} color={C.danger} />}
                       <span style={{ fontSize:13, fontWeight:700,
                         color: order.status==="dispatched" ? C.success : C.danger }}>
-                        This order has been {order.status} — no further actions available.
+                        Order {order.status.charAt(0).toUpperCase()+order.status.slice(1)}
                       </span>
                     </div>
                   </div>
@@ -686,9 +601,18 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
 
 // ── Main ──────────────────────────────────────────────────────────
 export default function PharmacyOrders() {
-  const [orderData,    setOrderData]    = useState(INITIAL_ORDERS)
+  const navigate   = useNavigate()
+  const location   = useLocation()
+
+  // ── Read ?pharmacy=... from URL (set by InventoryDashboard) ──
+  const urlParams        = new URLSearchParams(location.search)
+  const urlPharmacy      = urlParams.get("pharmacy") || ""   // "" means "show all"
+
+  const [orderData,    setOrderData]    = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [fetchError,   setFetchError]   = useState(null)
   const [search,       setSearch]       = useState("")
-  const [pharmFilter,  setPharmFilter]  = useState("All")
+  const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)  // ← pre-set from URL
   const [statusFilter, setStatusFilter] = useState("All")
   const [catFilter,    setCatFilter]    = useState("All")
   const [prioFilter,   setPrioFilter]   = useState("All")
@@ -703,6 +627,108 @@ export default function PharmacyOrders() {
   const [showReportGenerator, setShowReportGenerator] = useState(false)
   const PER_PAGE = 8
 
+  // Fetch orders from database
+  useEffect(() => {
+    fetchOrders()
+  }, [pharmFilter])
+
+  const fetchOrders = async () => {
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const url = new URL(API)
+      // Add pharmacy filter if specified
+      if (pharmFilter && pharmFilter !== 'All') {
+        url.searchParams.append('pharmacy_id', pharmFilter)
+      }
+      
+      const res = await fetch(url.toString())
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.message || "Failed to fetch orders")
+      
+      // Transform database orders to match UI structure
+      const transformedOrders = data.map(order => {
+        // Handle medicines array - if it exists, display the medicines, otherwise fallback to notes
+        let medicineDisplay = 'Medication Request';
+        let totalQuantity = 1;
+        let totalValue = 0;
+        
+        if (order.medicines && order.medicines.length > 0) {
+          // If we have medicines array, display them
+          const medicineNames = order.medicines.map(med => med.medicine_name).join(', ');
+          medicineDisplay = medicineNames;
+          totalQuantity = order.medicines.reduce((sum, med) => sum + med.quantity, 0);
+          totalValue = order.medicines.reduce((sum, med) => sum + med.total_price, 0);
+        } else if (order.notes && order.notes.trim()) {
+          // Fallback to notes if no medicines array
+          medicineDisplay = order.notes.split(' - ')[0].trim();
+        } else if (order.patient_id) {
+          // Final fallback
+          medicineDisplay = `Prescription for ${order.patient_id}`;
+        }
+        
+        return {
+          id: order._id || `ORD-${order.patient_id}`,
+          pharmacy: order.pharmacy_id || 'Unknown Pharmacy',
+          location: 'Sri Lanka', // Default location
+          medicine: medicineDisplay,
+          category: 'Prescription',
+          qty: totalQuantity,
+          unitPrice: totalValue / totalQuantity || 0,
+          status: mapStatus(order.status),
+          priority: mapPriority(order.priority_level),
+          orderedAt: order.createdAt || order.request_date,
+          deliveredAt: null,
+          notes: order.notes || '',
+          patient_id: order.patient_id,
+          expiry_time: order.expiry_time,
+          prescription_image: order.prescription_image,
+          medicines: order.medicines || [] // Store the full medicines array for detailed view
+        }
+      })
+      
+      setOrderData(transformedOrders)
+    } catch (error) {
+      setFetchError(error.message)
+      console.error('Fetch orders error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Map database status to UI status
+  const mapStatus = (status) => {
+    switch (status) {
+      case 'Pending': return 'pending'
+      case 'Approved': return 'processing'
+      case 'Ready': return 'in_transit'
+      case 'Rejected': return 'rejected'
+      case 'Cancelled': return 'cancelled'
+      default: return 'pending'
+    }
+  }
+
+  // Map database priority to UI priority
+  const mapPriority = (priority) => {
+    switch (priority) {
+      case 'Emergency': return 'urgent'
+      case 'Urgent': return 'urgent'
+      case 'Normal': return 'normal'
+      default: return 'normal'
+    }
+  }
+
+  // Sync pharmFilter if URL param changes (e.g. browser back/forward)
+  useEffect(() => {
+    setPharmFilter(urlPharmacy)
+    setPage(1)
+  }, [urlPharmacy])
+
+  // Derive unique pharmacy & category lists from current data
+  const pharmacies = ["All", ...new Set(orderData.map(o => o.pharmacy))]
+  const categories = ["All", ...new Set(orderData.map(o => o.category))]
+
   const handleSort    = (key) => { if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc"); else { setSortKey(key); setSortDir("asc") } }
   const handleAction  = (order,action) => setModal({order,action})
   const handleConfirm = (reason) => {
@@ -715,13 +741,21 @@ export default function PharmacyOrders() {
     setModal(null)
   }
 
+  // Clear pharmacy filter → also clears URL param
+  const clearPharmacyFilter = () => {
+    setPharmFilter("All")
+    setPage(1)
+    navigate("/orders", { replace: true })
+  }
+
   const filtered = useMemo(()=>{
     return orderData
       .filter(o =>
         (o.id.toLowerCase().includes(search.toLowerCase()) ||
          o.pharmacy.toLowerCase().includes(search.toLowerCase()) ||
          o.medicine.toLowerCase().includes(search.toLowerCase())) &&
-        (pharmFilter==="All"  || o.pharmacy===pharmFilter) &&
+        // pharmFilter "All" shows everything; otherwise match pharmacy name
+        (pharmFilter==="" || pharmFilter==="All" || o.pharmacy===pharmFilter) &&
         (statusFilter==="All" || o.status===statusFilter) &&
         (catFilter==="All"    || o.category===catFilter) &&
         (prioFilter==="All"   || o.priority===prioFilter)
@@ -736,22 +770,33 @@ export default function PharmacyOrders() {
 
   const totalPages    = Math.ceil(filtered.length/PER_PAGE)
   const pageData      = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE)
-  const activeFilters = [pharmFilter,statusFilter,catFilter,prioFilter].filter(f=>f!=="All").length
+  const activeFilters = [
+    pharmFilter && pharmFilter!=="All" ? pharmFilter : null,
+    statusFilter!=="All" ? statusFilter : null,
+    catFilter!=="All"    ? catFilter    : null,
+    prioFilter!=="All"   ? prioFilter   : null,
+  ].filter(Boolean).length
+
+  // Stats scoped to current pharmacy filter (or all if no filter)
+  const scopedOrders = pharmFilter && pharmFilter!=="All"
+    ? orderData.filter(o => o.pharmacy===pharmFilter)
+    : orderData
 
   const stats = {
-    total:      orderData.length,
-    pending:    orderData.filter(o=>o.status==="pending").length,
-    inTransit:  orderData.filter(o=>o.status==="in_transit").length,
-    dispatched: orderData.filter(o=>o.status==="dispatched").length,
-    urgent:     orderData.filter(o=>o.priority==="urgent").length,
-    totalValue: orderData.reduce((s,o)=>s+totalVal(o),0),
+    total:      scopedOrders.length,
+    pending:    scopedOrders.filter(o=>o.status==="pending").length,
+    inTransit:  scopedOrders.filter(o=>o.status==="in_transit").length,
+    dispatched: scopedOrders.filter(o=>o.status==="dispatched").length,
+    urgent:     scopedOrders.filter(o=>o.priority==="urgent").length,
+    totalValue: scopedOrders.reduce((s,o)=>s+totalVal(o),0),
   }
+
+  const isPharmacyFiltered = pharmFilter && pharmFilter!=="All"
 
   const thStyle = {
     padding:"10px 16px", textAlign:"left", fontWeight:700, fontSize:9.5,
     letterSpacing:"0.13em", textTransform:"uppercase", color:C.lilacAsh,
-    whiteSpace:"nowrap", borderBottom:`1.5px solid ${C.paleSlate}`,
-    background:C.snow,
+    whiteSpace:"nowrap", borderBottom:`1.5px solid ${C.paleSlate}`, background:C.snow,
   }
 
   const SortIcon = ({col}) => {
@@ -787,41 +832,86 @@ export default function PharmacyOrders() {
           table { border-collapse:collapse; width:100%; }
         `}</style>
 
-        {/* Top palette stripe */}
         <div style={{ position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
           background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
-
-        {/* Dot grid bg */}
         <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
           backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
           backgroundSize:"28px 28px", opacity:0.35 }} />
 
         <div style={{ position:"relative", zIndex:1 }}>
 
-          {/* Header */}
+          {/* ── Header ── */}
           <div style={{ marginBottom:28, paddingTop:4, animation:"fadeUp 0.4s ease both" }}>
             <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:16 }}>
               <div>
+                {/* Breadcrumb */}
                 <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
                   <div style={{ width:30, height:30, borderRadius:8, background:C.techBlue,
                     display:"flex", alignItems:"center", justifyContent:"center",
                     boxShadow:"0 4px 12px rgba(2,62,138,0.28)" }}>
                     <ShoppingCart size={14} color={C.snow} strokeWidth={2} />
                   </div>
-                  <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:400 }}>MediReach</span>
+                  <button onClick={()=>navigate('/medicineInventory')} style={{
+                    background:"none", border:"none", cursor:"pointer", padding:0,
+                    fontSize:12, color:C.lilacAsh, fontWeight:400, fontFamily:"inherit",
+                    display:"flex", alignItems:"center", gap:4, transition:"color 0.2s",
+                  }}
+                    onMouseEnter={e=>e.currentTarget.style.color=C.techBlue}
+                    onMouseLeave={e=>e.currentTarget.style.color=C.lilacAsh}
+                  >
+                    <ArrowLeft size={11} strokeWidth={2} />
+                    Inventory
+                  </button>
                   <ChevronRight size={11} color={C.paleSlate} />
                   <span style={{ fontSize:11.5, color:C.techBlue, fontWeight:700,
                     background:"rgba(2,62,138,0.08)", padding:"2px 10px", borderRadius:99,
-                    border:"1px solid rgba(2,62,138,0.15)" }}>Pharmacy Orders</span>
+                    border:"1px solid rgba(2,62,138,0.15)" }}>Orders</span>
+                  {isPharmacyFiltered && (
+                    <>
+                      <ChevronRight size={11} color={C.paleSlate} />
+                      <span style={{
+                        fontSize:11.5, color:C.success, fontWeight:700,
+                        background:"rgba(14,124,91,0.07)", padding:"2px 10px", borderRadius:99,
+                        border:"1px solid rgba(14,124,91,0.2)",
+                        display:"flex", alignItems:"center", gap:5,
+                      }}>
+                        <Building2 size={10} strokeWidth={2.5} />
+                        {pharmFilter}
+                      </span>
+                    </>
+                  )}
                 </div>
+
                 <h1 style={{ margin:0, fontSize:32, fontWeight:700, letterSpacing:"-1.4px",
-                  color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>Order Management</h1>
+                  color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>
+                  {isPharmacyFiltered ? "Pharmacy Orders" : "Order Management"}
+                </h1>
                 <p style={{ margin:"7px 0 0", color:C.lilacAsh, fontSize:14 }}>
-                  Review, dispatch or reject medicine orders from the pharmacy network
+                  {isPharmacyFiltered
+                    ? `Showing orders for `
+                    : "Review, dispatch or reject medicine orders from the pharmacy network"}
+                  {isPharmacyFiltered && (
+                    <span style={{ color:C.techBlue, fontWeight:600 }}>{pharmFilter}</span>
+                  )}
                 </p>
               </div>
+
               <div style={{ display:"flex", gap:9, flexShrink:0 }}>
-                <button style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                {/* Back to all orders — only visible when pharmacy-filtered */}
+                {isPharmacyFiltered && (
+                  <button onClick={clearPharmacyFilter} style={{
+                    padding:"10px 16px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                    border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
+                    fontWeight:600, fontSize:13, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
+                  }}
+                    onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                    onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
+                  >
+                    <X size={13} strokeWidth={2.5} />
+                    All Orders
+                  </button>
+                )}
+                <button onClick={fetchOrders} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
                   border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
                   fontWeight:600, fontSize:13, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}
                   onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
@@ -838,9 +928,47 @@ export default function PharmacyOrders() {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* ── Pharmacy context banner (shown only when filtered) ── */}
+          {isPharmacyFiltered && (
+            <div style={{
+              padding:"14px 20px", borderRadius:12, marginBottom:22,
+              background:"rgba(2,62,138,0.04)", border:`1.5px solid rgba(2,62,138,0.14)`,
+              display:"flex", alignItems:"center", gap:14,
+              animation:"fadeUp 0.35s ease both",
+            }}>
+              <div style={{
+                width:40, height:40, borderRadius:10, flexShrink:0,
+                background:`linear-gradient(135deg, ${C.techBlue}, #3d74c4)`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                boxShadow:"0 4px 14px rgba(2,62,138,0.25)",
+              }}>
+                <Building2 size={18} color={C.snow} strokeWidth={1.8} />
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ margin:0, fontWeight:700, fontSize:14, color:C.blueSlate }}>
+                  Filtered to: <span style={{ color:C.techBlue }}>{pharmFilter}</span>
+                </p>
+                <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>
+                  {filtered.length} order{filtered.length!==1?"s":""} · {stats.pending} pending · {stats.urgent} urgent
+                </p>
+              </div>
+              <button onClick={clearPharmacyFilter} style={{
+                padding:"7px 14px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
+                fontWeight:600, fontSize:12.5, display:"flex", alignItems:"center", gap:5,
+                transition:"all 0.2s",
+              }}
+                onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
+              >
+                <X size={11} strokeWidth={2.5} /> Clear Filter
+              </button>
+            </div>
+          )}
+
+          {/* ── Stats (scoped to current pharmacy or all) ── */}
           <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
-            <StatCard icon={ClipboardList} value={stats.total}      label="Total Orders" sub="All time"        delay="0.07s" />
+            <StatCard icon={ClipboardList} value={stats.total}      label={isPharmacyFiltered ? "Orders" : "Total Orders"} sub={isPharmacyFiltered ? pharmFilter.split(" ")[0] : "All time"} delay="0.07s" />
             <StatCard icon={Hourglass}     value={stats.pending}    label="Pending"      sub="Awaiting action" delay="0.1s"  />
             <StatCard icon={Truck}         value={stats.inTransit}  label="In Transit"   sub="On the way"      delay="0.13s" />
             <StatCard icon={SendHorizonal} value={stats.dispatched} label="Dispatched"   sub="Confirmed"       delay="0.16s" />
@@ -853,9 +981,10 @@ export default function PharmacyOrders() {
             display:"flex", alignItems:"center", gap:10, animation:"fadeUp 0.4s ease 0.1s both",
             boxShadow:"0 2px 8px rgba(2,62,138,0.05)" }}>
             <TrendingUp size={14} color={C.techBlue} />
-            <span style={{ fontSize:13, color:C.lilacAsh, fontWeight:500 }}>Total order value:</span>
-            <span style={{ fontSize:16, fontWeight:800, color:C.techBlue,
-              fontFamily:"'Sora',sans-serif", letterSpacing:"-0.5px" }}>
+            <span style={{ fontSize:13, color:C.lilacAsh, fontWeight:500 }}>
+              {isPharmacyFiltered ? `Total order value for ${pharmFilter}:` : "Total order value:"}
+            </span>
+            <span style={{ fontSize:16, fontWeight:800, color:C.techBlue, fontFamily:"'Sora',sans-serif", letterSpacing:"-0.5px" }}>
               LKR {stats.totalValue.toLocaleString()}
             </span>
           </div>
@@ -867,7 +996,7 @@ export default function PharmacyOrders() {
                 <Search size={13} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)" }}
                   color={focusSearch ? C.techBlue : C.lilacAsh} />
                 <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}
-                  placeholder="Search by order ID, pharmacy or medicine..."
+                  placeholder={isPharmacyFiltered ? `Search orders in ${pharmFilter}...` : "Search by pharmacy or medicine..."}
                   onFocus={()=>setFocusSearch(true)} onBlur={()=>setFocusSearch(false)}
                   style={{ width:"100%", padding:"9px 14px 9px 33px", borderRadius:9,
                     border:`1.5px solid ${focusSearch ? C.techBlue : C.paleSlate}`,
@@ -912,7 +1041,7 @@ export default function PharmacyOrders() {
                     fontSize:9, fontWeight:800, color:C.snow }}>{activeFilters}</span>
                 )}
               </button>
-              <span style={{ fontSize:12, color:C.lilacAsh }}>{filtered.length} of {orderData.length} orders</span>
+              <span style={{ fontSize:12, color:C.lilacAsh }}>{filtered.length} of {scopedOrders.length} orders</span>
             </div>
 
             {showFilters && (
@@ -921,14 +1050,27 @@ export default function PharmacyOrders() {
                 background:C.white, border:`1.5px solid ${C.paleSlate}`,
                 boxShadow:"0 2px 12px rgba(2,62,138,0.06)",
                 animation:"fadeUp 0.25s ease both" }}>
+                {/* Only show pharmacy filter when NOT already filtered from URL */}
+                {!isPharmacyFiltered && (
+                  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase" }}>Pharmacy</label>
+                    <select value={pharmFilter} onChange={e=>{ setPharmFilter(e.target.value); setPage(1) }} style={{
+                      padding:"7px 28px 7px 10px", borderRadius:8,
+                      border:`1.5px solid ${C.paleSlate}`, background:C.snow,
+                      color:C.blueSlate, fontSize:12.5, outline:"none", fontFamily:"inherit",
+                      cursor:"pointer", minWidth:200, appearance:"none", WebkitAppearance:"none",
+                      backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234C6EF5' stroke-opacity='.5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                      backgroundRepeat:"no-repeat", backgroundPosition:"right 9px center" }}>
+                      {pharmacies.map(o=><option key={o} value={o}>{o==="All"?"All Pharmacies":o}</option>)}
+                    </select>
+                  </div>
+                )}
                 {[
-                  { label:"Pharmacy", val:pharmFilter, set:setPharmFilter, opts:pharmacies },
                   { label:"Category", val:catFilter,   set:setCatFilter,   opts:categories },
                   { label:"Priority", val:prioFilter,  set:setPrioFilter,  opts:["All","urgent","normal"] },
                 ].map(f=>(
                   <div key={f.label} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                    <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
-                      letterSpacing:"0.12em", textTransform:"uppercase" }}>{f.label}</label>
+                    <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase" }}>{f.label}</label>
                     <select value={f.val} onChange={e=>{ f.set(e.target.value); setPage(1) }} style={{
                       padding:"7px 28px 7px 10px", borderRadius:8,
                       border:`1.5px solid ${C.paleSlate}`, background:C.snow,
@@ -941,7 +1083,10 @@ export default function PharmacyOrders() {
                   </div>
                 ))}
                 <div style={{ display:"flex", alignItems:"flex-end" }}>
-                  <button onClick={()=>{ setPharmFilter("All"); setCatFilter("All"); setPrioFilter("All"); setStatusFilter("All"); setPage(1) }} style={{
+                  <button onClick={()=>{
+                    if (!isPharmacyFiltered) setPharmFilter("All")
+                    setCatFilter("All"); setPrioFilter("All"); setStatusFilter("All"); setPage(1)
+                  }} style={{
                     padding:"7px 12px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
                     border:"1.5px solid rgba(192,57,43,0.22)", background:"rgba(192,57,43,0.05)",
                     color:C.danger, fontWeight:600, fontSize:12, transition:"all 0.2s" }}
@@ -953,153 +1098,189 @@ export default function PharmacyOrders() {
             )}
           </div>
 
-          {/* Table */}
-          <div style={{ borderRadius:16, overflow:"hidden", border:`1.5px solid ${C.paleSlate}`,
-            background:C.white, boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
-            animation:"fadeUp 0.4s ease 0.15s both" }}>
-            <div style={{ overflowX:"auto" }}>
-              <table>
-                <thead>
-                  <tr>
-                    <ColHead col="id"        label="Order ID" style={{ paddingLeft:22 }} />
-                    <ColHead col="pharmacy"  label="Pharmacy" />
-                    <ColHead col="medicine"  label="Medicine" />
-                    <ColHead col="qty"       label="Qty" />
-                    <ColHead col="unitPrice" label="Value" />
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Priority</th>
-                    <ColHead col="orderedAt" label="Ordered" />
-                    <th style={{ ...thStyle, paddingRight:22 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageData.length===0 ? (
-                    <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
-                      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
-                        <div style={{ width:52, height:52, borderRadius:14, background:C.white,
-                          border:`1.5px solid ${C.paleSlate}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <ShoppingCart size={22} color={C.lilacAsh} />
-                        </div>
-                        <p style={{ margin:0, fontSize:15, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>No orders found</p>
-                        <p style={{ margin:0, fontSize:12.5, color:C.lilacAsh }}>Try adjusting your search or filters</p>
-                      </div>
-                    </td></tr>
-                  ) : pageData.map((order,idx)=>(
-                    <OrderRow key={order.id} order={order} index={idx}
-                      expanded={expanded}
-                      onToggle={id=>setExpanded(e=>e===id?null:id)}
-                      onAction={handleAction}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages>1 && (
-              <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
-                background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <span style={{ fontSize:12, color:C.lilacAsh }}>
-                  Page {page} of {totalPages} · {filtered.length} results
-                </span>
-                <div style={{ display:"flex", gap:6 }}>
-                  <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
-                    width:32, height:32, borderRadius:8, cursor:page===1?"not-allowed":"pointer",
-                    border:`1.5px solid ${C.paleSlate}`, background:C.white,
-                    color:page===1?C.paleSlate:C.lilacAsh,
-                    display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <ChevronLeft size={14} strokeWidth={2.5}/>
-                  </button>
-                  {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
-                    <button key={p} onClick={()=>setPage(p)} style={{
-                      width:32, height:32, borderRadius:8, cursor:"pointer",
-                      border:`1.5px solid ${p===page?C.techBlue:C.paleSlate}`,
-                      background:p===page?C.techBlue:C.white,
-                      color:p===page?C.snow:C.blueSlate,
-                      fontWeight:700, fontSize:12.5, fontFamily:"'Sora',sans-serif",
-                      boxShadow:p===page?"0 4px 14px rgba(2,62,138,0.25)":"none",
-                      transition:"all 0.15s" }}>{p}</button>
-                  ))}
-                  <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{
-                    width:32, height:32, borderRadius:8, cursor:page===totalPages?"not-allowed":"pointer",
-                    border:`1.5px solid ${C.paleSlate}`, background:C.white,
-                    color:page===totalPages?C.paleSlate:C.lilacAsh,
-                    display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <ChevronRight size={14} strokeWidth={2.5}/>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* Modals & Toasts — outside main div, inside fragment */}
-      {modal && <ConfirmModal modal={modal} onConfirm={handleConfirm} onClose={()=>setModal(null)} />}
-      {toast && <Toast toast={toast} onClose={()=>setToast(null)} />}
-
-      {showReportGenerator && (
-        <div style={{
-          position:"fixed", inset:0, zIndex:1000,
-          background:"rgba(4,18,38,0.55)", backdropFilter:"blur(4px)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          animation:"fadeUp 0.2s ease both",
-        }}>
-          <div style={{
-            width:"100%", maxWidth:600, maxHeight:"90vh", overflow:"auto",
-            borderRadius:18, background:C.snow, border:`1.5px solid ${C.paleSlate}`,
-            boxShadow:"0 32px 80px rgba(2,62,138,0.22)",
-            animation:"fadeUp 0.25s ease both",
-          }}>
-            <div style={{
-              padding:"24px 28px 20px", borderBottom:`1px solid ${C.paleSlate}`,
-              display:"flex", alignItems:"center", justifyContent:"space-between"
+          {/* Loading State */}
+          {loading && (
+            <div style={{ 
+              padding:"80px", textAlign:"center", borderRadius:16, 
+              background:C.white, border:`1.5px solid ${C.paleSlate}`,
+              boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
+              animation:"fadeUp 0.4s ease 0.15s both"
             }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{
-                  width:40, height:40, borderRadius:10,
-                  background:`${C.techBlue}15`,
-                  display:"flex", alignItems:"center", justifyContent:"center"
-                }}>
-                  <FileText size={20} color={C.techBlue} strokeWidth={2} />
-                </div>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+                <Loader2 className="animate-spin" size={32} color={C.techBlue} />
                 <div>
-                  <h3 style={{ margin:0, fontSize:18, fontWeight:700, color:C.blueSlate }}>
-                    Generate Report
-                  </h3>
-                  <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>
-                    Download order reports in PDF or JSON format
+                  <p style={{ margin:0, fontSize:16, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
+                    Loading orders...
+                  </p>
+                  <p style={{ margin:"4px 0 0", fontSize:13, color:C.lilacAsh }}>
+                    Fetching from database
                   </p>
                 </div>
               </div>
-              <button
-                onClick={()=>setShowReportGenerator(false)}
-                style={{
-                  width:32, height:32, borderRadius:8,
-                  border:`1.5px solid ${C.paleSlate}`, background:C.white,
-                  color:C.lilacAsh, cursor:"pointer", display:"flex",
-                  alignItems:"center", justifyContent:"center",
-                  transition:"all 0.2s"
-                }}
-                onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
-                onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}
-              >
-                <X size={16} strokeWidth={2} />
-              </button>
             </div>
-            <div style={{ padding:"24px 28px" }}>
-              <ReportGenerator
-                type="orders"
-                filters={{
-                  pharmacy: pharmFilter==="All" ? "" : pharmFilter,
-                  status:   statusFilter==="All" ? "" : statusFilter,
-                  priority: prioFilter==="All" ? "" : prioFilter
-                }}
-              />
+          )}
+
+          {/* Error State */}
+          {fetchError && !loading && (
+            <div style={{ 
+              padding:"80px", textAlign:"center", borderRadius:16, 
+              background:C.white, border:`1.5px solid rgba(192,57,43,0.2)`,
+              boxShadow:"0 4px 24px rgba(192,57,43,0.07)",
+              animation:"fadeUp 0.4s ease 0.15s both"
+            }}>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+                <div style={{ 
+                  width:52, height:52, borderRadius:14, background:"rgba(192,57,43,0.08)",
+                  border:"1.5px solid rgba(192,57,43,0.22)", display:"flex", alignItems:"center", justifyContent:"center" 
+                }}>
+                  <AlertTriangle size={24} color={C.danger} />
+                </div>
+                <div>
+                  <p style={{ margin:0, fontSize:16, fontWeight:600, color:C.danger, fontFamily:"'Sora',sans-serif" }}>
+                    Failed to load orders
+                  </p>
+                  <p style={{ margin:"4px 0 0", fontSize:13, color:C.danger, opacity:0.8 }}>
+                    {fetchError}
+                  </p>
+                </div>
+                <button onClick={fetchOrders} style={{
+                  padding:"10px 20px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                  border:"1.5px solid rgba(192,57,43,0.3)", background:"rgba(192,57,43,0.08)",
+                  color:C.danger, fontWeight:600, fontSize:13, transition:"all 0.2s",
+                  display:"flex", alignItems:"center", gap:7
+                }}>
+                  <RefreshCw size={14} strokeWidth={2} />
+                  Retry
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Table - only show when not loading and no error */}
+          {!loading && !fetchError && (
+            <div style={{ borderRadius:16, overflow:"hidden", border:`1.5px solid ${C.paleSlate}`,
+              background:C.white, boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
+              animation:"fadeUp 0.4s ease 0.15s both" }}>
+              <div style={{ overflowX:"auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <ColHead col="pharmacy"  label="Pharmacy" style={{ paddingLeft:22 }} />
+                      <ColHead col="medicine"  label="Medicine" />
+                      <ColHead col="qty"       label="Qty" />
+                      <ColHead col="unitPrice" label="Value" />
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Priority</th>
+                      <ColHead col="orderedAt" label="Ordered" />
+                      <th style={{ ...thStyle, paddingRight:22 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageData.length===0 ? (
+                      <tr><td colSpan={7} style={{ padding:"64px", textAlign:"center" }}>
+                        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
+                          <div style={{ width:52, height:52, borderRadius:14, background:C.white,
+                            border:`1.5px solid ${C.paleSlate}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <ShoppingCart size={22} color={C.lilacAsh} />
+                          </div>
+                          <p style={{ margin:0, fontSize:15, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
+                            {isPharmacyFiltered ? `No orders found for ${pharmFilter}` : "No orders found"}
+                          </p>
+                          <p style={{ margin:0, fontSize:12.5, color:C.lilacAsh }}>Try adjusting your search or filters</p>
+                        </div>
+                      </td></tr>
+                    ) : pageData.map((order,idx)=>(
+                      <OrderRow key={order.id} order={order} index={idx}
+                        expanded={expanded}
+                        onToggle={id=>setExpanded(e=>e===id?null:id)}
+                        onAction={handleAction}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages>1 && (
+                <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
+                  background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:12, color:C.lilacAsh }}>
+                    Page {page} of {totalPages} · {filtered.length} results
+                  </span>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
+                      width:32, height:32, borderRadius:8, cursor:page===1?"not-allowed":"pointer",
+                      border:`1.5px solid ${C.paleSlate}`, background:C.white, color:page===1?C.paleSlate:C.lilacAsh,
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <ChevronLeft size={14} strokeWidth={2.5}/>
+                    </button>
+                    {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
+                      <button key={p} onClick={()=>setPage(p)} style={{
+                        width:32, height:32, borderRadius:8, cursor:"pointer",
+                        border:`1.5px solid ${p===page?C.techBlue:C.paleSlate}`,
+                        background:p===page?C.techBlue:C.white, color:p===page?C.snow:C.blueSlate,
+                        fontWeight:700, fontSize:12.5, fontFamily:"'Sora',sans-serif",
+                        boxShadow:p===page?"0 4px 14px rgba(2,62,138,0.25)":"none", transition:"all 0.15s" }}>{p}</button>
+                    ))}
+                    <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{
+                      width:32, height:32, borderRadius:8, cursor:page===totalPages?"not-allowed":"pointer",
+                      border:`1.5px solid ${C.paleSlate}`, background:C.white, color:page===totalPages?C.paleSlate:C.lilacAsh,
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <ChevronRight size={14} strokeWidth={2.5}/>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showReportGenerator && (
+            <div style={{ position:"fixed", inset:0, zIndex:1000,
+              background:"rgba(4,18,38,0.55)", backdropFilter:"blur(4px)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              animation:"fadeUp 0.2s ease both" }}>
+              <div style={{ width:"100%", maxWidth:600, maxHeight:"90vh", overflow:"auto",
+                borderRadius:18, background:C.snow, border:`1.5px solid ${C.paleSlate}`,
+                boxShadow:"0 32px 80px rgba(2,62,138,0.22)", animation:"fadeUp 0.25s ease both" }}>
+                <div style={{ padding:"24px 28px 20px", borderBottom:`1px solid ${C.paleSlate}`,
+                  display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:`${C.techBlue}15`,
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <FileText size={20} color={C.techBlue} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin:0, fontSize:18, fontWeight:700, color:C.blueSlate }}>Generate Report</h3>
+                      <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>
+                        Download order reports in PDF or JSON format
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={()=>setShowReportGenerator(false)} style={{
+                    width:32, height:32, borderRadius:8, border:`1.5px solid ${C.paleSlate}`,
+                    background:C.white, color:C.lilacAsh, cursor:"pointer", display:"flex",
+                    alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}
+                    onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                    onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}
+                  ><X size={16} strokeWidth={2} /></button>
+                </div>
+                <div style={{ padding:"24px 28px" }}>
+                  <ReportGenerator
+                    type="orders"
+                    filters={{
+                      pharmacy: isPharmacyFiltered ? pharmFilter : (pharmFilter==="All" ? "" : pharmFilter),
+                      status:   statusFilter==="All" ? "" : statusFilter,
+                      priority: prioFilter==="All"   ? "" : prioFilter
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {modal && <ConfirmModal modal={modal} onConfirm={handleConfirm} onClose={()=>setModal(null)} />}
+      {toast && <Toast toast={toast} onClose={()=>setToast(null)} />}
     </>
   )
 }

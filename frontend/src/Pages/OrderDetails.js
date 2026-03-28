@@ -184,7 +184,8 @@ const OrderDetails = () => {
 
                                 <div className="pt-4 mt-4 border-t border-border-custom">
                                     {(order.status === 'Approved' || order.status === 'Ready') ? (
-                                        <button className="w-full flex items-center justify-center gap-3 bg-primary-light text-white p-4 rounded-[10px] font-bold text-base transition-all hover:bg-primary-deep hover:-translate-y-0.5 hover:shadow-lg [&>svg:last-child]:hover:translate-x-1" onClick={() => handlePayment(order._id)}>
+                                        <button className="w-full flex items-center justify-center gap-3 bg-primary-light text-white p-4 rounded-[10px] font-bold text-base transition-all hover:bg-primary-deep hover:-translate-y-0.5 hover:shadow-lg [&>svg:last-child]:hover:translate-x-1" 
+                                        onClick={() => navigate('/payment', { state: { orderId: order._id } })}>
                                             <CreditCard size={18} />
                                             <span>Proceed to Payment</span>
                                             <ArrowRight size={16} />

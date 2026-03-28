@@ -288,16 +288,16 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         <button
           onMouseEnter={()=>setOrdHov(true)}
           onMouseLeave={()=>setOrdHov(false)}
-          onClick={()=>navigate('/orders')}
+          onClick={()=>navigate(`/orders?pharmacy=${encodeURIComponent(pharmacy.name)}`)}
           style={{
             padding:"7px 14px", borderRadius:8,
             border:`1.5px solid ${ordHov ? C.lilacAsh : C.paleSlate}`,
-            background: ordHov ? `rgba(171,169,195,0.1)` : "transparent",
-            color: ordHov ? C.blueSlate : C.lilacAsh,
-            fontWeight:600, fontSize:12.5, cursor:"pointer",
-            transition:"all 0.2s",
-            display:"flex", alignItems:"center", gap:5,
-            fontFamily:"inherit",
+            background: ordHov ? C.lilacAsh : C.white,
+            color: ordHov ? C.white : C.lilacAsh,
+            fontWeight:600, fontSize:12, cursor:"pointer", transition:"all 0.2s",
+            display:"flex", alignItems:"center", gap:6,
+            transform: ordHov ? "translateY(-1px)" : "none",
+            boxShadow: ordHov ? "0 4px 14px rgba(2,62,138,0.15)" : "none",
           }}
         >
           <ShoppingCart size={12} strokeWidth={2} />

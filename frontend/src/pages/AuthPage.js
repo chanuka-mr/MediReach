@@ -388,6 +388,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
             <button
               type="submit"
+              path="/Home"
               disabled={loading}
               className="w-full py-3 border-none rounded-[10px] text-sm font-bold flex items-center justify-center gap-2 font-sans tracking-[0.3px] transition-all duration-200 text-white"
               style={{

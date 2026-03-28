@@ -4,7 +4,7 @@ const API_BASE = 'http://localhost:5000';
 // Fetch all registered pharmacies from database
 export const fetchRegisteredPharmacies = async () => {
   try {
-    const res = await fetch(`${API_BASE}/pharmacies`);
+    const res = await fetch(`${API_BASE}/api/pharmacies`);
     const data = await res.json();
     
     if (res.ok) {
@@ -22,6 +22,9 @@ export const fetchRegisteredPharmacies = async () => {
       } else if (data.data && Array.isArray(data.data)) {
         // Response with data property
         pharmacyNames = data.data.map(p => p.name || p.pharmacyName || p.pharmacy).filter(Boolean);
+      } else if (data.results && Array.isArray(data.results)) {
+        // Response with results property
+        pharmacyNames = data.results.map(p => p.name || p.pharmacyName || p.pharmacy).filter(Boolean);
       }
       
       console.log('Extracted pharmacy names from MongoDB:', pharmacyNames);

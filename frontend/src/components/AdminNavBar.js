@@ -31,7 +31,7 @@ const C = {
 const navItems = [
   {
     label: "Dashboard",
-    path: "/",
+    path: "/admin",
     icon: LayoutDashboard,
     tag: "Home",
     desc: "Overview & analytics",
@@ -69,6 +69,14 @@ const navItems = [
     desc: "Pharmacy order requests",
     accent: "#FB923C",
   },
+  {
+    label: "Inquiries",
+    path: "/inquiries",
+    icon: Activity,
+    tag: "Inquiries",
+    desc: "Customer messages",
+    accent: "#FBBF24",
+  }
 ]
 
 const bottomNav = [
