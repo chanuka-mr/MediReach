@@ -21,7 +21,8 @@ const schemas = {
         notes: Joi.string().allow(''),
         prescription_image: Joi.string().allow(''),
         expiry_time: Joi.date().greater('now').optional(),
-        preferred_pharmacy_id: Joi.string().optional()
+        preferred_pharmacy_id: Joi.string().optional(),
+        medicines: Joi.string().optional() // Allow medicines as JSON string from FormData
     }),
     processAction: Joi.object({
         action: Joi.string().valid('Approve', 'Reject', 'Ready').required(),

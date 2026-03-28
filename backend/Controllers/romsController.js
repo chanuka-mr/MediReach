@@ -1,9 +1,10 @@
 const romsService = require('../Services/romsService');
 const MedicationRequest = require('../Model/MedicationRequest');
+const Pharmacy = require('../Models/pharmacyModel');
 
 const createRequest = async (req, res, next) => {
     try {
-        const patient_id = req.user ? req.user._id : req.body.patient_id;
+        const patient_id = req.body.patient_id; // Get patient_id directly from body for cart orders
 
         // Handle file upload
         if (req.file) {
@@ -14,6 +15,9 @@ const createRequest = async (req, res, next) => {
         }
 
         console.log(`Creating order for Patient: ${patient_id}, Pharmacy: ${req.body.pharmacy_id}`);
+        if (req.body.medicines) {
+            console.log(`Medicines in order: ${req.body.medicines}`);
+        }
         const request = await romsService.createRequest(req.body, patient_id);
         res.status(201).json(request);
     } catch (error) {
@@ -26,24 +30,39 @@ const createRequest = async (req, res, next) => {
 
 const getPharmacyRequests = async (req, res, next) => {
     try {
-        const pharmacy_id = req.query?.pharmacy_id || (req.user ? req.user._id : req.body?.pharmacy_id);
-        console.log(`Fetching orders for Pharmacy ID: ${pharmacy_id}`);
+        let pharmacy_id = req.query?.pharmacy_id || (req.user ? req.user._id : req.body?.pharmacy_id);
+        console.log(`Fetching orders for Pharmacy: ${pharmacy_id}`);
+        
         const filter = {};
         
         if (pharmacy_id && pharmacy_id !== 'ALL') {
-            // Support both hyphenated and underscore versions interchangeably
-            const variations = [
-                pharmacy_id,
-                pharmacy_id.replace(/-/g, '_'),
-                pharmacy_id.replace(/_/g, '-')
-            ];
-            // Unique set of variations
-            const uniqueVariations = [...new Set(variations)];
-            filter.pharmacy_id = { $in: uniqueVariations };
+            // Check if pharmacy_id is already a valid pharmacy name in the database
+            const pharmacy = await Pharmacy.findOne({ 
+                name: pharmacy_id,
+                isActive: true 
+            });
+            
+            if (pharmacy) {
+                // Use the pharmacy name directly since MedicationRequest stores pharmacy names
+                console.log(`Using pharmacy name: ${pharmacy_id}`);
+                filter.pharmacy_id = pharmacy_id;
+            } else if (pharmacy_id.match(/^PHARM-\d+$/)) {
+                // If it's a PHARM-XXX format, support variations
+                const variations = [
+                    pharmacy_id,
+                    pharmacy_id.replace(/-/g, '_'),
+                    pharmacy_id.replace(/_/g, '-')
+                ];
+                filter.pharmacy_id = { $in: variations };
+            } else {
+                // Try to find pharmacy by name or use as-is
+                console.log(`Pharmacy not found in active list, searching all requests for: ${pharmacy_id}`);
+                filter.pharmacy_id = pharmacy_id;
+            }
         }
 
         const requests = await MedicationRequest.find(filter).sort({ createdAt: -1 });
-        console.log(`Found ${requests.length} orders for ${pharmacy_id || 'ALL'}`);
+        console.log(`Found ${requests.length} orders for filter: ${JSON.stringify(filter)}`);
         res.json(requests);
     } catch (error) {
         console.error('Fetch Pharmacy Requests Error:', error);

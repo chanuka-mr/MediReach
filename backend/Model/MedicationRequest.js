@@ -16,7 +16,14 @@ const medicationRequestSchema = mongoose.Schema({
     },
     expiry_time: { type: Date, required: true },
     notes: { type: String },
-    prescription_image: { type: String }
+    prescription_image: { type: String },
+    medicines: [{
+        medicine_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' },
+        medicine_name: { type: String, required: true },
+        quantity: { type: Number, required: true, default: 1 },
+        unit_price: { type: Number, required: true },
+        total_price: { type: Number, required: true }
+    }]
 }, {
     timestamps: true
 });

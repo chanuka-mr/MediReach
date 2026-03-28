@@ -12,12 +12,29 @@ const createRequest = async (requestData, patient_id) => {
     const pharmacy_id_to_assign = (requestData.preferred_pharmacy_id || requestData.pharmacy_id || '').trim();
     const clean_patient_id = (patient_id || '').trim();
 
+    // Handle medicines array from cart
+    let medicines = [];
+    if (requestData.medicines) {
+        try {
+            // If medicines is sent as a string (from FormData), parse it
+            if (typeof requestData.medicines === 'string') {
+                medicines = JSON.parse(requestData.medicines);
+            } else {
+                medicines = requestData.medicines;
+            }
+        } catch (error) {
+            console.error('Error parsing medicines array:', error);
+            medicines = [];
+        }
+    }
+
     const request = await MedicationRequest.create({
         ...requestData,
         patient_id: clean_patient_id,
         expiry_time,
         pharmacy_id: pharmacy_id_to_assign,
-        status: 'Pending'
+        status: 'Pending',
+        medicines: medicines
     });
 
     // Create a routing entry for the assigned pharmacy
