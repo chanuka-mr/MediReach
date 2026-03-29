@@ -52,18 +52,13 @@ const SOCIAL_LINKS = [
 
 function MediReachLogo({ size = 44 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="52" r="38" fill="#f5f0e8" stroke="#1a1a1a" strokeWidth="2.2"/>
-      <path d="M22 54 Q22 75 50 75 Q78 75 78 54 Z" fill="#1e1e1e"/>
-      <ellipse cx="50" cy="54" rx="28" ry="6" fill="#2d2d2d"/>
-      <line x1="63" y1="35" x2="45" y2="58" stroke="#1a1a1a" strokeWidth="4.5" strokeLinecap="round"/>
-      <circle cx="44.5" cy="59" r="4.5" fill="#1a1a1a"/>
-      <path d="M37 63 Q43 49 57 58 Q46 67 37 63Z" fill="#5ab348"/>
-      <line x1="37" y1="63" x2="56" y2="58" stroke="#3a8028" strokeWidth="1.2" strokeLinecap="round"/>
-      <circle cx="67" cy="26" r="5.5" fill="#5ab348" opacity="0.92"/>
-      <circle cx="77" cy="17" r="3.8" fill="#5ab348" opacity="0.78"/>
-      <circle cx="60" cy="15" r="2.6" fill="#5ab348" opacity="0.68"/>
-    </svg>
+    <img 
+      src="/logo.png" 
+      alt="MediReach Logo" 
+      width={size} 
+      height={size}
+      style={{ borderRadius: '8px' }}
+    />
   );
 }
 

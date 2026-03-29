@@ -523,13 +523,16 @@ const MedicineCardView = () => {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, height: 72 }}>
             {/* Logo + breadcrumb */}
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, background: C.techBlue,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: `0 4px 14px rgba(2,62,138,0.3)`,
-              }}>
-                <Pill size={16} color={C.snow} strokeWidth={2} />
-              </div>
+              <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={36} 
+                    height={36}
+                    className="rounded-[10px]"
+                    style={{
+                      boxShadow: `0 4px 14px rgba(2,62,138,0.3)`,
+                    }}
+                />
               <div>
                 <h1 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.blueSlate, letterSpacing: "-0.5px", fontFamily: "'Sora', sans-serif" }}>
                   MediReach

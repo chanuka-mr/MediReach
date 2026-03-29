@@ -258,10 +258,13 @@ export default function AuthPage({ onLoginSuccess }) {
           <div>
             {/* Logo */}
             <div className="flex items-center gap-[11px] mb-[52px]">
-              <div className="w-10 h-10 rounded-[10px] flex items-center justify-center text-white"
-                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}>
-                <GridIcon />
-              </div>
+              <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={40} 
+                    height={40}
+                    className="rounded-[10px]"
+                />
               <span className="text-white text-[19px] font-bold tracking-[-0.3px]">MediReach</span>
             </div>
 
@@ -312,10 +315,13 @@ export default function AuthPage({ onLoginSuccess }) {
             pointerEvents: isSignup ? "all" : "none",
           }}
         >
-          <div className="w-10 h-10 rounded-[10px] flex items-center justify-center text-white mb-4"
-            style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}>
-            <GridIcon />
-          </div>
+          <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={40} 
+                    height={40}
+                    className="rounded-[10px] mb-4"
+                />
           <span className="text-white text-[19px] font-bold tracking-[-0.3px] block mb-7">MediReach</span>
           <div className="w-10 h-[3px] rounded mb-7"
             style={{ background: `linear-gradient(90deg, ${INDIGO}, transparent)` }} />

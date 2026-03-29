@@ -15,7 +15,13 @@ const Navbar = () => {
     return (
         <nav className="flex items-center justify-between px-8 h-[70px] bg-white border-b border-border-custom sticky top-0 z-[100] shadow-sm">
             <div className="flex items-center gap-3">
-                <span className="bg-primary-deep text-white w-[38px] h-[38px] flex items-center justify-center font-extrabold rounded-lg text-lg">MR</span>
+                <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={38} 
+                    height={38}
+                    className="rounded-lg"
+                />
                 <span className="text-xl font-extrabold text-primary-deep tracking-tighter">MediReach</span>
             </div>
             <div className="flex gap-6">

@@ -482,7 +482,13 @@ export default function AdminNavBar() {
             {/* Brand */}
             <div className="mr-brand" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
               <div className="mr-logo-wrap">
-                <Stethoscope size={20} color="white" strokeWidth={2.2} />
+                <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={20} 
+                    height={20}
+                    className="rounded"
+                />
                 <div className="mr-logo-pulse" />
               </div>
               {!collapsed && (

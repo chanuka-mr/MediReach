@@ -411,7 +411,13 @@ export default function UserNavBar() {
             {/* Brand */}
             <div className="ul-brand" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
               <div className="ul-logo-wrap">
-                <Stethoscope size={20} color="white" strokeWidth={2.2} />
+                <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={20} 
+                    height={20}
+                    className="rounded"
+                />
                 <div className="ul-logo-pulse" />
               </div>
               {!collapsed && (

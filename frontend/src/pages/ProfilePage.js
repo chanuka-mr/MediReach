@@ -541,10 +541,13 @@ export default function ProfilePage() {
           {/* Top row: Logo and Shield */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-[8px] flex items-center justify-center text-white scale-[0.8]"
-                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}>
-                <GridIcon />
-              </div>
+              <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={32} 
+                    height={32}
+                    className="rounded-[8px] scale-[0.8]"
+                />
               <span className="text-white text-[17px] font-bold tracking-[-0.3px]">MediReach</span>
             </div>
             <div className="hidden sm:flex items-center gap-1.5 text-[rgba(255,255,255,0.6)] text-[11px]">

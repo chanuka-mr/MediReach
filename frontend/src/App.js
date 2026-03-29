@@ -9,20 +9,20 @@ import Inquiry from './Component/pharmacyUserView/UserInquiryControl.jsx';
 
 // User management imports
 import PreHome from './Component/PreHome.jsx';
-import AuthPage from './Pages/AuthPage';
-import HomePage from './Pages/HomePage';
-import ProfilePage from './Pages/ProfilePage';
-import UserNavBar from './Components/UserNavBar';
-import AdminNavBar from './Components/AdminNavBar';
-import AdminUsersPage from './Pages/AdminUsersPage';
-import AdminDashboard from './Pages/AdminDashboard';
+import AuthPage from './Pages/AuthPage.js';
+import HomePage from './Pages/HomePage.js';
+import ProfilePage from './Pages/ProfilePage.js';
+import UserNavBar from './Components/UserNavBar.js';
+import AdminNavBar from './Components/AdminNavBar.js';
+import AdminUsersPage from './Pages/AdminUsersPage.js';
+import AdminDashboard from './Pages/AdminDashboard.js';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
 import MedicineForm from './Component/MedicineAdd';
 import MedicineInventory from './Component/MedicineInventory';
 import UpdateMedicine from './Component/UpdateMedicine';
-import MedicineCardView from './Pages/MedicineCardView';
+import MedicineCardView from './Pages/MedicineCardView.js';
 import MedicineOrder from './Component/PharmacyOrders.js';
 
 // Pharmacy Management imports

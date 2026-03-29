@@ -442,10 +442,13 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
           <div>
             {/* Logo */}
             <div style={{ display:"flex", alignItems:"center", gap:"11px", marginBottom:"52px" }}>
-              <div style={{ width:"40px", height:"40px", borderRadius:"10px", display:"flex", alignItems:"center", justifyContent:"center", color:"white",
-                background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.18)" }}>
-                <GridIcon />
-              </div>
+              <img 
+                    src="/logo.png" 
+                    alt="MediReach Logo" 
+                    width={40} 
+                    height={40}
+                    className="rounded-[10px]"
+                />
               <span style={{ color:"white", fontSize:"19px", fontWeight:700, letterSpacing:"-0.3px" }}>MediReach</span>
             </div>
 
