@@ -9,20 +9,20 @@ import Inquiry from './Component/pharmacyUserView/UserInquiryControl.jsx';
 
 // User management imports
 import PreHome from './Component/PreHome.jsx';
-import AuthPage from './pages/AuthPage';
-import HomePage from './pages/HomePage';
-import ProfilePage from './pages/ProfilePage';
-import UserNavBar from './components/UserNavBar';
-import AdminNavBar from './components/AdminNavBar';
-import AdminUsersPage from './pages/AdminUsersPage';
-import AdminDashboard from './pages/AdminDashboard';
+import AuthPage from './Pages/AuthPage';
+import HomePage from './Pages/HomePage';
+import ProfilePage from './Pages/ProfilePage';
+import UserNavBar from './Components/UserNavBar';
+import AdminNavBar from './Components/AdminNavBar';
+import AdminUsersPage from './Pages/AdminUsersPage';
+import AdminDashboard from './Pages/AdminDashboard';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
 import MedicineForm from './Component/MedicineAdd';
 import MedicineInventory from './Component/MedicineInventory';
 import UpdateMedicine from './Component/UpdateMedicine';
-import MedicineCardView from './pages/MedicineCardView';
+import MedicineCardView from './Pages/MedicineCardView';
 import MedicineOrder from './Component/PharmacyOrders.js';
 
 // Pharmacy Management imports
@@ -41,10 +41,10 @@ import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView'
 import PharmacyQRDetail from './Component/pharmacyUserView/PharmacyQRDetail';
 
 //Orders
-import OrderDashboard from './pages/OrderDashboard.js';
-import OrderForm from './pages/OrderForm.js';
-import Orderhistory from './pages/OrderDetails.js';
-import Payment from './pages/PaymentUI.js';
+import OrderDashboard from './Pages/OrderDashboard.js';
+import OrderForm from './Pages/OrderForm.js';
+import Orderhistory from './Pages/OrderDetails.js';
+import Payment from './Pages/PaymentUI.js';
 
 // Layout Component
 function AppLayout() {
@@ -167,6 +167,10 @@ function App() {
         ) : (
           <Route path="/Home" element={<HomePage />} />
         )}
+
+        {/* Public Pharmacy QR Routes */}
+        <Route path="/pharmacy-qr" element={<PharmacyQRUserView />} />
+        <Route path="/pharmacy-qr/:id" element={<PharmacyQRDetail />} />
         
         {/* Authentication Route */}
         {!isLoggedIn && (
