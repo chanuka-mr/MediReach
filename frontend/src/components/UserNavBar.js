@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 
 const navItems = [
-  { label: "Home",       path: "/",           icon: Home,          tag: "Home",    desc: "Welcome & overview",     accent: "#38BDF8" },
+  { label: "Home",       path: "/Home",       icon: Home,          tag: "Home",    desc: "Welcome & overview",     accent: "#38BDF8" },
   { label: "About Us",   path: "/about",      icon: Info,          tag: "About",   desc: "Our mission & story",    accent: "#A78BFA" },
   { label: "Contact Us", path: "/contact",    icon: Phone,         tag: "Contact", desc: "Get in touch with us",   accent: "#34D399" },
   { label: "Order Now",  path: "/medicineshop",      icon: ShoppingBag,   tag: "Order",   desc: "Browse and order medicines", accent: "#FB923C" },
