@@ -167,6 +167,10 @@ function App() {
         ) : (
           <Route path="/Home" element={<HomePage />} />
         )}
+
+        {/* Public Pharmacy QR Routes */}
+        <Route path="/pharmacy-qr" element={<PharmacyQRUserView />} />
+        <Route path="/pharmacy-qr/:id" element={<PharmacyQRDetail />} />
         
         {/* Authentication Route */}
         {!isLoggedIn && (

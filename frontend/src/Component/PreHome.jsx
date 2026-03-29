@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 
 const C = {
   success: "#0E7C5B", lilacAsh: "#4C6EF5",
@@ -93,12 +94,20 @@ const DOCTORS = [
   { init:"LC", name:"Dr. Lena Cho",      spec:"Mental Health", exp:"11 yrs", rating:"4.96", bg:"rgba(245,158,11,0.15)", cl:"#D97706" },
 ];
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const HOST_URL = window.location.origin;
+
 export default function PreHome() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState("Home");
   const [ticker, setTicker] = useState(0);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrPharmacies, setQrPharmacies] = useState([]);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
+  const [selectedQRPharmacy, setSelectedQRPharmacy] = useState(null);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
@@ -110,6 +119,45 @@ export default function PreHome() {
     const t = setInterval(() => setTicker(p => p + 1), 3000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!showQRModal) return undefined;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowQRModal(false);
+      }
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener('keydown', onEsc);
+    };
+  }, [showQRModal]);
+
+  const openQRModal = async () => {
+    setShowQRModal(true);
+    if (qrPharmacies.length > 0) return;
+
+    setQrLoading(true);
+    setQrError('');
+    try {
+      const response = await fetch(`${API_URL}/pharmacies`);
+      const data = await response.json();
+      const pharmacies = data?.data?.pharmacies || data?.pharmacies || [];
+      if (!Array.isArray(pharmacies) || pharmacies.length === 0) {
+        setQrError('No pharmacy records are available right now.');
+        return;
+      }
+      setQrPharmacies(pharmacies);
+      setSelectedQRPharmacy(pharmacies[0]);
+    } catch (error) {
+      setQrError('Unable to load pharmacy QR data at the moment.');
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
   const liveStats = [
     `${(50241 + ticker * 3).toLocaleString()} patients served globally`,
@@ -198,6 +246,10 @@ export default function PreHome() {
         .hf-v em{font-style:normal;color:var(--leaf);}
         .hf-l{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.32);letter-spacing:.8px;margin-top:4px;text-transform:uppercase;}
         .hero-right{animation:fadeRight .9s ease .2s both;}
+        .hero-quick-qr{margin-bottom:14px;padding:16px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.11);border-radius:16px;box-shadow:0 14px 36px rgba(1,12,35,.35);}
+        .quick-qr-title{font-size:.84rem;color:rgba(255,255,255,.78);line-height:1.6;margin-bottom:12px;font-weight:600;}
+        .quick-qr-btn{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(90,179,72,.45);background:linear-gradient(135deg,rgba(14,124,91,.95),rgba(18,160,119,.95));color:#fff;font-family:var(--sans);font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.2px;}
+        .quick-qr-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(14,124,91,.35);}
         .status-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:var(--rLg);overflow:hidden;backdrop-filter:blur(10px);}
         .sc-head{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;}
         .sc-title{font-family:var(--mono);font-size:.62rem;color:rgba(255,255,255,.35);letter-spacing:1.5px;text-transform:uppercase;}
@@ -216,6 +268,32 @@ export default function PreHome() {
         .hero-ticker{position:absolute;bottom:0;left:0;right:0;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.28);overflow:hidden;z-index:2;}
         .hero-ticker-inner{display:flex;animation:tkScroll 22s linear infinite;white-space:nowrap;}
         .hero-tick-item{display:inline-flex;align-items:center;gap:8px;padding:9px 44px;font-family:var(--mono);font-size:.63rem;color:rgba(255,255,255,.36);letter-spacing:.5px;flex-shrink:0;}
+
+        .qr-modal{position:fixed;inset:0;z-index:260;display:flex;align-items:center;justify-content:center;padding:20px;}
+        .qr-modal-backdrop{position:absolute;inset:0;background:rgba(2,14,33,.76);backdrop-filter:blur(6px);}
+        .qr-modal-panel{position:relative;z-index:1;width:min(920px,100%);max-height:90vh;overflow:auto;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(155deg,#02295f,#01316f 44%,#012555);box-shadow:0 35px 80px rgba(1,12,35,.55);padding:22px;}
+        .qr-modal-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:1.2rem;cursor:pointer;}
+        .qr-modal-head{padding-right:50px;margin-bottom:16px;}
+        .qr-modal-kicker{font-family:var(--mono);font-size:.62rem;letter-spacing:1.7px;color:#8be07a;text-transform:uppercase;}
+        .qr-modal-title{font-family:var(--serif);font-size:2rem;color:#fff;line-height:1.1;margin-top:8px;}
+        .qr-modal-sub{font-size:.83rem;line-height:1.7;color:rgba(255,255,255,.6);margin-top:10px;}
+        .qr-modal-grid{display:grid;grid-template-columns:280px 1fr;gap:16px;}
+        .qr-list{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:8px;max-height:420px;overflow:auto;}
+        .qr-list-btn{width:100%;text-align:left;background:transparent;border:1px solid transparent;color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer;transition:all .2s;margin-bottom:6px;}
+        .qr-list-btn:last-child{margin-bottom:0;}
+        .qr-list-btn:hover{background:rgba(255,255,255,.08);}
+        .qr-list-btn.active{border-color:rgba(139,224,122,.45);background:rgba(90,179,72,.18);}
+        .qr-list-name{font-size:.8rem;font-weight:700;line-height:1.35;}
+        .qr-list-district{font-family:var(--mono);font-size:.63rem;letter-spacing:.6px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:3px;}
+        .qr-card{background:#fff;border-radius:18px;padding:22px;min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+        .qr-code-wrap{padding:14px;border-radius:18px;background:#fff;border:1px solid #dce6f5;box-shadow:0 12px 30px rgba(2,62,138,.14);}
+        .qr-empty{color:#0b2e66;font-size:.84rem;text-align:center;line-height:1.7;max-width:290px;}
+        .qr-selected-name{font-family:var(--serif);font-size:1.55rem;color:#062f66;margin-top:14px;line-height:1.2;text-align:center;}
+        .qr-selected-district{font-family:var(--mono);font-size:.68rem;letter-spacing:.9px;color:#2f5a94;text-transform:uppercase;margin-top:8px;}
+        .qr-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;}
+        .qr-all-btn{padding:10px 16px;border:1px solid #8bb2e0;border-radius:10px;background:#fff;color:#0d3a75;font-size:.76rem;font-weight:700;cursor:pointer;}
+        .qr-state{font-size:.82rem;color:rgba(255,255,255,.72);padding:14px 4px;}
+        .qr-state.error{color:#ffd3c7;}
 
         @keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeRight{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:translateX(0)}}
@@ -344,6 +422,8 @@ export default function PreHome() {
         @media(max-width:1100px){
           .about-grid,.hero-i{grid-template-columns:1fr;}
           .hero-right{display:none;}
+          .qr-modal-grid{grid-template-columns:1fr;}
+          .qr-card{min-height:360px;}
           .srv-head{grid-template-columns:1fr;}
           .srv-grid{grid-template-columns:repeat(2,1fr);}
           .docs-grid{grid-template-columns:repeat(2,1fr);}
@@ -365,6 +445,8 @@ export default function PreHome() {
           .ft-bot{flex-direction:column;text-align:center;}
           .cta-box{padding:40px 18px;}
           section{padding:72px 1.5rem;}
+          .qr-modal-panel{padding:16px;}
+          .qr-modal-title{font-size:1.65rem;}
         }
       `}</style>
 
@@ -448,6 +530,10 @@ export default function PreHome() {
           </div>
 
           <div className="hero-right">
+            <div className="hero-quick-qr">
+              <p className="quick-qr-title">Want to explore pharmacy details before logging in?</p>
+              <button className="quick-qr-btn" onClick={openQRModal}>View Pharmacy QR</button>
+            </div>
             <div className="status-card">
               <div className="sc-head">
                 <span className="sc-title">Specialists Online Now</span>
@@ -485,6 +571,73 @@ export default function PreHome() {
           </div>
         </div>
       </section>
+
+      {showQRModal && (
+        <div className="qr-modal" role="dialog" aria-modal="true" aria-label="Pharmacy QR details preview">
+          <div className="qr-modal-backdrop" onClick={() => setShowQRModal(false)} />
+          <div className="qr-modal-panel">
+            <button className="qr-modal-close" onClick={() => setShowQRModal(false)} aria-label="Close pharmacy QR modal">×</button>
+            <div className="qr-modal-head">
+              <div className="qr-modal-kicker">Public Pharmacy Access</div>
+              <h3 className="qr-modal-title">Scan To Open Pharmacy Details</h3>
+              <p className="qr-modal-sub">Select a branch and scan the QR code to open pharmacy details instantly without logging in.</p>
+            </div>
+
+            {qrLoading ? (
+              <div className="qr-state">Loading pharmacy QR data...</div>
+            ) : qrError ? (
+              <div className="qr-state error">{qrError}</div>
+            ) : (
+              <div className="qr-modal-grid">
+                <div className="qr-list">
+                  {qrPharmacies.slice(0, 10).map((pharmacy) => (
+                    <button
+                      key={pharmacy._id}
+                      className={`qr-list-btn ${selectedQRPharmacy?._id === pharmacy._id ? 'active' : ''}`}
+                      onClick={() => setSelectedQRPharmacy(pharmacy)}
+                    >
+                      <div className="qr-list-name">{pharmacy.name}</div>
+                      <div className="qr-list-district">{pharmacy.district || 'Unspecified district'}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="qr-card">
+                  {selectedQRPharmacy ? (
+                    <>
+                      <div className="qr-code-wrap">
+                        <QRCodeSVG
+                          value={`${HOST_URL}/pharmacy-qr/${selectedQRPharmacy._id}`}
+                          size={210}
+                          bgColor="#ffffff"
+                          fgColor="#0f172a"
+                          level="M"
+                          includeMargin={true}
+                        />
+                      </div>
+                      <div className="qr-selected-name">{selectedQRPharmacy.name}</div>
+                      <div className="qr-selected-district">{selectedQRPharmacy.district || 'Unspecified district'}</div>
+                      <div className="qr-actions">
+                        <button
+                          className="qr-all-btn"
+                          onClick={() => {
+                            setShowQRModal(false);
+                            navigate('/pharmacy-qr');
+                          }}
+                        >
+                          Browse All QR Pharmacies
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="qr-empty">Choose a pharmacy from the list to generate its QR code and preview details.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── MARQUEE ── */}
       <div className="mq-band">
