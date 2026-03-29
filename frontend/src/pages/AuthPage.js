@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import ForgotPasswordPage from "./ForgotPasswordPage";
 
 // ── Icons ────────────────────────────────────────────
@@ -147,7 +148,15 @@ export default function AuthPage({ onLoginSuccess }) {
   const [sPharmacy, setSPharmacy] = useState("");
   const [sLicense,  setSLicense]  = useState("");
 
-  useEffect(() => { setTimeout(() => setMounted(true), 60); }, []);
+  useEffect(() => { 
+    // Check URL parameters for mode
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlMode = searchParams.get('mode');
+    if (urlMode === 'signup' || urlMode === 'login') {
+      setMode(urlMode);
+    }
+    setTimeout(() => setMounted(true), 60); 
+  }, []);
 
   const isSignup = mode === "signup";
 

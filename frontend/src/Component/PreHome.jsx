@@ -466,38 +466,15 @@ export default function PreHome() {
               <span className="logo-sub">Est. 2009 · Global Healthcare</span>
             </div>
           </a>
-          <nav>
-            {NAV_LINKS.map(l => (
-              <button key={l} className={`nb ${activeNav === l ? "act" : ""}`} onClick={() => setActiveNav(l)}>{l}</button>
-            ))}
+          <nav style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            {/* Navigation items can be added here if needed */}
           </nav>
           <div className="hdr-auth">
-            <button className="btn-login" onClick={() => navigate('/LoginHome')}>Log In</button>
-            <button className="btn-signup" onClick={() => navigate('/LoginHome')}>Sign Up</button>
+            <button className="btn-login" onClick={() => navigate('/auth?mode=login')}>Log In</button>
+            <button className="btn-signup" onClick={() => navigate('/auth?mode=signup')}>Sign Up</button>
           </div>
-          <button className="burger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
-            <span style={menuOpen ? { transform:"rotate(45deg) translate(5px,5px)" } : {}} />
-            <span style={menuOpen ? { opacity:0 } : {}} />
-            <span style={menuOpen ? { transform:"rotate(-45deg) translate(5px,-5px)" } : {}} />
-          </button>
         </div>
       </header>
-
-      {/* Mobile Menu */}
-      <div className={`mob-m ${menuOpen ? "open" : ""}`}>
-        <div className="mob-nav">
-          {NAV_LINKS.map(l => (
-            <button key={l} className="nb"
-              style={{ fontSize:"1.25rem", fontFamily:"var(--serif)", fontWeight:700, padding:"14px 0", color:"rgba(255,255,255,.75)", borderRadius:0, borderBottom:"1px solid rgba(255,255,255,.06)" }}
-              onClick={() => { setActiveNav(l); setMenuOpen(false); }}>{l}
-            </button>
-          ))}
-        </div>
-        <div className="mob-auth">
-          <button className="btn-login" onClick={() => navigate('/LoginHome')}>Log In</button>
-          <button className="btn-signup" onClick={() => navigate('/LoginHome')}>Sign Up</button>
-        </div>
-      </div>
 
       {/* ══ HERO ══ */}
       <section className="hero">
@@ -787,12 +764,21 @@ export default function PreHome() {
             <h2 className="cta-h">Ready to Take Control<br />of Your <em>Health?</em></h2>
             <p className="cta-p">Join 50,000+ patients who've made MediReach their trusted healthcare partner. Get started in under 3 minutes.</p>
             <div className="cta-btns">
-              <button className="cta-btn-p" onClick={() => navigate('/LoginHome')}>Create Free Account →</button>
-              <button className="cta-btn-s" onClick={() => navigate('/LoginHome')}>Log In to Dashboard</button>
+              <button className="cta-btn-p" onClick={() => navigate('/auth?mode=signup')}>Create Free Account →</button>
+              <button className="cta-btn-s" onClick={() => navigate('/auth?mode=login')}>Log In to Dashboard</button>
             </div>
           </div>
         </Reveal>
       </section>
+
+      {/* ── MARQUEE ── */}
+      <div className="mq-band">
+        <div className="mq-inner">
+          {["ISO 15189 Accredited","HIPAA Compliant","24/7 Emergency Triage","AI-Assisted Diagnostics","Same-Day Prescriptions","12 Languages Supported","Encrypted Records","200+ Specialists","Mental Health First Access","Evidence-Based Protocols",
+            "ISO 15189 Accredited","HIPAA Compliant","24/7 Emergency Triage","AI-Assisted Diagnostics","Same-Day Prescriptions","12 Languages Supported","Encrypted Records","200+ Specialists","Mental Health First Access","Evidence-Based Protocols"
+          ].map((s, i) => <span key={i} className="mq-item">{s} <span style={{ color:"rgba(255,255,255,.25)" }}>·</span></span>)}
+        </div>
+      </div>
 
       {/* ══ ACCREDITATIONS ══ */}
       <section className="accred-sec">
