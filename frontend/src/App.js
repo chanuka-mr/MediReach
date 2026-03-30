@@ -8,20 +8,20 @@ import Inquiry from './Component/pharmacyUserView/UserInquiryControl.jsx';
 
 // User management imports
 import PreHome from './Component/PreHome.jsx';
-import AuthPage from './Pages/AuthPage';
-import UserHome from './Pages/UserHome';
-import ProfilePage from './Pages/ProfilePage';
-import UserNavBar from './Components/UserNavBar';
-import AdminNavBar from './Components/AdminNavBar';
-import AdminUsersPage from './Pages/AdminUsersPage';
-import AdminDashboard from './Pages/AdminDashboard';
+import AuthPage from './pages/AuthPage';
+import UserHome from './pages/UserHome';
+import ProfilePage from './pages/ProfilePage';
+import UserNavBar from './components/UserNavBar';
+import AdminNavBar from './components/AdminNavBar';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
 import MedicineForm from './Component/MedicineAdd';
 import MedicineInventory from './Component/MedicineInventory';
 import UpdateMedicine from './Component/UpdateMedicine';
-import MedicineCardView from './Pages/MedicineCardView.js';
+import MedicineCardView from './pages/MedicineCardView.js';
 import MedicineOrder from './Component/PharmacyOrders.js';
 
 // Pharmacy Management imports
@@ -39,10 +39,10 @@ import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView'
 import PharmacyQRDetail from './Component/pharmacyUserView/PharmacyQRDetail';
 
 //Orders
-import OrderDashboard from './Pages/OrderDashboard.js';
-import OrderForm from './Pages/OrderForm.js';
-import Orderhistory from './Pages/OrderDetails.js';
-import Payment from './Pages/PaymentUI.js';
+import OrderDashboard from './pages/OrderDashboard.js';
+import OrderForm from './pages/OrderForm.js';
+import Orderhistory from './pages/OrderDetails.js';
+import Payment from './pages/PaymentUI.js';
 
 // Layout Component
 function AppLayout() {
