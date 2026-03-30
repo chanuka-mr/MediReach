@@ -11,8 +11,8 @@ import PreHome from './Component/PreHome.jsx';
 import AuthPage from './pages/AuthPage';
 import UserHome from './pages/UserHome';
 import ProfilePage from './pages/ProfilePage';
-import UserNavBar from './components/UserNavBar';
-import AdminNavBar from './components/AdminNavBar';
+import UserNavBar from './Components/UserNavBar';
+import AdminNavBar from './Components/AdminNavBar';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminDashboard from './pages/AdminDashboard';
 

@@ -275,6 +275,7 @@ export default function ProfilePage() {
   const [focused, setFocused]   = useState(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" });
+  const [savedUser, setSavedUser] = useState({});
 
   // Load user data from localStorage
   const [name, setName]           = useState("Guest User");
@@ -308,6 +309,7 @@ export default function ProfilePage() {
     if (saved) {
       const parsed = JSON.parse(saved);
       const u = parsed.user || parsed;
+      setSavedUser(u);
       if (u.name) setName(u.name);
       if (u.email) setEmail(u.email);
       if (u.contactNumber) setPhone(u.contactNumber);
@@ -376,6 +378,7 @@ export default function ProfilePage() {
       
       localStorage.setItem("userInfo", JSON.stringify({ ...parsed, user: data, ...data, token: token }));
       
+      setSavedUser(data);
       setEditMode(false);
       showToast("Profile updated successfully!");
     } catch (err) { 
@@ -476,7 +479,7 @@ export default function ProfilePage() {
     user:     { label: "Customer", bg: `${GREEN}22`,  color: GREEN },
   }[role] || { label: role, bg: "#E2E8F0", color: "#64748B" };
 
-  const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const initials = (savedUser.name || name).split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
   const eyeBtn = (show, toggle) => (
     <button type="button" onClick={toggle}
@@ -572,13 +575,13 @@ export default function ProfilePage() {
               </div>
               <div className="flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <div className="text-white text-[20px] font-bold tracking-[-0.5px] leading-none">{name}</div>
+                  <div className="text-white text-[20px] font-bold tracking-[-0.5px] leading-none">{savedUser.name || name}</div>
                   <div className="px-3 py-1 rounded-full text-[11px] font-bold tracking-[0.5px] uppercase border border-[rgba(255,255,255,0.1)] w-fit flex-shrink-0"
                     style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.9)" }}>
                     {roleBadge.label}
                   </div>
                 </div>
-                <div className="text-[rgba(255,255,255,0.6)] text-[13px] mt-1.5">{email}</div>
+                <div className="text-[rgba(255,255,255,0.6)] text-[13px] mt-1.5">{savedUser.email || email}</div>
               </div>
             </div>
 
@@ -617,7 +620,16 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2.5">
               {editMode ? (
                 <>
-                  <button onClick={() => setEditMode(false)}
+                  <button onClick={() => {
+                      setEditMode(false);
+                      if (savedUser.name) setName(savedUser.name);
+                      if (savedUser.email) setEmail(savedUser.email);
+                      if (savedUser.contactNumber) setPhone(savedUser.contactNumber);
+                      if (savedUser.pharmacyName) setPharmacyName(savedUser.pharmacyName);
+                      if (savedUser.licenseNumber) setLicenseNumber(savedUser.licenseNumber);
+                      if (savedUser.gender) setGender(savedUser.gender);
+                      if (savedUser.dateOfBirth) setDob(new Date(savedUser.dateOfBirth).toISOString().split('T')[0]);
+                    }}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-[9px] text-[12.5px] font-semibold transition-all duration-200 cursor-pointer"
                     style={{ background: "#F1F5F9", color: "#64748B", border: "1.5px solid #DDE3ED" }}>
                     <XIcon /> Cancel
