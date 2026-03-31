@@ -2,10 +2,10 @@ import React from 'react';
 import { 
   X, MapPin, Phone, Mail, Clock, ShieldCheck, 
   Star, Truck, Award, CheckCircle2,
-  ChevronRight, Building2
+  ChevronRight, Building2, MessageCircle
 } from 'lucide-react';
 
-const PharmacyUserDetailModal = ({ pharmacy, onClose, onOrder }) => {
+const PharmacyUserDetailModal = ({ pharmacy, onClose, onOrder, onChat }) => {
   if (!pharmacy) return null;
 
   return (
@@ -117,12 +117,20 @@ const PharmacyUserDetailModal = ({ pharmacy, onClose, onOrder }) => {
                   <p className="text-lg normal-case font-black text-white mb-1">Guaranteed Medicine Availability</p>
                   <p className="text-slate-400 font-bold opacity-60">This branch maintains 95%+ stock for essential meds.</p>
                 </div>
-                <button 
-                  onClick={() => onOrder(pharmacy._id)}
-                  className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2"
-                >
-                  Confirm & Order <ChevronRight size={16} />
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button 
+                    onClick={() => onChat(pharmacy._id)}
+                    className="px-6 py-4 bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle size={16} /> Chat
+                  </button>
+                  <button 
+                    onClick={() => onOrder(pharmacy._id)}
+                    className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    Confirm & Order <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
             </section>
           </div>

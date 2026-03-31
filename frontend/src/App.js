@@ -15,6 +15,7 @@ import UserNavBar from './Components/UserNavBar';
 import AdminNavBar from './Components/AdminNavBar';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminDashboard from './pages/AdminDashboard';
+import UserChats from './pages/UserChats';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
@@ -33,6 +34,7 @@ import PharmacyNetworkMap from './Component/pharmacy/PharmacyNetworkMap.jsx';
 import PharmacyDetail from './Component/pharmacy/PharmacyDetail.jsx';
 import OpenNowPharmacies from './Component/pharmacy/OpenNowPharmacies';
 import TwentyFourSevenPharmacies from './Component/pharmacy/TwentyFourSevenPharmacies';
+import PharmacyChats from './Component/pharmacy/PharmacyChats';
 import PharmacyUserView from './Component/pharmacyUserView/PharmacyUserView';
 import InquiryManagement from './Component/pharmacy/InquiryManagement';
 import PharmacyQRUserView from './Component/pharmacyUserView/PharmacyQRUserView';
@@ -124,6 +126,7 @@ function App() {
               <Route path="map" element={<PharmacyNetworkMap />} />
               <Route path="open-now" element={<OpenNowPharmacies />} />
               <Route path="24-7" element={<TwentyFourSevenPharmacies />} />
+              <Route path="chats" element={<PharmacyChats />} />
               <Route path=":id" element={<PharmacyDetail />} />
               
             </Route>
@@ -140,7 +143,7 @@ function App() {
             <Route path="/user">
               <Route path="inquiries" element={<Inquiry />} />
               <Route path="order" element={<div className="p-8"><h1>Order Now</h1></div>} />
-              <Route path="chats" element={<div className="p-8"><h1>Pharmacy Chats</h1></div>} />
+              <Route path="chats" element={<UserChats />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="settings" element={<Settings />} />
               <Route path="pharmacies" element={<PharmacyUserView />} />

@@ -4,6 +4,7 @@ import PharmacyListView from '../pharmacy/PharmacyListView';
 import PharmacyNetworkMap from '../pharmacy/PharmacyNetworkMap';
 import PharmacyUserDetailModal from './PharmacyUserDetailModal';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const categories = [
   { id: 'open-now', label: 'Open Now', icon: Clock,  color: '#34D399', sub: 'Available right now' },
@@ -20,6 +21,25 @@ export default function PharmacyUserView() {
   const handleOrder = (id) => {
     navigate('/user/order');
     setSelectedPharmacy(null);
+  };
+
+  const handleChat = async (pharmacyId) => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const user = userInfo?.user || userInfo;
+      if (!user) {
+         navigate('/auth');
+         return;
+      }
+      
+      await axios.post('http://localhost:5000/api/chat/start', {
+        userId: user._id || user.id,
+        pharmacyId: pharmacyId
+      });
+      navigate('/user/chats');
+    } catch (error) {
+      console.error('Failed to start chat', error);
+    }
   };
 
   const renderContent = () => {
@@ -55,6 +75,7 @@ export default function PharmacyUserView() {
           pharmacy={selectedPharmacy} 
           onClose={() => setSelectedPharmacy(null)}
           onOrder={handleOrder}
+          onChat={handleChat}
         />
       )}
       {/* Header */}
