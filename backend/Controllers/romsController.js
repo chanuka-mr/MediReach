@@ -8,7 +8,17 @@ const createRequest = async (req, res, next) => {
 
         // Handle file upload
         if (req.file) {
-            req.body.prescription_image = req.file.path; // Cloudinary URL
+            if (req.file.path) {
+                // Cloudinary URL
+                req.body.prescription_image = req.file.path;
+            } else if (req.file.buffer) {
+                // Memory storage - could save to local file or handle differently
+                // For now, set to a placeholder
+                req.body.prescription_image = 'uploaded_file';
+            } else {
+                // Remove any malformed or object data
+                delete req.body.prescription_image;
+            }
         } else {
             // Remove any malformed or object data that might have come through without being processed correctly
             delete req.body.prescription_image;
