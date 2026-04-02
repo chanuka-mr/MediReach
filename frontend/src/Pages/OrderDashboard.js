@@ -20,6 +20,7 @@ const OrderDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [pharmacyId, setPharmacyId] = useState('ALL');
     const [showNote, setShowNote] = useState(null);
+    const [acceptedOrders, setAcceptedOrders] = useState(new Set());
 
     const fetchOrders = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
@@ -35,8 +36,17 @@ const OrderDashboard = () => {
 
     useEffect(() => {
         fetchOrders();
+        // Load accepted orders from localStorage
+        const storedAcceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
+        setAcceptedOrders(new Set(storedAcceptedOrders));
+        
         // Add 10s interval for faster "live" updates during testing
-        const interval = setInterval(() => fetchOrders(true), 10000);
+        const interval = setInterval(() => {
+            fetchOrders(true);
+            // Refresh accepted orders from localStorage
+            const freshAcceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
+            setAcceptedOrders(new Set(freshAcceptedOrders));
+        }, 10000);
         return () => clearInterval(interval);
     }, [pharmacyId]);
 
@@ -47,6 +57,12 @@ const OrderDashboard = () => {
                 pharmacy_id: pharmacyIdForOrder,
                 // Removed generic notes to preserve patient's original instructions
             });
+            
+            // If action is Approve (from PharmacyOrders Accept), add to accepted orders
+            if (action === 'Approve') {
+                setAcceptedOrders(prev => new Set([...prev, orderId]));
+            }
+            
             fetchOrders(true);
         } catch (error) {
             alert('Failed to update order: ' + (error.response?.data?.message || error.message));
@@ -260,18 +276,20 @@ const OrderDashboard = () => {
                                         {order.status === 'Pending' && (
                                             <div className="flex gap-2">
                                                 <button
-                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-success/10 text-success hover:bg-success hover:text-white"
+                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-success/10 text-success hover:bg-success hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title="Approve"
                                                     onClick={() => handleAction(order._id, order.pharmacy_id, 'Approve')}
+                                                    disabled={!acceptedOrders.has(order._id)}
                                                 >
                                                     <Check size={16} />
                                                 </button>
                                                 <button
-                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-danger/10 text-danger hover:bg-danger hover:text-white"
-                                                    title="Reject"
-                                                    onClick={() => handleAction(order._id, order.pharmacy_id, 'Reject')}
+                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-primary-light/10 text-primary-light hover:bg-primary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Payment Verification"
+                                                    onClick={() => alert('Payment verification initiated for order: ' + order._id)}
+                                                    disabled={!acceptedOrders.has(order._id)}
                                                 >
-                                                    <XCircle size={16} />
+                                                    <CheckCircle size={16} />
                                                 </button>
                                             </div>
                                         )}

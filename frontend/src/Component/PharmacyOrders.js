@@ -89,10 +89,12 @@ function Toast({ toast, onClose }) {
 // ── Confirm Modal ─────────────────────────────────────────────────
 function ConfirmModal({ modal, onConfirm, onClose }) {
   const [reason, setReason] = useState("")
-  const isAccept = modal.action==="dispatch"
-  const accent   = isAccept ? C.success : C.danger
-  const Icon     = isAccept ? SendHorizonal : ThumbsDown
-  const canSubmit = isAccept || reason.trim().length>0
+  const isDispatch = modal.action==="dispatch"
+  const isAccept = modal.action==="accept"
+  const isReject = modal.action==="reject"
+  const accent   = isDispatch ? C.success : (isAccept ? C.lilacAsh : C.danger)
+  const Icon     = isDispatch ? SendHorizonal : (isAccept ? CheckCircle2 : ThumbsDown)
+  const canSubmit = isDispatch || isAccept || reason.trim().length>0
 
   return (
     <div onClick={e=>{ if(e.target===e.currentTarget) onClose() }} style={{
@@ -123,12 +125,14 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             <div style={{ flex:1, paddingTop:2 }}>
               <h3 style={{ margin:"0 0 5px", fontSize:20, fontWeight:800, color:C.blueSlate,
                 letterSpacing:"-0.5px", fontFamily:"'Sora',sans-serif" }}>
-                {isAccept ? "Dispatch This Order?" : "Reject This Order?"}
+                {isDispatch ? "Dispatch This Order?" : (isAccept ? "Accept This Order?" : "Reject This Order?")}
               </h3>
               <p style={{ margin:0, fontSize:13, color:C.lilacAsh, lineHeight:1.5 }}>
-                {isAccept
+                {isDispatch
                   ? "Confirming will mark this order as dispatched and notify the pharmacy."
-                  : "Rejecting is permanent. The pharmacy will be notified immediately."}
+                  : (isAccept
+                    ? "Confirming will mark this order as accepted and enable payment verification."
+                    : "Rejecting is permanent. The pharmacy will be notified immediately.")}
               </p>
             </div>
             <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:C.paleSlate, display:"flex", padding:0 }}>
@@ -150,7 +154,7 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
               </div>
             ))}
           </div>
-          {!isAccept && (
+          {!isAccept && !isDispatch && (
             <div style={{ marginTop:12 }}>
               <label style={{ fontSize:10, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase", display:"block", marginBottom:6 }}>
                 Rejection Reason <span style={{ color:C.danger }}>*</span>
@@ -180,9 +184,11 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             border:`1px solid ${isAccept ? "rgba(14,124,91,0.18)" : "rgba(192,57,43,0.18)"}` }}>
             <ShieldAlert size={13} color={accent} strokeWidth={2} style={{ flexShrink:0 }} />
             <p style={{ margin:0, fontSize:12, color:accent, fontWeight:500, lineHeight:1.5 }}>
-              {isAccept
+              {isDispatch
                 ? "Stock records will be updated and the pharmacy will receive a dispatch confirmation."
-                : "The pharmacy will receive an immediate rejection notification with your reason."}
+                : (isAccept
+                  ? "Stock records will be updated and the pharmacy will receive an acceptance confirmation."
+                  : "The pharmacy will receive an immediate rejection notification with your reason.")}
             </p>
           </div>
         </div>
@@ -209,7 +215,7 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
             onMouseLeave={e=>{ if(canSubmit){ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`0 4px 18px ${accent}30` }}}
           >
             <Icon size={14} strokeWidth={2.5} />
-            {isAccept ? "Confirm Dispatch" : "Confirm Rejection"}
+            {isDispatch ? "Confirm Dispatch" : (isAccept ? "Confirm Accept" : "Confirm Rejection")}
           </button>
         </div>
       </div>
@@ -259,7 +265,8 @@ function StatCard({ icon:Icon, value, label, sub, delay }) {
 // ── Order Row ─────────────────────────────────────────────────────
 function OrderRow({ order, index, expanded, onToggle, onAction }) {
   const [rowHov, setRowHov] = useState(false)
-  const [invHov, setInvHov] = useState(false)
+  const [dispHov, setDispHov] = useState(false)
+  const [accHov, setAccHov] = useState(false)
   const [rejHov, setRejHov] = useState(false)
   const st     = STATUS_CFG[order.status]
   const StI    = st.icon
@@ -364,19 +371,33 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
             {canAct && (
               <>
                 <button
-                  onMouseEnter={()=>setInvHov(true)} onMouseLeave={()=>setInvHov(false)}
+                  onMouseEnter={()=>setDispHov(true)} onMouseLeave={()=>setDispHov(false)}
                   onClick={()=>onAction(order,"dispatch")}
                   style={{
                     padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                    border:`1.5px solid ${invHov ? C.success : "rgba(14,124,91,0.25)"}`,
-                    background: invHov ? C.success : "rgba(14,124,91,0.06)",
-                    color: invHov ? C.snow : C.success,
+                    border:`1.5px solid ${dispHov ? C.success : "rgba(14,124,91,0.25)"}`,
+                    background: dispHov ? C.success : "rgba(14,124,91,0.06)",
+                    color: dispHov ? C.snow : C.success,
                     fontWeight:600, fontSize:12, transition:"all 0.2s",
                     display:"flex", alignItems:"center", gap:5,
-                    transform: invHov ? "translateY(-1px)" : "none",
-                    boxShadow: invHov ? "0 4px 14px rgba(14,124,91,0.22)" : "none",
+                    transform: dispHov ? "translateY(-1px)" : "none",
+                    boxShadow: dispHov ? "0 4px 14px rgba(14,124,91,0.22)" : "none",
                   }}
                 ><SendHorizonal size={11} strokeWidth={2.5} /> Dispatch</button>
+                <button
+                  onMouseEnter={()=>setAccHov(true)} onMouseLeave={()=>setAccHov(false)}
+                  onClick={()=>onAction(order,"accept")}
+                  style={{
+                    padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                    border:`1.5px solid ${accHov ? C.techBlue : "rgba(76,110,245,0.25)"}`,
+                    background: accHov ? C.techBlue : "rgba(76,110,245,0.06)",
+                    color: accHov ? C.snow : C.techBlue,
+                    fontWeight:600, fontSize:12, transition:"all 0.2s",
+                    display:"flex", alignItems:"center", gap:5,
+                    transform: accHov ? "translateY(-1px)" : "none",
+                    boxShadow: accHov ? "0 4px 14px rgba(76,110,245,0.22)" : "none",
+                  }}
+                ><CheckCircle2 size={11} strokeWidth={2.5} /> Accept</button>
                 <button
                   onMouseEnter={()=>setRejHov(true)} onMouseLeave={()=>setRejHov(false)}
                   onClick={()=>onAction(order,"reject")}
@@ -647,8 +668,20 @@ export default function PharmacyOrders() {
       
       if (!res.ok) throw new Error(data.message || "Failed to fetch orders")
       
-      // Transform database orders to match UI structure
-      const transformedOrders = data.map(order => {
+      // Transform database orders to match UI structure and fetch routing status
+      const transformedOrders = await Promise.all(data.map(async (order) => {
+        // Fetch routing status for each order
+        let routingStatus = null;
+        try {
+          const routingRes = await fetch(`http://localhost:5000/api/roms/${order._id}/routing-status`);
+          if (routingRes.ok) {
+            const routingData = await routingRes.json();
+            routingStatus = routingData.route_status;
+          }
+        } catch (routingError) {
+          console.log('Failed to fetch routing status for order:', order._id);
+        }
+        
         // Handle medicines array - if it exists, display the medicines, otherwise fallback to notes
         let medicineDisplay = 'Medication Request';
         let totalQuantity = 1;
@@ -676,7 +709,7 @@ export default function PharmacyOrders() {
           category: 'Prescription',
           qty: totalQuantity,
           unitPrice: totalValue / totalQuantity || 0,
-          status: mapStatus(order.status),
+          status: routingStatus ? mapRoutingStatus(routingStatus) : mapStatus(order.status),
           priority: mapPriority(order.priority_level),
           orderedAt: order.createdAt || order.request_date,
           deliveredAt: null,
@@ -686,7 +719,7 @@ export default function PharmacyOrders() {
           prescription_image: order.prescription_image,
           medicines: order.medicines || [] // Store the full medicines array for detailed view
         }
-      })
+      }))
       
       setOrderData(transformedOrders)
     } catch (error) {
@@ -705,6 +738,18 @@ export default function PharmacyOrders() {
       case 'Ready': return 'in_transit'
       case 'Rejected': return 'rejected'
       case 'Cancelled': return 'cancelled'
+      case 'Dispatched': return 'dispatched'
+      default: return 'pending'
+    }
+  }
+
+  // Map routing status to UI status
+  const mapRoutingStatus = (routingStatus) => {
+    switch (routingStatus) {
+      case 'Pending': return 'pending'
+      case 'Accepted': return 'processing' // This will show as green/processing color
+      case 'Dispatched': return 'dispatched'
+      case 'Rejected': return 'rejected'
       default: return 'pending'
     }
   }
@@ -731,14 +776,69 @@ export default function PharmacyOrders() {
 
   const handleSort    = (key) => { if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc"); else { setSortKey(key); setSortDir("asc") } }
   const handleAction  = (order,action) => setModal({order,action})
-  const handleConfirm = (reason) => {
+  const handleConfirm = async (reason) => {
     const { order, action } = modal
-    const newStatus = action==="dispatch" ? "dispatched" : "rejected"
-    setOrderData(prev => prev.map(o =>
-      o.id===order.id ? { ...o, status:newStatus, rejectionReason:action==="reject"?reason:undefined } : o
-    ))
-    setToast({ type:newStatus, orderId:order.id, medicine:order.medicine, pharmacy:order.pharmacy })
-    setModal(null)
+    console.log('handleConfirm called with action:', action, 'order:', order.id)
+    
+    try {
+      if (action === "accept") {
+        console.log('Processing accept action')
+        // Accept action: Only enable OrderDashboard buttons, don't update order status
+        // Store accepted order in localStorage for OrderDashboard to read
+        const acceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
+        if (!acceptedOrders.includes(order.id)) {
+          acceptedOrders.push(order.id);
+          localStorage.setItem('acceptedOrders', JSON.stringify(acceptedOrders));
+        }
+        
+        setToast({ type: "accepted", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
+        setModal(null);
+        return;
+      }
+
+      console.log('Processing API call for action:', action)
+      // For dispatch and reject actions, make API call to update order status
+      const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: action,
+          pharmacy_id: order.pharmacy_id,
+          rejectionReason: action === 'reject' ? reason : undefined,
+          notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
+        })
+      });
+
+      console.log('API response status:', response.status)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
+        throw new Error(`Failed to update order: ${errorText}`);
+      }
+
+      const updatedOrder = await response.json();
+      console.log('API success:', updatedOrder)
+      
+      // Update local state with the response
+      const newStatus = action === "dispatch" ? "dispatched" : 
+                       action === "reject" ? "Rejected" : order.status;
+      
+      setOrderData(prev => prev.map(o =>
+        o.id === order.id ? { 
+          ...o, 
+          status: mapStatus(newStatus), 
+          rejectionReason: action === "reject" ? reason : undefined
+        } : o
+      ));
+      
+      setToast({ type: newStatus, orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
+      setModal(null);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      alert('Failed to update order: ' + error.message);
+    }
   }
 
   // Clear pharmacy filter → also clears URL param
