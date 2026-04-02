@@ -25,9 +25,11 @@ const schemas = {
         medicines: Joi.string().optional() // Allow medicines as JSON string from FormData
     }),
     processAction: Joi.object({
-        action: Joi.string().valid('Approve', 'Reject', 'Ready').required(),
+        action: Joi.string().valid('Approve', 'Reject', 'Ready', 'dispatch', 'accept').required(),
         pharmacy_id: Joi.alternatives().try(Joi.string(), Joi.number()).optional(),
-        notes: Joi.string().allow('')
+        notes: Joi.string().allow(''),
+        rejectionReason: Joi.string().allow(''),
+        reason: Joi.string().allow('')
     }),
     cancelRequest: Joi.object({
         reason: Joi.string().required()

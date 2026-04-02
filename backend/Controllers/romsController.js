@@ -28,6 +28,24 @@ const createRequest = async (req, res, next) => {
 };
 
 
+const getRoutingStatus = async (req, res, next) => {
+    try {
+        const { request_id } = req.params;
+        const RequestRouting = require('../Model/RequestRouting');
+        
+        const routing = await RequestRouting.findOne({ request_id });
+        
+        if (!routing) {
+            return res.status(404).json({ message: 'Routing record not found' });
+        }
+        
+        res.json(routing);
+    } catch (error) {
+        res.status(400);
+        next(error);
+    }
+};
+
 const getPharmacyRequests = async (req, res, next) => {
     try {
         let pharmacy_id = req.query?.pharmacy_id || (req.user ? req.user._id : req.body?.pharmacy_id);
@@ -74,7 +92,8 @@ const processRequest = async (req, res, next) => {
     try {
         const { action, notes } = req.body;
         const pharmacy_id = req.user ? req.user._id : req.body.pharmacy_id;
-        const request = await romsService.updateRequestAction(req.params.id, pharmacy_id, action, notes);
+        const rejectionReason = req.body.rejectionReason || req.body.reason;
+        const request = await romsService.updateRequestAction(req.params.id, pharmacy_id, action, notes, rejectionReason);
         res.json(request);
     } catch (error) {
         res.status(400);
@@ -170,5 +189,6 @@ module.exports = {
     deleteRequest,
     getPharmacyRequests,
     processRequest,
-    cancelRequest
+    cancelRequest,
+    getRoutingStatus
 };

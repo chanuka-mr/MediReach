@@ -8,7 +8,8 @@ const {
     deleteRequest,
     getPharmacyRequests,
     processRequest,
-    cancelRequest
+    cancelRequest,
+    getRoutingStatus
 } = require('../Controllers/romsController');
 const { protect, authorize } = require('../Middleware/authMiddleware');
 const { validateRequest, schemas } = require('../Middleware/validationMiddleware');
@@ -28,6 +29,7 @@ router.post('/:id/cancel', validateRequest(schemas.cancelRequest), cancelRequest
 
 // Pharmacist routes
 router.get('/pharmacy-tasks', getPharmacyRequests);
+router.get('/:id/routing-status', getRoutingStatus);
 router.put('/:id/process', validateRequest(schemas.processAction), processRequest);
 
 module.exports = router;

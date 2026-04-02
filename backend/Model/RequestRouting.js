@@ -5,8 +5,8 @@ const requestRoutingSchema = mongoose.Schema({
     pharmacy_id: { type: String, required: true },
     route_status: {
         type: String,
-        enum: ['Sent', 'Accepted', 'Rejected'],
-        default: 'Sent'
+        enum: ['Pending','Accepted', 'Rejected','Dispatched'],
+        default: 'Pending'
     },
     routed_at: { type: Date, default: Date.now },
     response_time: { type: Number } // in minutes
