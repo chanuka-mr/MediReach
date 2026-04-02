@@ -61,10 +61,20 @@ const OrderForm = () => {
     // ── Load patient ID + edit data ────────────────────────────────
     useEffect(() => {
         const loadInitialData = async () => {
-            let storedId = localStorage.getItem('mediReach_patientId');
-            if (!storedId) {
-                storedId = 'PAT-' + Math.floor(1000 + Math.random() * 9000);
-                localStorage.setItem('mediReach_patientId', storedId);
+            // Get logged-in user ID from userInfo (same as ProfilePage)
+            let userId = '';
+            const savedUserInfo = localStorage.getItem('userInfo');
+            if (savedUserInfo) {
+                const parsed = JSON.parse(savedUserInfo);
+                const user = parsed.user || parsed;
+                userId = user._id || user.id || '';
+            }
+            
+            // Fallback: if no user logged in, redirect to login
+            if (!userId) {
+                setMessage({ type: 'warning', text: 'Please log in to place an order.' });
+                // Optionally redirect to login
+                // navigate('/auth?mode=login');
             }
 
             if (editId) {
@@ -86,7 +96,8 @@ const OrderForm = () => {
                     setInitLoading(false);
                 }
             } else {
-                setFormData(prev => ({ ...prev, patient_id: storedId }));
+                // For new orders, use logged-in user's actual ID
+                setFormData(prev => ({ ...prev, patient_id: userId }));
                 setInitLoading(false);
             }
         };

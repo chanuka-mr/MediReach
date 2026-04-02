@@ -20,7 +20,6 @@ const OrderDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [pharmacyId, setPharmacyId] = useState('ALL');
     const [showNote, setShowNote] = useState(null);
-    const [acceptedOrders, setAcceptedOrders] = useState(new Set());
 
     const fetchOrders = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
@@ -36,16 +35,9 @@ const OrderDashboard = () => {
 
     useEffect(() => {
         fetchOrders();
-        // Load accepted orders from localStorage
-        const storedAcceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
-        setAcceptedOrders(new Set(storedAcceptedOrders));
-        
         // Add 10s interval for faster "live" updates during testing
         const interval = setInterval(() => {
             fetchOrders(true);
-            // Refresh accepted orders from localStorage
-            const freshAcceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
-            setAcceptedOrders(new Set(freshAcceptedOrders));
         }, 10000);
         return () => clearInterval(interval);
     }, [pharmacyId]);
@@ -57,11 +49,6 @@ const OrderDashboard = () => {
                 pharmacy_id: pharmacyIdForOrder,
                 // Removed generic notes to preserve patient's original instructions
             });
-            
-            // If action is Approve (from PharmacyOrders Accept), add to accepted orders
-            if (action === 'Approve') {
-                setAcceptedOrders(prev => new Set([...prev, orderId]));
-            }
             
             fetchOrders(true);
         } catch (error) {
@@ -75,6 +62,7 @@ const OrderDashboard = () => {
 
         switch (order.status) {
             case 'Pending': return 'bg-warning/10 text-warning';
+            case 'Accepted': return 'bg-primary-light/10 text-primary-light';
             case 'Approved': return 'bg-primary-light/10 text-primary-light';
             case 'Ready': return 'bg-success/10 text-success';
             case 'Rejected': return 'bg-danger/10 text-danger';
@@ -273,34 +261,30 @@ const OrderDashboard = () => {
                                         </button>
                                     </td>
                                     <td className="p-5 px-8 border-b border-border-custom">
-                                        {order.status === 'Pending' && (
-                                            <div className="flex gap-2">
+                                    <div className="flex gap-2">
+                                        {order.status === 'Accepted' && (
+                                            
                                                 <button
-                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-success/10 text-success hover:bg-success hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-success/10 text-success hover:bg-success hover:text-white"
                                                     title="Approve"
                                                     onClick={() => handleAction(order._id, order.pharmacy_id, 'Approve')}
-                                                    disabled={!acceptedOrders.has(order._id)}
                                                 >
                                                     <Check size={16} />
                                                 </button>
+                                                
+                                                )}
+                                            {order.status === 'Approved' && (
+                                            
                                                 <button
-                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-primary-light/10 text-primary-light hover:bg-primary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-primary-light/10 text-primary-light hover:bg-primary-light hover:text-white"
                                                     title="Payment Verification"
                                                     onClick={() => alert('Payment verification initiated for order: ' + order._id)}
-                                                    disabled={!acceptedOrders.has(order._id)}
                                                 >
                                                     <CheckCircle size={16} />
                                                 </button>
+                                            
+                                            )}
                                             </div>
-                                        )}
-                                        {order.status === 'Approved' && (
-                                            <button
-                                                className="bg-success text-white border-none py-2 px-4 rounded-lg font-bold text-[0.85rem]"
-                                                onClick={() => handleAction(order._id, order.pharmacy_id, 'Ready')}
-                                            >
-                                                Mark as Ready
-                                            </button>
-                                        )}
                                         {['Ready', 'Rejected', 'Cancelled', 'Expired'].includes(order.status) && (
                                             <button className="bg-transparent border-none text-slate-300 cursor-default"><MoreVertical size={16} /></button>
                                         )}

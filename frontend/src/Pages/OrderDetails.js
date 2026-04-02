@@ -23,11 +23,19 @@ const OrderDetails = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const storedId = localStorage.getItem('mediReach_patientId');
-        if (storedId) {
-            setPatientId(storedId);
+        // Get logged-in user ID from userInfo (same as ProfilePage and OrderForm)
+        let userId = '';
+        const savedUserInfo = localStorage.getItem('userInfo');
+        if (savedUserInfo) {
+            const parsed = JSON.parse(savedUserInfo);
+            const user = parsed.user || parsed;
+            userId = user._id || user.id || '';
+        }
+        
+        if (userId) {
+            setPatientId(userId);
         } else {
-            // Redirect to login if no patient ID found
+            // No user logged in
             setLoading(false);
             // Optionally redirect to login page
             // navigate('/auth?mode=login');
@@ -91,6 +99,7 @@ const OrderDetails = () => {
             case 'Pending': return { color: 'text-warning', bg: 'bg-warning/10', icon: <Clock size={16} />, label: 'Under Review' };
             case 'Approved': return { color: 'text-primary-light', bg: 'bg-primary-light/10', icon: <CheckCircle2 size={16} />, label: 'Approved' };
             case 'Ready': return { color: 'text-success', bg: 'bg-success/10', icon: <CheckCircle2 size={16} />, label: 'Ready for Payment' };
+            case 'VerificationPending': return { color: 'text-warning', bg: 'bg-warning/10', icon: <Clock size={16} />, label: 'Verification Pending' };
             case 'Rejected': return { color: 'text-danger', bg: 'bg-danger/10', icon: <XCircle size={16} />, label: 'Rejected' };
             case 'Cancelled': return { color: 'text-text-muted', bg: 'bg-slate-100', icon: <XCircle size={16} />, label: 'Cancelled' };
             case 'Expired': return { color: 'text-danger', bg: 'bg-danger/10', icon: <AlertCircle size={16} />, label: 'Expired' };
@@ -200,6 +209,16 @@ const OrderDetails = () => {
                                             </div>
                                         </div>
 
+                                        <div className="flex items-center gap-4 text-text-muted mt-4">
+                                            <CreditCard size={18} className="text-primary-light opacity-80" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[0.8rem] font-semibold text-text-muted">Total Amount</span>
+                                                <span className="font-semibold text-[0.9rem] text-primary-deep">
+                                                    LKR {order.total_amount?.toLocaleString() || '0'}
+                                                </span>
+                                            </div>
+                                        </div>
+
                                         {order.notes && (
                                             <div className="mt-4 bg-[#f8fafc] p-3 px-4 rounded-lg border-l-[3px] border-primary-light">
                                                 <span className="text-[0.8rem] font-semibold text-text-muted">Additional Notes:</span>
@@ -211,7 +230,7 @@ const OrderDetails = () => {
                                     <div className="pt-4 mt-4 border-t border-border-custom">
                                         {(order.status === 'Approved' || order.status === 'Ready') ? (
                                             <button className="w-full flex items-center justify-center gap-3 bg-primary-light text-white p-4 rounded-[10px] font-bold text-base transition-all hover:bg-primary-deep hover:-translate-y-0.5 hover:shadow-lg [&>svg:last-child]:hover:translate-x-1" 
-                                            onClick={() => navigate('/payment', { state: { orderId: order._id } })}>
+                                            onClick={() => navigate(`/payment?orderId=${order._id}`)}>
                                                 <CreditCard size={18} />
                                                 <span>Proceed to Payment</span>
                                                 <ArrowRight size={16} />

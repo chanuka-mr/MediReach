@@ -29,11 +29,10 @@ const C = {
 // API endpoint for fetching orders
 const API = "http://localhost:5000/api/roms/pharmacy-tasks";
 
-
 const STATUS_CFG = {
   pending:    { label:"Pending",    color:"#92400E", bg:"rgba(180,83,9,0.08)",    border:"rgba(180,83,9,0.22)",    icon:Hourglass     },
-  processing: { label:"Processing", color:C.lilacAsh,bg:"rgba(76,110,245,0.08)", border:"rgba(76,110,245,0.22)", icon:CircleDot     },
-  in_transit: { label:"In Transit", color:"#5B21B6", bg:"rgba(91,33,182,0.08)",  border:"rgba(91,33,182,0.22)",  icon:Truck         },
+  processing: { label:"Accepted",   color:C.lilacAsh,bg:"rgba(76,110,245,0.08)", border:"rgba(76,110,245,0.22)", icon:CheckCircle2  },
+  in_transit: { label:"Ready",      color:"#5B21B6", bg:"rgba(91,33,182,0.08)",  border:"rgba(91,33,182,0.22)",  icon:Truck         },
   delivered:  { label:"Delivered",  color:C.success, bg:"rgba(14,124,91,0.08)",  border:"rgba(14,124,91,0.22)",  icon:CheckCircle2  },
   cancelled:  { label:"Cancelled",  color:C.danger,  bg:"rgba(192,57,43,0.08)",  border:"rgba(192,57,43,0.22)",  icon:Ban           },
   dispatched: { label:"Dispatched", color:"#065F46", bg:"rgba(6,95,70,0.08)",    border:"rgba(6,95,70,0.22)",    icon:SendHorizonal },
@@ -48,14 +47,15 @@ const totalVal   = (o) => o.qty * o.unitPrice
 function Toast({ toast, onClose }) {
   useEffect(() => { const t = setTimeout(onClose,4000); return ()=>clearTimeout(t) },[onClose])
   const isDispatched = toast.type==="dispatched"
-  const accent = isDispatched ? C.success : C.danger
-  const Icon   = isDispatched ? SendHorizonal : ThumbsDown
+  const isAccepted = toast.type==="accepted"
+  const accent = isDispatched ? C.success : (isAccepted ? C.lilacAsh : C.danger)
+  const Icon   = isDispatched ? SendHorizonal : (isAccepted ? CheckCircle2 : ThumbsDown)
   return (
     <div style={{
       position:"fixed", bottom:32, right:32, zIndex:1000,
       display:"flex", alignItems:"flex-start", gap:14,
       padding:"16px 20px 18px", borderRadius:14,
-      background:C.white, border:`1.5px solid ${isDispatched ? "rgba(14,124,91,0.3)" : "rgba(192,57,43,0.3)"}`,
+      background:C.white, border:`1.5px solid ${isDispatched ? "rgba(14,124,91,0.3)" : (isAccepted ? "rgba(76,110,245,0.3)" : "rgba(192,57,43,0.3)")}`,
       boxShadow:"0 16px 48px rgba(2,62,138,0.14)",
       minWidth:300, maxWidth:380,
       animation:"toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
@@ -63,15 +63,15 @@ function Toast({ toast, onClose }) {
     }}>
       <div style={{
         width:40, height:40, borderRadius:"50%", flexShrink:0,
-        background: isDispatched ? "rgba(14,124,91,0.1)" : "rgba(192,57,43,0.1)",
-        border:`1px solid ${isDispatched ? "rgba(14,124,91,0.25)" : "rgba(192,57,43,0.25)"}`,
+        background: isDispatched ? "rgba(14,124,91,0.1)" : (isAccepted ? "rgba(76,110,245,0.1)" : "rgba(192,57,43,0.1)"),
+        border:`1px solid ${isDispatched ? "rgba(14,124,91,0.25)" : (isAccepted ? "rgba(76,110,245,0.25)" : "rgba(192,57,43,0.25)")}`,
         display:"flex", alignItems:"center", justifyContent:"center",
       }}>
         <Icon size={17} color={accent} strokeWidth={2} />
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
-          {isDispatched ? "Order Dispatched" : "Order Rejected"}
+          {isDispatched ? "Order Dispatched" : (isAccepted ? "Order Accepted" : "Order Rejected")}
         </p>
         <p style={{ margin:0, fontSize:12, color:accent, fontWeight:600 }}>{toast.orderId} · {toast.medicine}</p>
         <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{toast.pharmacy}</p>
@@ -734,6 +734,7 @@ export default function PharmacyOrders() {
   const mapStatus = (status) => {
     switch (status) {
       case 'Pending': return 'pending'
+      case 'Accepted': return 'processing'
       case 'Approved': return 'processing'
       case 'Ready': return 'in_transit'
       case 'Rejected': return 'rejected'
@@ -783,13 +784,36 @@ export default function PharmacyOrders() {
     try {
       if (action === "accept") {
         console.log('Processing accept action')
-        // Accept action: Only enable OrderDashboard buttons, don't update order status
-        // Store accepted order in localStorage for OrderDashboard to read
-        const acceptedOrders = JSON.parse(localStorage.getItem('acceptedOrders') || '[]');
-        if (!acceptedOrders.includes(order.id)) {
-          acceptedOrders.push(order.id);
-          localStorage.setItem('acceptedOrders', JSON.stringify(acceptedOrders));
+        // Accept action: Update order status to 'Accepted' in database
+        const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'accept',
+            pharmacy_id: order.pharmacy_id,
+            notes: 'Order accepted by pharmacy'
+          })
+        });
+
+        console.log('API response status:', response.status)
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('API error response:', errorText)
+          throw new Error(`Failed to accept order: ${errorText}`);
         }
+
+        const updatedOrder = await response.json();
+        console.log('API success:', updatedOrder)
+        
+        // Update local state with the response
+        setOrderData(prev => prev.map(o =>
+          o.id === order.id ? { 
+            ...o, 
+            status: mapStatus('Accepted') // 'Accepted' maps to 'processing' in UI
+          } : o
+        ));
         
         setToast({ type: "accepted", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
         setModal(null);
@@ -797,6 +821,11 @@ export default function PharmacyOrders() {
       }
 
       console.log('Processing API call for action:', action)
+      // Convert frontend action to backend action format
+      const backendAction = action === 'reject' ? 'Reject' : 
+                           action === 'dispatch' ? 'dispatch' : 
+                           action === 'accept' ? 'accept' : action;
+      
       // For dispatch and reject actions, make API call to update order status
       const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
         method: 'PUT',
@@ -804,7 +833,7 @@ export default function PharmacyOrders() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: action,
+          action: backendAction,
           pharmacy_id: order.pharmacy_id,
           rejectionReason: action === 'reject' ? reason : undefined,
           notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
@@ -833,8 +862,13 @@ export default function PharmacyOrders() {
         } : o
       ));
       
-      setToast({ type: newStatus, orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
+      setToast({ type: action === "dispatch" ? "dispatched" : (action === "reject" ? "rejected" : "accepted"), orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
       setModal(null);
+      
+      // Refresh orders to get latest status from database
+      setTimeout(() => {
+        fetchOrders();
+      }, 500);
     } catch (error) {
       console.error('Error updating order:', error);
       alert('Failed to update order: ' + error.message);
