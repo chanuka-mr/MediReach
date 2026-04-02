@@ -5,7 +5,7 @@ const requestRoutingSchema = mongoose.Schema({
     pharmacy_id: { type: String, required: true },
     route_status: {
         type: String,
-        enum: ['Pending','Accepted', 'Rejected','Dispatched'],
+        enum: ['Pending','Accepted', 'Rejected','PaymentVerify','Dispatched'],
         default: 'Pending'
     },
     routed_at: { type: Date, default: Date.now },

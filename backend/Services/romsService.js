@@ -28,13 +28,17 @@ const createRequest = async (requestData, patient_id) => {
         }
     }
 
+    // Calculate total amount from medicines
+    const total_amount = medicines.reduce((sum, med) => sum + (med.total_price || 0), 0);
+
     const request = await MedicationRequest.create({
         ...requestData,
         patient_id: clean_patient_id,
         expiry_time,
         pharmacy_id: pharmacy_id_to_assign,
         status: 'Pending',
-        medicines: medicines
+        medicines: medicines,
+        total_amount: total_amount
     });
 
     // Create a routing entry for the assigned pharmacy
@@ -96,7 +100,8 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes, rejec
             console.log('Routing update failed, but continuing with status update');
         }
     } else if (action === 'accept') {
-        // Accept action: Update RequestRouting status from 'Pending' to 'Accepted'
+        // Accept action: Update both MedicationRequest status and RequestRouting status
+        request.status = 'Accepted'; // Set to Accepted which maps to 'processing' in UI
         try {
             await RequestRouting.findOneAndUpdate(
                 { request_id, route_status: 'Pending' },
@@ -111,7 +116,6 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes, rejec
         } catch (routingError) {
             console.log('Routing update failed, but continuing with status update');
         }
-        return request; // Don't change medication request status
     } else if (action === 'Approve') {
         request.status = 'Approved';
         await RequestRouting.findOneAndUpdate(
@@ -145,8 +149,28 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes, rejec
 
         // Multi-Pharmacy Fallback
         await fallbackToNextPharmacy(request_id, pharmacy_id);
+    } else if (action === 'ready') {
+        request.status = 'Ready'; // Set to Ready which maps to 'in_transit' in UI
+        try {
+            await RequestRouting.findOneAndUpdate(
+                { request_id, route_status: 'Accepted' },
+                { 
+                    route_status: 'Dispatched', // Update routing to dispatched when ready for pickup
+                    pharmacy_id: pharmacy_id,
+                    response_time: calculateResponseTime(request.createdAt) 
+                },
+                { upsert: true }
+            );
+            console.log('RequestRouting status updated to Dispatched (Ready for pickup)');
+        } catch (routingError) {
+            console.log('Routing update failed, but continuing with status update');
+        }
     } else if (action === 'Ready') {
         request.status = 'Ready';
+    } else if (action === 'payment') {
+        // Payment action: Update status to VerificationPending
+        request.status = 'VerificationPending';
+        console.log('Payment processed - Status updated to VerificationPending');
     }
 
     if (notes) request.notes = notes; // Append or update notes
