@@ -222,6 +222,65 @@ const updateMedicine = async (req, res, next) => {
     }
 };
 
+//Update medicine stock specifically
+const updateMedicineStock = async (req, res, next) => {
+    const { medicineId, quantity } = req.body;
+
+    // Validate required fields
+    if (!medicineId) {
+        return res.status(400).json({ message: "Medicine ID is required." });
+    }
+
+    if (quantity === undefined || quantity === null) {
+        return res.status(400).json({ message: "Quantity is required." });
+    }
+
+    // Validate MongoDB ObjectId format for medicineId
+    if (!medicineId.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid medicine ID format." });
+    }
+
+    // Validate quantity
+    const orderQuantity = Number(quantity);
+    if (isNaN(orderQuantity) || orderQuantity < 0) {
+        return res.status(400).json({ message: "Quantity must be a non-negative number." });
+    }
+
+    try {
+        // Find the medicine first
+        const medicine = await Medicine.findById(medicineId);
+        
+        if (!medicine) {
+            return res.status(404).json({ message: "Medicine not found." });
+        }
+
+        // Calculate new stock (ensure it doesn't go below 0)
+        const currentStock = Number(medicine.mediStock) || 0;
+        const newStock = Math.max(0, currentStock - orderQuantity);
+
+        console.log(`Updating stock for medicine: ${medicine.mediName}`);
+        console.log(`Current stock: ${currentStock}, Order quantity: ${orderQuantity}, New stock: ${newStock}`);
+
+        // Update only the stock field
+        const updatedMedicine = await Medicine.findByIdAndUpdate(
+            medicineId,
+            { mediStock: newStock },
+            { new: true, runValidators: true }
+        );
+        
+        return res.status(200).json({ 
+            message: "Medicine stock updated successfully", 
+            medicine: updatedMedicine,
+            previousStock: currentStock,
+            quantityReduced: orderQuantity,
+            newStock: newStock
+        });
+    } catch (error) {
+        console.error('Error updating medicine stock:', error);
+        return res.status(500).json({ message: "Server error during stock update" });
+    }
+};
+
 //Delete medicine
 const deleteMedicine = async (req, res, next) => {
     const id = req.params.id;
@@ -248,5 +307,6 @@ module.exports = {
     addmedicine,
     getById,
     updateMedicine,
+    updateMedicineStock,
     deleteMedicine
 };

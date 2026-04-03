@@ -6,7 +6,7 @@ const medicationRequestSchema = mongoose.Schema({
     request_date: { type: Date, default: Date.now },
     status: {
         type: String,
-        enum: ['Pending', 'Accepted', 'Approved', 'Rejected', 'Ready', 'Expired', 'VerificationPending', 'Dispatched'],
+        enum: ['Pending', 'Accepted', 'Approved', 'Rejected', 'Ready', 'Expired', 'VerificationPending', 'Dispatched','Payment-Verified'],
         default: 'Pending'
     },
     priority_level: {

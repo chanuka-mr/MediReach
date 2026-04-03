@@ -171,6 +171,10 @@ const updateRequestAction = async (request_id, pharmacy_id, action, notes, rejec
         // Payment action: Update status to VerificationPending
         request.status = 'VerificationPending';
         console.log('Payment processed - Status updated to VerificationPending');
+    } else if (action === 'payment-verified') {
+        // Payment verification action: Update status to Payment-Verified
+        request.status = 'Payment-Verified';
+        console.log('Payment verified - Status updated to Payment-Verified');
     }
 
     if (notes) request.notes = notes; // Append or update notes
