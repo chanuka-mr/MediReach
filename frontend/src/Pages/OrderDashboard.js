@@ -273,12 +273,12 @@ const OrderDashboard = () => {
                                                 </button>
                                                 
                                                 )}
-                                            {order.status === 'Approved' && (
+                                            {order.status === 'VerificationPending' && (
                                             
                                                 <button
                                                     className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-primary-light/10 text-primary-light hover:bg-primary-light hover:text-white"
                                                     title="Payment Verification"
-                                                    onClick={() => alert('Payment verification initiated for order: ' + order._id)}
+                                                    onClick={() => handleAction(order._id, order.pharmacy_id, 'payment-verified')}
                                                 >
                                                     <CheckCircle size={16} />
                                                 </button>

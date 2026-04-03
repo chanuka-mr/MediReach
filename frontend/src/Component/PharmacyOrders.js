@@ -348,7 +348,9 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
           <div style={{ display:"inline-flex", alignItems:"center", gap:5,
             background:st.bg, borderRadius:99, padding:"4px 10px", border:`1px solid ${st.border}` }}>
             <StI size={10} color={st.color} strokeWidth={2} />
-            <span style={{ fontSize:11, fontWeight:700, color:st.color }}>{st.label}</span>
+            <span style={{ fontSize:11, fontWeight:700, color:st.color }}>
+              {order.originalStatus || st.label}
+            </span>
           </div>
         </td>
         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
@@ -710,6 +712,7 @@ export default function PharmacyOrders() {
           qty: totalQuantity,
           unitPrice: totalValue / totalQuantity || 0,
           status: routingStatus ? mapRoutingStatus(routingStatus) : mapStatus(order.status),
+          originalStatus: order.status, // Store original database status
           priority: mapPriority(order.priority_level),
           orderedAt: order.createdAt || order.request_date,
           deliveredAt: null,
@@ -740,6 +743,8 @@ export default function PharmacyOrders() {
       case 'Rejected': return 'rejected'
       case 'Cancelled': return 'cancelled'
       case 'Dispatched': return 'dispatched'
+      case 'VerificationPending': return 'processing'
+      case 'Payment-Verified': return 'processing'
       default: return 'pending'
     }
   }
@@ -784,6 +789,98 @@ export default function PharmacyOrders() {
     try {
       if (action === "accept") {
         console.log('Processing accept action')
+        
+        // First, update the medicine stock to reduce quantity using medicine_id
+        try {
+          console.log('Updating medicine stock for order:', order.id, 'medicines:', order.medicines)
+          
+          // Get medicines from the order - use the medicines array with medicine_id
+          if (order.medicines && order.medicines.length > 0) {
+            console.log('Processing medicines array:', order.medicines)
+            
+            // Process each medicine in the order
+            for (const medicineItem of order.medicines) {
+              const medicineId = medicineItem.medicine_id;
+              const quantity = medicineItem.quantity;
+              const medicineName = medicineItem.medicine_name;
+              
+              if (medicineId && quantity) {
+                console.log(`Updating stock for medicine: ${medicineName} (ID: ${medicineId}), quantity: ${quantity}`)
+                
+                // Call the new backend endpoint to update stock
+                const stockUpdateResponse = await fetch('http://localhost:5000/medicines/stock/update', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    medicineId: medicineId,
+                    quantity: quantity
+                  })
+                });
+                
+                if (stockUpdateResponse.ok) {
+                  const stockResult = await stockUpdateResponse.json();
+                  console.log('✅ Medicine stock updated successfully:', stockResult);
+                } else {
+                  const errorText = await stockUpdateResponse.text();
+                  console.error('❌ Failed to update medicine stock:', errorText);
+                  // Continue with order acceptance even if stock update fails
+                }
+              } else {
+                console.warn('⚠️ Missing medicine_id or quantity for medicine item:', medicineItem);
+              }
+            }
+          } else {
+            console.warn('⚠️ No medicines array found in order, falling back to old method');
+            
+            // Fallback: Find the medicine by name (old method)
+            const medicinesResponse = await fetch('http://localhost:5000/medicines');
+            if (medicinesResponse.ok) {
+              const medicines = await medicinesResponse.json();
+              const medicineArray = Array.isArray(medicines) ? medicines : (medicines.medicines || []);
+              
+              // Find the medicine by name
+              const targetMedicine = medicineArray.find(med => 
+                med.mediName === order.medicine || 
+                med.name === order.medicine
+              );
+              
+              if (targetMedicine) {
+                const currentStock = Number(targetMedicine.mediStock) || 0;
+                const orderQuantity = Number(order.qty) || 0;
+                const newStock = Math.max(0, currentStock - orderQuantity);
+                
+                console.log(`Found medicine: ${targetMedicine.mediName}, current stock: ${currentStock}, order quantity: ${orderQuantity}, new stock: ${newStock}`);
+                
+                // Update the medicine stock
+                const updateResponse = await fetch(`http://localhost:5000/medicines/${targetMedicine._id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    mediStock: newStock
+                  })
+                });
+                
+                if (updateResponse.ok) {
+                  console.log('✅ Medicine stock updated successfully (fallback method)');
+                } else {
+                  console.error('❌ Failed to update medicine stock (fallback):', await updateResponse.text());
+                }
+              } else {
+                console.warn('⚠️ Medicine not found:', order.medicine);
+              }
+            } else {
+              console.error('❌ Failed to fetch medicines:', await medicinesResponse.text());
+            }
+          }
+        } catch (stockError) {
+          console.error('❌ Error updating stock:', stockError);
+          // Continue with order acceptance even if stock update fails
+        }
+        
         // Accept action: Update order status to 'Accepted' in database
         const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
           method: 'PUT',

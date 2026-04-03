@@ -40,35 +40,110 @@ const STATUS = {
 }
 
 // ── Build pharmacy list from live DB pharmacies + medicines ───────
-function buildPharmacyList(pharmacies, medicines) {
-  return pharmacies.map((p, i) => {
-    const mock    = getMockData(p._id)
-    const isActive = p.isActive
+async function buildPharmacyList(pharmacies, medicines) {
+  try {
+    // Fetch medication requests from database
+    const ordersRes = await fetch('http://localhost:5000/api/roms/pharmacy-tasks');
+    const medicationRequests = ordersRes.ok ? await ordersRes.json() : [];
 
-    // Derive status
-    const status = !isActive ? 'offline' : mock.isSlow ? 'warning' : 'active'
+    console.log('🔄 Building pharmacy list with medication requests...');
+    console.log('📦 Total medication requests:', medicationRequests.length);
+    console.log('📊 Pharmacies to process:', pharmacies.map(p => p.name));
 
-    // Last sync label
-    const lastSync = isActive ? `${mock.syncMin} min ago` : '2 days ago'
-
-    // Stock % from medicines belonging to this pharmacy
-    const pharmacyMeds  = medicines.filter(m => (m.Pharmacy || m.pharmacy) === p.name)
-    const maxPossible   = pharmacyMeds.length * 1300
-    const totalStock    = pharmacyMeds.reduce((s, m) => s + (Number(m.mediStock) || 0), 0)
-    const stockPct      = maxPossible > 0 ? Math.min(Math.round((totalStock / maxPossible) * 100), 99) : 0
-
-    return {
-      id:       p._id,
-      name:     p.name,
-      location: `${p.district}, Sri Lanka`,
-      status,
-      lastSync,
-      orders:   isActive ? mock.orders : 0,
-      stock:    isActive ? stockPct : 0,
-      medCount: pharmacyMeds.length,
-      isActive,
+    // Show sample medication request data
+    if (medicationRequests.length > 0) {
+      console.log('🔍 Sample medication request:', medicationRequests[0]);
+      console.log('🔍 All pharmacy_ids in requests:', [...new Set(medicationRequests.map(r => r.pharmacy_id))]);
     }
-  })
+
+    return pharmacies.map((p, i) => {
+      const mock = getMockData(p._id)
+      const isActive = p.isActive
+
+      // Derive status
+      const status = !isActive ? 'offline' : mock.isSlow ? 'warning' : 'active'
+
+      // Last sync label
+      const lastSync = isActive ? `${mock.syncMin} min ago` : '2 days ago'
+
+      // Stock % from medicines belonging to this pharmacy
+      const pharmacyMeds = medicines.filter(m => (m.Pharmacy || m.pharmacy) === p.name)
+      const maxPossible = pharmacyMeds.length * 1300
+      const totalStock = pharmacyMeds.reduce((s, m) => s + (Number(m.mediStock) || 0), 0)
+      const stockPct = maxPossible > 0 ? Math.min(Math.round((totalStock / maxPossible) * 100), 99) : 0
+
+      // Count medication requests for this pharmacy
+      const pharmacyMedRequests = medicationRequests.filter(request => {
+        // pharmacy_id in MedicationRequest is a String (pharmacy name)
+        // p.name is the pharmacy name from the pharmacy document
+        const match = request.pharmacy_id === p.name;
+        if (match) {
+          console.log(`✅ Found request for ${p.name}: status=${request.status}`);
+        }
+        return match;
+      });
+      
+      const pendingOrders = pharmacyMedRequests.filter(request => request.status === 'Pending').length;
+      const toDispatch = pharmacyMedRequests.filter(request => request.status === 'Payment-Verified').length;
+      const verificationPending = pharmacyMedRequests.filter(request => request.status === 'VerificationPending').length;
+
+      console.log(`🏥 Pharmacy: ${p.name}`);
+      console.log(`  📋 Total requests: ${pharmacyMedRequests.length}`);
+      console.log(`  ⏳ Pending Orders: ${pendingOrders}`);
+      console.log(`  🚚 To Dispatch: ${toDispatch}`);
+      console.log(`  🔍 Verification Pending: ${verificationPending}`);
+      console.log(`  🔴 Show red circle: ${pendingOrders > 0 || toDispatch > 0 || verificationPending > 0}`);
+
+      // Test: Force show red circle for Uduwella pharmacy for testing
+      const shouldShowRedCircle = (pendingOrders > 0 || toDispatch > 0 || verificationPending > 0) || (p.name.toLowerCase().includes('uduwella'));
+
+      const result = {
+        id: p._id,
+        name: p.name,
+        location: `${p.district}, Sri Lanka`,
+        status,
+        lastSync,
+        orders: isActive ? mock.orders : 0,
+        stock: isActive ? stockPct : 0,
+        medCount: pharmacyMeds.length,
+        isActive,
+        pendingOrders,
+        toDispatch,
+        verificationPending,
+      }
+      
+      console.log(`✅ Final result for ${p.name}:`, result);
+      return result;
+    })
+  } catch (error) {
+    console.error('Error building pharmacy list:', error);
+    // Fallback to mock data if API fails
+    return pharmacies.map((p, i) => {
+      const mock = getMockData(p._id)
+      const isActive = p.isActive
+      const status = !isActive ? 'offline' : mock.isSlow ? 'warning' : 'active'
+      const lastSync = isActive ? `${mock.syncMin} min ago` : '2 days ago'
+      const pharmacyMeds = medicines.filter(m => (m.Pharmacy || m.pharmacy) === p.name)
+      const maxPossible = pharmacyMeds.length * 1300
+      const totalStock = pharmacyMeds.reduce((s, m) => s + (Number(m.mediStock) || 0), 0)
+      const stockPct = maxPossible > 0 ? Math.min(Math.round((totalStock / maxPossible) * 100), 99) : 0
+
+      return {
+        id: p._id,
+        name: p.name,
+        location: `${p.district}, Sri Lanka`,
+        status,
+        lastSync,
+        orders: isActive ? mock.orders : 0,
+        stock: isActive ? stockPct : 0,
+        medCount: pharmacyMeds.length,
+        isActive,
+        pendingOrders: 0,
+        toDispatch: 0,
+        verificationPending: 0,
+      }
+    })
+  }
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────
@@ -144,31 +219,84 @@ function StatCard({ icon:Icon, value, label, sub, delay, trend }) {
   )
 }
 
-// ── Stock Bar ─────────────────────────────────────────────────────
-function StockBar({ value }) {
-  const color   = value>=80 ? "#2d7a4f" : value>=55 ? "#7a5a1a" : "#8a3030"
-  const bgColor = value>=80 ? "#eaf6f0" : value>=55 ? "#fdf4e3" : "#fdeaea"
-  return (
-    <div style={{ width:78, display:"flex", flexDirection:"column", gap:4 }}>
-      <div style={{ height:5, borderRadius:99, background:bgColor, overflow:"hidden" }}>
-        <div style={{
-          height:"100%", width:`${value}%`, borderRadius:99,
-          background:color, transition:"width 0.6s ease",
-        }} />
+// ── Stock Indicator ─────────────────────────────────────────────────────
+function StockIndicator({ pharmacyName, medicines }) {
+  // Get medicines for this pharmacy
+  const pharmacyMeds = medicines.filter(m => (m.Pharmacy || m.pharmacy) === pharmacyName);
+  
+  // Calculate actual stock levels
+  const stockLevels = pharmacyMeds.map(med => Number(med.mediStock) || 0);
+  
+  // Check if any medicines fall into each category
+  const hasHighStock = stockLevels.some(stock => stock >= 500);
+  const hasMediumStock = stockLevels.some(stock => stock >= 100 && stock < 500);
+  const hasLowStock = stockLevels.some(stock => stock < 100);
+  
+  // If no medicines, show no indicator
+  if (pharmacyMeds.length === 0) {
+    return (
+      <div style={{ width:78, display:"flex", alignItems:"center", justifyContent:"center", gap:2 }}>
+        <span style={{ fontSize:10.5, fontWeight:600, color:C.lilacAsh, textAlign:"center" }}>No Data</span>
       </div>
-      <span style={{ fontSize:10.5, fontWeight:600, color, textAlign:"right" }}>{value}%</span>
+    );
+  }
+  
+  return (
+    <div style={{ width:78, display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}>
+      {hasHighStock && (
+        <div style={{
+          width:10, height:10, borderRadius:"50%", background:"#2d7a4f",
+          boxShadow: "0 0 6px rgba(45,122,79,0.4)",
+          position: "relative"
+        }}>
+          <div style={{
+            position: "absolute", inset:0, borderRadius:"50%",
+            background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent)"
+          }} />
+        </div>
+      )}
+      {hasMediumStock && (
+        <div style={{
+          width:10, height:10, borderRadius:"50%", background:"#d4a017",
+          boxShadow: "0 0 6px rgba(212,160,23,0.4)",
+          position: "relative"
+        }}>
+          <div style={{
+            position: "absolute", inset:0, borderRadius:"50%",
+            background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent)"
+          }} />
+        </div>
+      )}
+      {hasLowStock && (
+        <div style={{
+          width:10, height:10, borderRadius:"50%", background:"#8a3030",
+          boxShadow: "0 0 6px rgba(138,48,48,0.4)",
+          position: "relative"
+        }}>
+          <div style={{
+            position: "absolute", inset:0, borderRadius:"50%",
+            background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent)"
+          }} />
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Pharmacy Row ──────────────────────────────────────────────────
-function PharmacyRow({ pharmacy, index, total, navigate }) {
+function PharmacyRow({ pharmacy, index, total, navigate, medicines }) {
   const [invHov, setInvHov] = useState(false)
   const [ordHov, setOrdHov] = useState(false)
   const [rowHov, setRowHov] = useState(false)
-  const st     = STATUS[pharmacy.status] || STATUS.active
-  const StIcon = st.icon
   const initials = pharmacy.name.split(" ").slice(0,2).map(w=>w[0]).join("")
+
+  // Debug logging for each pharmacy row
+  console.log(`🏥 Rendering PharmacyRow for: ${pharmacy.name}`);
+  console.log(`  ⏳ Pending Orders: ${pharmacy.pendingOrders}`);
+  console.log(`  🚚 To Dispatch: ${pharmacy.toDispatch}`);
+  console.log(`  � Verification Pending: ${pharmacy.verificationPending || 0}`);
+  console.log(`  � Show red circle: ${pharmacy.pendingOrders > 0 || pharmacy.toDispatch > 0 || (pharmacy.verificationPending || 0) > 0}`);
+  console.log(`  📋 Full pharmacy data:`, pharmacy);
 
   return (
     <div
@@ -232,35 +360,8 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
         </div>
       </div>
 
-      <div style={{
-        display:"flex", alignItems:"center", gap:5,
-        background:st.bg, borderRadius:99,
-        padding:"4px 11px", marginRight:20, flexShrink:0,
-        border:`1px solid ${st.border}`,
-      }}>
-        <StIcon size={10} color={st.color} strokeWidth={2.5} />
-        <span style={{ fontSize:11, fontWeight:600, color:st.color }}>{st.label}</span>
-      </div>
-
-      <div style={{ marginRight:20, flexShrink:0, width:86, textAlign:"right" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
-          <Clock size={10} color={C.paleSlate} />
-          <span style={{ fontSize:11.5, color:C.lilacAsh, fontWeight:400 }}>{pharmacy.lastSync}</span>
-        </div>
-      </div>
-
       <div style={{ marginRight:20, flexShrink:0 }}>
-        <StockBar value={pharmacy.stock} />
-      </div>
-
-      <div style={{ marginRight:20, flexShrink:0, width:44, textAlign:"center" }}>
-        <span style={{
-          fontSize:15, fontWeight:700,
-          color: pharmacy.orders > 0 ? C.techBlue : C.paleSlate,
-          fontFamily:"'Sora',sans-serif",
-        }}>{pharmacy.orders}</span>
-        <p style={{ margin:0, fontSize:9.5, color:C.lilacAsh, fontWeight:600,
-          letterSpacing:"0.09em", textTransform:"uppercase" }}>orders</p>
+        <StockIndicator pharmacyName={pharmacy.name} medicines={medicines} />
       </div>
 
       <div style={{ display:"flex", gap:8, flexShrink:0 }}>
@@ -298,8 +399,16 @@ function PharmacyRow({ pharmacy, index, total, navigate }) {
             display:"flex", alignItems:"center", gap:6,
             transform: ordHov ? "translateY(-1px)" : "none",
             boxShadow: ordHov ? "0 4px 14px rgba(2,62,138,0.15)" : "none",
+            position:"relative",
           }}
         >
+          {(pharmacy.pendingOrders > 0 || pharmacy.toDispatch > 0 || (pharmacy.verificationPending || 0) > 0) && (
+            <div style={{
+              position:"absolute", top:"-4px", right:"-4px",
+              width:8, height:8, borderRadius:"50%", background:C.danger,
+              boxShadow: `0 0 6px ${C.danger}80`,
+            }} />
+          )}
           <ShoppingCart size={12} strokeWidth={2} />
           Orders
         </button>
@@ -353,7 +462,19 @@ export default function InventoryDashboard() {
   useEffect(() => { fetchData() }, [])
 
   // ── Build pharmacy rows combining live DB pharmacies + medicine stock ─
-  const pharmacies = useMemo(() => buildPharmacyList(pharmacyList, medicines), [pharmacyList, medicines])
+  const [pharmacies, setPharmacies] = useState([])
+
+  useEffect(() => {
+    const buildPharmacies = async () => {
+      try {
+        const builtPharmacies = await buildPharmacyList(pharmacyList, medicines)
+        setPharmacies(builtPharmacies)
+      } catch (error) {
+        console.error('Error building pharmacies:', error)
+      }
+    }
+    buildPharmacies()
+  }, [pharmacyList, medicines])
 
   // ── Real-time stats ───────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -652,10 +773,7 @@ export default function InventoryDashboard() {
                 { label:"#",         style:{ width:32, flexShrink:0 } },
                 { label:"",          style:{ width:54, flexShrink:0 } },
                 { label:"Pharmacy",  style:{ flex:1 } },
-                { label:"Status",    style:{ width:115, flexShrink:0 } },
-                { label:"Last Sync", style:{ width:100, flexShrink:0, textAlign:"right" } },
                 { label:"Stock",     style:{ width:112, flexShrink:0, textAlign:"right", paddingRight:8 } },
-                { label:"Orders",    style:{ width:62, flexShrink:0, textAlign:"center" } },
                 { label:"Actions",   style:{ width:190, flexShrink:0, textAlign:"right" } },
               ].map((col,i)=>(
                 <span key={i} style={{
@@ -710,6 +828,7 @@ export default function InventoryDashboard() {
                   index={index}
                   total={filtered.length}
                   navigate={navigate}
+                  medicines={medicines}
                 />
               ))
             )}

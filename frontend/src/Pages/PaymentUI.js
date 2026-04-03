@@ -12,7 +12,8 @@ import {
     AlertCircle,
     MapPin,
     Calendar,
-    Stethoscope
+    Stethoscope,
+    Clock
 } from 'lucide-react';
 
 const PaymentUI = () => {
@@ -25,6 +26,7 @@ const PaymentUI = () => {
     const [paid, setPaid] = useState(false);
     const [cvcVisible, setCvcVisible] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [showVerificationPopup, setShowVerificationPopup] = useState(false);
 
     const fetchOrder = async () => {
         if (!orderId) {
@@ -52,11 +54,11 @@ const PaymentUI = () => {
         try {
             // Update order status to VerificationPending
             await api.put(`/roms/${orderId}/process`, {
-                action: 'payment',
-                status: 'VerificationPending'
+                action: 'payment'
             });
             
-            setPaid(true);
+            // Show verification popup instead of success page
+            setShowVerificationPopup(true);
         } catch (error) {
             console.error('Error updating order status:', error);
             setMessage({ type: 'danger', text: 'Payment processing failed. Please try again.' });
@@ -79,6 +81,39 @@ const PaymentUI = () => {
     };
 
     if (loading) return <div className="text-center py-40 font-semibold text-primary-deep">Loading secure checkout...</div>;
+
+    // Verification Popup
+    if (showVerificationPopup) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+                <div className="bg-white rounded-custom shadow-custom p-8 max-w-md w-full mx-6 animate-fade-in">
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Clock className="text-warning" size={32} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-primary-deep mb-4">Payment Verification</h2>
+                        <p className="text-text-muted text-lg mb-8">
+                            Your payment is waiting to verify. Stay with us!
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button 
+                                className="w-full bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]"
+                                onClick={() => navigate('/order-details')}
+                            >
+                                Back to My Orders
+                            </button>
+                            <button 
+                                className="w-full bg-transparent border border-primary-light text-primary-light py-3 px-6 rounded-lg font-bold transition-all hover:bg-primary-light hover:text-white"
+                                onClick={() => navigate('/contact-us')}
+                            >
+                                Contact Us
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (paid) {
         return (
