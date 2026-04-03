@@ -12,14 +12,14 @@ const {
     getRoutingStatus
 } = require('../Controllers/romsController');
 const { protect, authorize } = require('../Middleware/authMiddleware');
-const { validateRequest, schemas } = require('../Middleware/validationMiddleware');
+const { validateRequest, validatePrescriptionImage, schemas } = require('../Middleware/validationMiddleware');
 
 // router.use(protect);
 
 const upload = require('../Config/cloudinaryConfig');
 
 // Patient routes
-router.post('/request', upload.single('prescription_image'), validateRequest(schemas.createMedRequest), createRequest);
+router.post('/request', upload.single('prescription_image'), validatePrescriptionImage, validateRequest(schemas.createMedRequest), createRequest);
 router.get('/request', getAllRequests);
 router.get('/request/:id', getRequestById);
 router.put('/request/:id', upload.single('prescription_image'), updateRequest);

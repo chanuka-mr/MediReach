@@ -2,6 +2,12 @@ const Joi = require('joi');
 
 const validateRequest = (schema) => {
     return (req, res, next) => {
+        // Skip validation for multipart/form-data (file uploads)
+        // FormData objects don't work with Joi validation
+        if (req.is('multipart/form-data')) {
+            return next();
+        }
+        
         const { error } = schema.validate(req.body, { abortEarly: false });
         if (error) {
             const errorMessages = error.details.map(detail => detail.message);
@@ -10,6 +16,40 @@ const validateRequest = (schema) => {
         }
         next();
     };
+};
+
+// Custom validation for prescription image requirement
+const validatePrescriptionImage = (req, res, next) => {
+    try {
+        let medicines = [];
+        
+        // Parse medicines from FormData
+        if (req.body.medicines) {
+            try {
+                medicines = JSON.parse(req.body.medicines);
+            } catch (error) {
+                medicines = [];
+            }
+        }
+        
+        // Check if any medicine requires prescription
+        const requiresPrescription = medicines.some(med => 
+            med.mediPrescriptionStatus && med.mediPrescriptionStatus.toLowerCase() === 'required'
+        );
+        
+        // If any medicine requires prescription, check if image is uploaded
+        if (requiresPrescription && !req.file) {
+            return res.status(400).json({ 
+                message: 'Prescription image is required for one or more medicines in your order' 
+            });
+        }
+        
+        // If no medicines require prescription, image is optional
+        next();
+    } catch (error) {
+        console.error('Prescription validation error:', error);
+        next();
+    }
 };
 
 // Validation Schemas
@@ -36,4 +76,4 @@ const schemas = {
     })
 };
 
-module.exports = { validateRequest, schemas };
+module.exports = { validateRequest, validatePrescriptionImage, schemas };

@@ -6,18 +6,31 @@ const createRequest = async (req, res, next) => {
     try {
         const patient_id = req.body.patient_id; // Get patient_id directly from body for cart orders
 
-        // Handle file upload
+        // Handle file upload - support both Cloudinary URLs and local file paths
         if (req.file) {
-            req.body.prescription_image = req.file.path; // Cloudinary URL
+            if (req.file.path) {
+                // Local file path - create proper URL
+                const baseUrl = process.env.NODE_ENV === 'production' 
+                    ? 'https://your-production-domain.com' 
+                    : 'http://localhost:5000';
+                req.body.prescription_image = `${baseUrl}/uploads/${req.file.filename}`;
+                console.log('File saved locally:', req.body.prescription_image);
+            } else if (req.file.secure_url) {
+                // Cloudinary URL
+                req.body.prescription_image = req.file.secure_url;
+                console.log('File uploaded to Cloudinary:', req.file.secure_url);
+            }
         } else {
             // Remove any malformed or object data that might have come through without being processed correctly
             delete req.body.prescription_image;
+            console.log('No file uploaded');
         }
 
         console.log(`Creating order for Patient: ${patient_id}, Pharmacy: ${req.body.pharmacy_id}`);
         if (req.body.medicines) {
             console.log(`Medicines in order: ${req.body.medicines}`);
         }
+        
         const request = await romsService.createRequest(req.body, patient_id);
         res.status(201).json(request);
     } catch (error) {
@@ -146,9 +159,20 @@ const updateRequest = async (req, res, next) => {
     try {
         // Handle potential file upload for existing record update
         if (req.file) {
-            req.body.prescription_image = req.file.path; // Cloudinary URL
+            if (req.file.path) {
+                // Local file path - create proper URL
+                const baseUrl = process.env.NODE_ENV === 'production' 
+                    ? 'https://your-production-domain.com' 
+                    : 'http://localhost:5000';
+                req.body.prescription_image = `${baseUrl}/uploads/${req.file.filename}`;
+                console.log('File updated locally:', req.body.prescription_image);
+            } else if (req.file.secure_url) {
+                // Cloudinary URL
+                req.body.prescription_image = req.file.secure_url;
+                console.log('File updated on Cloudinary:', req.file.secure_url);
+            }
         } else if (req.body.prescription_image === 'null') {
-            // Ensure we don't accidentally save the string 'null'
+            // Ensure we don't accidentally save string 'null'
             delete req.body.prescription_image;
         }
 
