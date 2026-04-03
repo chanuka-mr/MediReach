@@ -549,6 +549,70 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                     </div>
                   </div>
                 )}
+                {order.prescription_image && (
+                  <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
+                    display:"flex", flexDirection:"column", gap:4 }}>
+                    <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
+                      letterSpacing:"0.12em", textTransform:"uppercase" }}>Prescription</span>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <button
+                        onClick={() => {
+                          const modal = document.createElement('div');
+                          modal.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: rgba(0,0,0,0.8);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 1000;
+                          `;
+                          modal.onclick = () => document.body.removeChild(modal);
+                          
+                          const img = document.createElement('img');
+                          img.src = order.prescription_image;
+                          img.style.cssText = `
+                            max-width: 90%;
+                            max-height: 90%;
+                            border-radius: 8px;
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                          `;
+                          
+                          modal.appendChild(img);
+                          document.body.appendChild(modal);
+                        }}
+                        style={{
+                          padding:"8px 16px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                          border:`1.5px solid ${C.techBlue}`,
+                          background:C.white, color:C.techBlue,
+                          fontWeight:600, fontSize:12, transition:"all 0.2s",
+                          display:"flex", alignItems:"center", gap:6,
+                        }}
+                        onMouseEnter={e=>{ 
+                          e.currentTarget.style.background=C.techBlue; 
+                          e.currentTarget.style.color=C.snow; 
+                          e.currentTarget.style.transform="translateY(-1px)"; 
+                          e.currentTarget.style.boxShadow="0 4px 12px rgba(2,62,138,0.2)"; 
+                        }}
+                        onMouseLeave={e=>{ 
+                          e.currentTarget.style.background=C.white; 
+                          e.currentTarget.style.color=C.techBlue; 
+                          e.currentTarget.style.transform="none"; 
+                          e.currentTarget.style.boxShadow="none"; 
+                        }}
+                      >
+                        <Eye size={12} strokeWidth={2} />
+                        View Prescription
+                      </button>
+                      <span style={{ fontSize:11.5, color:C.lilacAsh, fontStyle:"italic" }}>
+                        Click to view prescription
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {order.medicines && order.medicines.length > 0 && (
                   <div style={{ gridColumn:"1/-1", paddingTop:14, borderTop:`1px solid ${C.paleSlate}`,
                     display:"flex", flexDirection:"column", gap:4 }}>

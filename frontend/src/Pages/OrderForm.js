@@ -162,7 +162,8 @@ const OrderForm = () => {
                     medicine_name: item.mediName,
                     quantity: item.quantity,
                     unit_price: item.mediPrice,
-                    total_price: item.mediPrice * item.quantity
+                    total_price: item.mediPrice * item.quantity,
+                    mediPrescriptionStatus: item.mediPrescriptionStatus || 'optional'
                 }));
                 data.append('medicines', JSON.stringify(medicinesArray));
             }
@@ -265,6 +266,15 @@ const OrderForm = () => {
                                     <div className="flex-1">
                                         <h4 className="font-semibold text-text-main">{item.mediName}</h4>
                                         <p className="text-sm text-text-muted">{item.Pharmacy}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                item.mediPrescriptionStatus === 'required' 
+                                                    ? 'bg-red-100 text-red-700' 
+                                                    : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                {item.mediPrescriptionStatus === 'required' ? 'Prescription Required' : 'No Prescription Required'}
+                                            </span>
+                                        </div>
                                         <div className="flex items-center justify-between mt-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-gray-500">Qty:</span>
