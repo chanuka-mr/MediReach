@@ -58,4 +58,29 @@ const allMessages = async (req, res) => {
   }
 };
 
-module.exports = { allMessages, sendMessage };
+/**
+ * @desc Mark all messages in a chat as read by the current user
+ * @route PUT /api/messages/mark-as-read/:chatId
+ * @access Protected
+ */
+const markAsRead = async (req, res) => {
+  try {
+    const updatedMessages = await Message.updateMany(
+      {
+        chat: req.params.chatId,
+        readBy: { $ne: req.user._id },
+        sender: { $ne: req.user._id },
+      },
+      {
+        $addToSet: { readBy: req.user._id },
+      }
+    );
+
+    res.json(updatedMessages);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+};
+
+module.exports = { allMessages, sendMessage, markAsRead };

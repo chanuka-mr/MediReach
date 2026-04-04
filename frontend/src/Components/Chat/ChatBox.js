@@ -1,33 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Building2 } from 'lucide-react';
-import io from 'socket.io-client';
+import { Send, User, Building2, MessageSquare } from 'lucide-react';
 import axios from 'axios';
+import { useChat } from '../../context/ChatContext';
 
 const ENDPOINT = "http://localhost:5000";
-let socket;
 
-const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
+const ChatBox = ({ currentUser, currentRole }) => {
+  const { socket, selectedChat, markAsRead } = useChat();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [socketConnected, setSocketConnected] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    socket = io(ENDPOINT);
-    socket.emit("setup", currentUser);
-    socket.on("connected", () => setSocketConnected(true));
-    socket.on("message received", (newMessageReceived) => {
-      if (!selectedChat || selectedChat._id !== newMessageReceived.chat._id) {
-        // notification logic could go here
-      } else {
+    if (!socket) return;
+
+    const handleMessageReceived = (newMessageReceived) => {
+      if (selectedChat && selectedChat._id === newMessageReceived.chat._id) {
         setMessages((prev) => [...prev, newMessageReceived]);
+        markAsRead(selectedChat._id);
       }
-    });
+    };
+
+    socket.on("message received", handleMessageReceived);
 
     return () => {
-      socket.disconnect();
+      socket.off("message received", handleMessageReceived);
     };
-  }, [selectedChat, currentUser]);
+  }, [socket, selectedChat, markAsRead]);
 
   useEffect(() => {
     if (!selectedChat) return;
@@ -40,13 +39,13 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
             },
         });
         setMessages(data);
-        socket.emit("join chat", selectedChat._id);
+        if (socket) socket.emit("join chat", selectedChat._id);
       } catch (error) {
         console.error("Failed to load messages", error);
       }
     };
     fetchMessages();
-  }, [selectedChat]);
+  }, [selectedChat, socket]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,7 +68,7 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
             },
         });
 
-        socket.emit("new message", data);
+        if (socket) socket.emit("new message", data);
         setMessages((prev) => [...prev, data]);
       } catch (error) {
         console.error("Failed to send the message", error);
@@ -80,7 +79,12 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
   if (!selectedChat) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
-        <p className="text-gray-400 font-medium text-lg">Select a conversation to start chatting</p>
+        <div className="text-center">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400">
+                <MessageSquare size={32} />
+            </div>
+            <p className="text-gray-400 font-medium text-lg">Select a conversation to start chatting</p>
+        </div>
       </div>
     );
   }
@@ -93,8 +97,8 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
     <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 h-full max-h-[800px]">
       {/* Header */}
       <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center shadow-md z-10">
-        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-md">
-          {currentRole === 'pharmacy' ? <User size={20} /> : <Building2 size={20} />}
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-md font-bold text-lg">
+          {otherParticipant?.name?.charAt(0).toUpperCase()}
         </div>
         <div className="ml-4">
           <h2 className="text-white font-bold text-lg tracking-wide">{otherParticipant?.name || 'Unknown'}</h2>
@@ -110,6 +114,11 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
           const isMe = (m.sender._id || m.sender) === (currentUser._id || currentUser.id);
           return (
             <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {!isMe && (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0 mr-2 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                      {otherParticipant?.name?.charAt(0).toUpperCase()}
+                  </div>
+              )}
               <div
                 className={`max-w-[70%] px-5 py-3 rounded-2xl shadow-sm ${
                   isMe

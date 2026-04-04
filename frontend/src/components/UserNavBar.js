@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useChat } from '../context/ChatContext'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import {
   Info,
@@ -29,6 +30,7 @@ const bottomNav = [
 ]
 
 export default function UserNavBar() {
+  const { totalUnreadCount } = useChat()
   const [collapsed,   setCollapsed]   = useState(false)
   const [hoveredPath, setHoveredPath] = useState(null)
   const navigate  = useNavigate()
@@ -291,7 +293,14 @@ export default function UserNavBar() {
           border-radius: 14px;
           background: rgba(255,255,255,0.04);
           border: 1px solid rgba(255,255,255,0.08);
-          overflow: hidden; cursor: default; position: relative;
+          overflow: hidden; cursor: pointer; position: relative;
+          width: 100%; transition: all 0.2s;
+        }
+
+        .ul-profile:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.15);
+          transform: translateY(-1px);
         }
 
         .ul-profile::before {
@@ -396,6 +405,29 @@ export default function UserNavBar() {
 
         .ul-nav-item:hover .ul-tooltip,
         .ul-util-item:hover .ul-tooltip { opacity: 1; }
+
+        .ul-badge-notify {
+          position: absolute; top: -5px; right: -5px;
+          min-width: 18px; height: 18px; border-radius: 9px;
+          background: #ef4444; color: white;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 10px; font-weight: 800; border: 2px solid #0D1B2A;
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+          animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          z-index: 10;
+        }
+
+        .ul-dot-notify {
+          position: absolute; top: 2px; right: 2px;
+          width: 8px; height: 8px; border-radius: 50%;
+          background: #ef4444; border: 1.5px solid #0D1B2A;
+          box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes badge-pop {
+          0% { transform: scale(0); }
+          100% { transform: scale(1); }
+        }
       `}</style>
 
       <div className="ul-layout">
@@ -473,6 +505,11 @@ export default function UserNavBar() {
                         color={active ? accent : hovered ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.38)'}
                         strokeWidth={active ? 2.2 : 1.8}
                       />
+                      {item.tag === "Chat" && totalUnreadCount > 0 && (
+                        <div className={collapsed ? "ul-dot-notify" : "ul-badge-notify"}>
+                          {!collapsed && totalUnreadCount}
+                        </div>
+                      )}
                     </div>
 
                     {!collapsed && (
@@ -552,24 +589,28 @@ export default function UserNavBar() {
 
             {/* Profile + Logout */}
             <div className="ul-bottom">
-              <div className="ul-profile" style={{
-                padding: collapsed ? '10px 0' : '10px 12px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-              }}>
+              <button 
+                className="ul-profile" 
+                onClick={() => navigate('/profile')}
+                style={{
+                  padding: collapsed ? '10px 0' : '10px 12px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                }}
+              >
                 <div className="ul-avatar">
                   {userInitials}
                   <div className="ul-online-dot" />
                 </div>
                 {!collapsed && (
                   <>
-                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textAlign: 'left', whiteSpace: 'nowrap' }}>
                       <div className="ul-profile-name">{userName}</div>
                       <div className="ul-profile-email">{user?.email || "user@medireach.lk"}</div>
                     </div>
                     <span className="ul-user-badge">{userRole}</span>
                   </>
                 )}
-              </div>
+              </button>
 
               <button
                 className="ul-logout"
