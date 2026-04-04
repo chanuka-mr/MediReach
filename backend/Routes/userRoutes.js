@@ -7,6 +7,7 @@ const {
   getAllUsers,
   getUserById,
   deleteUser,
+  getPharmacyUsers,
 } = require("../Controllers/userController");
 const { protect, authorize } = require("../Middleware/authMiddleware");
 
@@ -19,6 +20,9 @@ router
 
 // Admin routes (Admin only)
 router.route("/").get(protect, authorize("admin"), getAllUsers);
+// Get all users with role 'pharmacy'
+router.route("/pharmacies").get(protect, getPharmacyUsers);
+
 router
   .route("/:id")
   .get(protect, authorize("admin"), getUserById)

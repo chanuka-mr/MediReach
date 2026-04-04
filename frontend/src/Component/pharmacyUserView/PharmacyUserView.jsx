@@ -7,8 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const categories = [
-  { id: 'open-now', label: 'Open Now', icon: Clock,  color: '#34D399', sub: 'Available right now' },
-  { id: '24-7',     label: '24/7',     icon: Heart,  color: '#F472B6', sub: 'Round-the-clock service' },
+  { id: 'open-now', label: 'Open Now', icon: Clock, color: '#34D399', sub: 'Available right now' },
+  { id: '24-7', label: '24/7', icon: Heart, color: '#F472B6', sub: 'Round-the-clock service' },
 ];
 
 export default function PharmacyUserView() {
@@ -28,10 +28,10 @@ export default function PharmacyUserView() {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       const user = userInfo?.user || userInfo;
       if (!user) {
-         navigate('/auth');
-         return;
+        navigate('/auth');
+        return;
       }
-      
+
       await axios.post('http://localhost:5000/api/chat/start', {
         userId: user._id || user.id,
         pharmacyId: pharmacyId
@@ -52,10 +52,10 @@ export default function PharmacyUserView() {
     }
 
     const currentCat = categories.find(c => c.id === activeTab);
-    
+
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 transition-all duration-500">
-        <PharmacyListView 
+        <PharmacyListView
           isUserView={true}
           type={activeTab}
           title={`${currentCat.label} Pharmacies`}
@@ -71,8 +71,8 @@ export default function PharmacyUserView() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Detail Modal */}
       {selectedPharmacy && (
-        <PharmacyUserDetailModal 
-          pharmacy={selectedPharmacy} 
+        <PharmacyUserDetailModal
+          pharmacy={selectedPharmacy}
           onClose={() => setSelectedPharmacy(null)}
           onOrder={handleOrder}
           onChat={handleChat}
@@ -90,7 +90,7 @@ export default function PharmacyUserView() {
         <div className="flex items-center gap-3">
           <div className="relative group flex-1 md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-            <input 
+            <input
               type="text"
               placeholder="Search by name or district..."
               value={searchTerm}
@@ -111,11 +111,10 @@ export default function PharmacyUserView() {
             <button
               key={cat.id}
               onClick={() => { setActiveTab(cat.id); setViewMode('list'); }}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all duration-300 ${
-                activeTab === cat.id && viewMode === 'list'
-                  ? 'bg-white text-slate-900 shadow-md ring-1 ring-slate-200' 
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all duration-300 ${activeTab === cat.id && viewMode === 'list'
+                  ? 'bg-white text-slate-900 shadow-md ring-1 ring-slate-200'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-              }`}
+                }`}
             >
               <cat.icon size={18} color={activeTab === cat.id ? cat.color : undefined} />
               {cat.label}
@@ -126,17 +125,15 @@ export default function PharmacyUserView() {
         <div className="flex items-center gap-1 bg-white/80 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
           <button
             onClick={() => setViewMode('list')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-              viewMode === 'list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${viewMode === 'list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'
+              }`}
           >
             <ListIcon size={14} /> List View
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-              viewMode === 'map' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${viewMode === 'map' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'
+              }`}
           >
             <MapIcon size={14} /> Map View
           </button>

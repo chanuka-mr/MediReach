@@ -135,6 +135,18 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// @desc    Get all pharmacy users
+// @route   GET /api/users/pharmacies
+// @access  Private
+const getPharmacyUsers = async (req, res) => {
+  try {
+    const pharmacies = await User.find({ role: "pharmacy" }).select("-password");
+    res.json(pharmacies);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
@@ -142,4 +154,5 @@ module.exports = {
   getAllUsers,
   getUserById,
   deleteUser,
+  getPharmacyUsers,
 };

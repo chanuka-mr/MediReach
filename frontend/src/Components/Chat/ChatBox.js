@@ -34,7 +34,11 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
 
     const fetchMessages = async () => {
       try {
-        const { data } = await axios.get(`${ENDPOINT}/api/chat/${selectedChat._id}/messages`);
+        const { data } = await axios.get(`${ENDPOINT}/api/messages/${selectedChat._id}`, {
+            headers: {
+                Authorization: `Bearer ${JSON.parse(localStorage.getItem("userInfo")).token}`,
+            },
+        });
         setMessages(data);
         socket.emit("join chat", selectedChat._id);
       } catch (error) {
@@ -56,16 +60,17 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
       setNewMessage("");
 
       try {
-        const { data } = await axios.post(`${ENDPOINT}/api/chat/message`, {
+        const { data } = await axios.post(`${ENDPOINT}/api/messages`, {
           chatId: selectedChat._id,
-          senderId: currentUser._id || currentUser.id,
-          senderModel: currentRole === 'pharmacy' ? 'Pharmacy' : 'User',
-          text: messageText,
+          content: messageText,
+        }, {
+            headers: {
+                Authorization: `Bearer ${JSON.parse(localStorage.getItem("userInfo")).token}`,
+            },
         });
 
-        const newMsgObj = { ...data, chat: selectedChat };
-        socket.emit("new message", newMsgObj);
-        setMessages((prev) => [...prev, newMsgObj]);
+        socket.emit("new message", data);
+        setMessages((prev) => [...prev, data]);
       } catch (error) {
         console.error("Failed to send the message", error);
       }
@@ -80,7 +85,9 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
     );
   }
 
-  const otherParticipant = currentRole === 'pharmacy' ? selectedChat.user : selectedChat.pharmacy;
+  const otherParticipant = selectedChat?.users?.find(
+    (u) => (u._id || u.id) !== (currentUser?._id || currentUser?.id)
+  );
 
   return (
     <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 h-full max-h-[800px]">
@@ -100,7 +107,7 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
       {/* Messages */}
       <div className="flex-1 p-6 overflow-y-auto bg-gray-50 flex flex-col gap-4">
         {messages.map((m, i) => {
-          const isMe = m.sender === (currentUser._id || currentUser.id);
+          const isMe = (m.sender._id || m.sender) === (currentUser._id || currentUser.id);
           return (
             <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div

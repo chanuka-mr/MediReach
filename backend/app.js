@@ -8,8 +8,7 @@ const cron = require('node-cron');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
 const dns = require('dns');
-const http = require('http');
-const { Server } = require('socket.io');
+
 
 // Helper: safe require to avoid startup crashes if optional modules/files aren't present
 function tryRequire(path) {
@@ -34,13 +33,15 @@ const authRoutes = tryRequire('./Routes/authRoutes') || tryRequire('./routes/aut
 const userRoutes = tryRequire('./Routes/userRoutes') || tryRequire('./routes/userRoutes');
 const pharmacyRoutes = tryRequire('./Routes/pharmacyRoutes') || tryRequire('./routes/pharmacyRoutes');
 const inquiryRoutes = tryRequire('./Routes/inquiryRoutes') || tryRequire('./routes/inquiryRoutes');
+const chatRoutes = tryRequire('./Routes/chatRoutes') || tryRequire('./routes/chatRoutes');
+const messageRoutes = tryRequire('./Routes/messageRoutes') || tryRequire('./routes/messageRoutes');
 
 // Additional routes from other branch
 const romsRoutes = tryRequire('./Routes/romsRoutes') || tryRequire('./routes/romsRoutes');
 const drugRoutes = tryRequire('./Routes/drugRoutes') || tryRequire('./routes/drugRoutes');
 const cancellationRoutes = tryRequire('./Routes/cancellationRoutes') || tryRequire('./routes/cancellationRoutes');
 const routingRoutes = tryRequire('./Routes/routingRoutes') || tryRequire('./routes/routingRoutes');
-const chatRoutes = tryRequire('./Routes/chatRoutes') || tryRequire('./routes/chatRoutes');
+
 
 // DNS override for +srv connections (helps in some environments)
 try {
@@ -108,6 +109,8 @@ if (authRoutes) app.use('/api/auth', authRoutes);
 if (userRoutes) app.use('/api/users', userRoutes);
 if (pharmacyRoutes) app.use('/api/pharmacies', pharmacyRoutes);
 if (inquiryRoutes) app.use('/api/inquiries', inquiryRoutes);
+if (chatRoutes) app.use("/api/chat", chatRoutes);
+if (messageRoutes) app.use("/api/messages", messageRoutes);
 
 if (routes_medicine) app.use('/medicines', routes_medicine);
 if (dashboardRoutes) app.use('/api/dashboard', dashboardRoutes);
@@ -117,7 +120,7 @@ if (romsRoutes) app.use('/api/roms', romsRoutes);
 if (drugRoutes) app.use('/api/drugs', drugRoutes);
 if (cancellationRoutes) app.use('/api/cancellations', cancellationRoutes);
 if (routingRoutes) app.use('/api/routing', routingRoutes);
-if (chatRoutes) app.use('/api/chat', chatRoutes);
+
 
 // Simple health/test routes
 app.get('/test', (req, res) => {
@@ -153,50 +156,52 @@ const startServer = async () => {
             console.warn('No DB connection configured (no connectDB and no MONGODB_URI)');
         }
 
-        const server = http.createServer(app);
-        const io = new Server(server, {
+        const server = app.listen(PORT, () => {
+            console.log(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
+        });
+
+        // Socket.io initialization
+        const io = require("socket.io")(server, {
+            pingTimeout: 60000,
             cors: {
-                origin: ['http://localhost:3000', 'http://localhost:3001'],
-                methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+                origin: "http://localhost:3000",
+                // methods: ["GET", "POST"],
             },
         });
 
-        io.on('connection', (socket) => {
-            console.log('Connected to socket.io', socket.id);
+        io.on("connection", (socket) => {
+            console.log("Connected to socket.io");
 
-            socket.on('setup', (userData) => {
+            socket.on("setup", (userData) => {
                 socket.join(userData._id);
-                console.log('Socket Joined Room: ' + userData._id);
-                socket.emit('connected');
+                console.log("User joined his own room: ", userData._id);
+                socket.emit("connected");
             });
 
-            socket.on('join chat', (room) => {
+            socket.on("join chat", (room) => {
                 socket.join(room);
-                console.log('Joined Chat Room: ' + room);
+                console.log("User Joined Room: " + room);
             });
 
-            socket.on('new message', (newMessageReceived) => {
+            socket.on("typing", (room) => socket.in(room).emit("typing"));
+            socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
+
+            socket.on("new message", (newMessageReceived) => {
                 var chat = newMessageReceived.chat;
-                if (!chat) return console.log('chat not defined');
 
-                // Assuming chat has user and pharmacy object or IDs
-                const userId = chat.user._id ? chat.user._id.toString() : chat.user.toString();
-                const pharmacyId = chat.pharmacy._id ? chat.pharmacy._id.toString() : chat.pharmacy.toString();
-                
-                if (newMessageReceived.sender === userId) {
-                    socket.in(pharmacyId).emit('message received', newMessageReceived);
-                } else {
-                    socket.in(userId).emit('message received', newMessageReceived);
-                }
+                if (!chat.users) return console.log("chat.users not defined");
+
+                chat.users.forEach((user) => {
+                    if (user._id == newMessageReceived.sender._id) return;
+
+                    socket.in(user._id).emit("message received", newMessageReceived);
+                });
             });
 
-            socket.on('disconnect', () => {
-                console.log('USER DISCONNECTED');
+            socket.off("setup", () => {
+                console.log("USER DISCONNECTED");
+                socket.leave(userData._id);
             });
-        });
-
-        server.listen(PORT, () => {
-            console.log(`Server running in ${process.env.NODE_ENV || 'production'} mode on port ${PORT}`);
         });
     } catch (err) {
         console.error('Failed to start server:', err);

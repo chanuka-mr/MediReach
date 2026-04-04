@@ -1,114 +1,84 @@
-const Chat = require('../models/chatModel');
-const Message = require('../models/messageModel');
+const Chat = require("../Models/chatModel");
+const User = require("../Models/userModel");
 
-// 1. Access or Create Chat
+/**
+ * @desc Create or fetch a one-on-one chat between two users
+ * @route POST /api/chat
+ * @access Protected
+ */
 const accessChat = async (req, res) => {
-  const { userId, pharmacyId } = req.body;
+  const { userId } = req.body;
 
-  if (!userId || !pharmacyId) {
-    return res.status(400).json({ message: "userId and pharmacyId are required" });
+  if (!userId) {
+    console.log("UserId param not sent with request");
+    return res.status(400).send({ message: "UserId param not sent with request" });
   }
 
+  // Find if a chat already exists between these two users
+  var isChat = await Chat.find({
+    isGroupChat: false,
+    $and: [
+      { users: { $elemMatch: { $eq: req.user._id } } },
+      { users: { $elemMatch: { $eq: userId } } },
+    ],
+  })
+    .populate("users", "-password")
+    .populate("latestMessage");
+
+  isChat = await User.populate(isChat, {
+    path: "latestMessage.sender",
+    select: "name email contactNumber",
+  });
+
+  if (isChat.length > 0) {
+    res.send(isChat[0]);
+  } else {
+    var chatData = {
+      chatName: "sender",
+      isGroupChat: false,
+      users: [req.user._id, userId],
+    };
+
+    try {
+      const createdChat = await Chat.create(chatData);
+      const FullChat = await Chat.findOne({ _id: createdChat._id }).populate(
+        "users",
+        "-password"
+      );
+      res.status(200).json(FullChat);
+    } catch (error) {
+      res.status(400);
+      throw new Error(error.message);
+    }
+  }
+};
+
+/**
+ * @desc Fetch all chats for a specific user/pharmacy
+ * @route GET /api/chat
+ * @access Protected
+ */
+const fetchChats = async (req, res) => {
   try {
-    let chat = await Chat.findOne({ user: userId, pharmacy: pharmacyId })
-      .populate('user', '-password')
-      .populate('pharmacy', '-password')
-      .populate('latestMessage');
-    
-    // Populate latestMessage sender if needed
-    if (chat && chat.latestMessage) {
-        chat = await chat.populate({
-            path: 'latestMessage.sender',
-            select: 'name email'
+    Chat.find({ users: { $elemMatch: { $eq: req.user._id } } })
+      .populate("users", "-password")
+      .populate("groupAdmin", "-password")
+      .populate("latestMessage")
+      .sort({ updatedAt: -1 })
+      .then(async (results) => {
+        results = await User.populate(results, {
+          path: "latestMessage.sender",
+          select: "name email contactNumber",
         });
-    }
-
-    if (chat) {
-      res.status(200).json(chat);
-    } else {
-      const createdChat = await Chat.create({
-        user: userId,
-        pharmacy: pharmacyId,
+        res.status(200).send(results);
       });
-
-      const fullChat = await Chat.findOne({ _id: createdChat._id })
-        .populate('user', '-password')
-        .populate('pharmacy', '-password');
-      res.status(201).json(fullChat);
-    }
   } catch (error) {
-    res.status(500).json({ message: "Failed to access/create chat", error: error.message });
-  }
-};
-
-// 2. Fetch User Chats
-const fetchUserChats = async (req, res) => {
-  try {
-    const chats = await Chat.find({ user: req.params.userId })
-      .populate('user', '-password')
-      .populate('pharmacy', '-password')
-      .populate('latestMessage')
-      .sort({ updatedAt: -1 });
-    res.status(200).json(chats);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch user chats", error: error.message });
-  }
-};
-
-// 3. Fetch Pharmacy Chats
-const fetchPharmacyChats = async (req, res) => {
-  try {
-    const chats = await Chat.find({ pharmacy: req.params.pharmacyId })
-      .populate('user', '-password')
-      .populate('pharmacy', '-password')
-      .populate('latestMessage')
-      .sort({ updatedAt: -1 });
-    res.status(200).json(chats);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch pharmacy chats", error: error.message });
-  }
-};
-
-// 4. Send Message
-const sendMessage = async (req, res) => {
-  const { chatId, senderId, senderModel, text } = req.body;
-
-  if (!chatId || !senderId || !senderModel || !text) {
-    return res.status(400).json({ message: "Please provide all required fields." });
-  }
-
-  try {
-    const newMessage = await Message.create({
-      chat: chatId,
-      sender: senderId,
-      senderModel: senderModel,
-      text: text,
-    });
-
-    await Chat.findByIdAndUpdate(chatId, { latestMessage: newMessage._id });
-
-    // Populate standard fields for returning the full object
-    res.status(201).json(newMessage);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to send message", error: error.message });
-  }
-};
-
-// 5. Fetch Messages
-const fetchMessages = async (req, res) => {
-  try {
-    const messages = await Message.find({ chat: req.params.chatId })
-      .sort({ createdAt: 1 }); // Oldest to newest
-    res.status(200).json(messages);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch messages", error: error.message });
+    res.status(400);
+    throw new Error(error.message);
   }
 };
 
 module.exports = {
   accessChat,
-  fetchUserChats,
-  fetchPharmacyChats,
-  sendMessage,
-  fetchMessages,
+  fetchChats,
 };
