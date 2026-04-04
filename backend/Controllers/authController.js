@@ -22,8 +22,14 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please enter all required fields" });
     }
 
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
     // Role validation
-    if (!["user", "pharmacy"].includes(role)) {
+    if (!["admin", "user", "pharmacy"].includes(role)) {
        return res.status(400).json({ message: "Invalid role specified" });
     }
 

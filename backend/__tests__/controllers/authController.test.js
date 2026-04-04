@@ -297,11 +297,8 @@ describe('authController.verifyOtp', () => {
     const crypto = require('crypto');
     const hashedOtp = crypto.createHash('sha256').update('123456').digest('hex');
     
-    User.findOne.mockResolvedValue({
-      email: 'test@example.com',
-      resetPasswordOtp: hashedOtp,
-      resetPasswordOtpExpire: new Date(Date.now() - 120000) // 2 minutes ago
-    });
+    // Mock returns null because MongoDB query { $gt: Date.now() } won't match expired OTP
+    User.findOne.mockResolvedValue(null);
 
     const req = { body: { email: 'test@example.com', otp: '123456' } };
     const res = mockRes();

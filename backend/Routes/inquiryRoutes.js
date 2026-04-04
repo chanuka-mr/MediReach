@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const inquiryController = require('../Controllers/inquiryController');
+const { protect, authorize } = require('../Middleware/authMiddleware');
 
 // Log when routes are accessed
 router.use((req, res, next) => {
@@ -23,13 +24,13 @@ router.patch('/user/:id', inquiryController.userUpdateInquiry);
 router.delete('/user/:id', inquiryController.userDeleteInquiry);
 
 // ============= ADMIN ROUTES =============
-// Get all inquiries
-router.get('/', inquiryController.getAllInquiries);
+// Get all inquiries - requires admin role
+router.get('/', protect, authorize('admin'), inquiryController.getAllInquiries);
 
-// Update inquiry (status/priority)
-router.patch('/:id', inquiryController.updateInquiry);
+// Update inquiry (status/priority) - requires admin role
+router.patch('/:id', protect, authorize('admin'), inquiryController.updateInquiry);
 
-// Delete inquiry
-router.delete('/:id', inquiryController.deleteInquiry);
+// Delete inquiry - requires admin role
+router.delete('/:id', protect, authorize('admin'), inquiryController.deleteInquiry);
 
 module.exports = router;

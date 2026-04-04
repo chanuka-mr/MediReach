@@ -91,7 +91,7 @@ try {
 }
 
 // Scheduled background job (auto-expiry) if romsService exists
-if (romsService && romsService.expireOldRequests) {
+if (process.env.NODE_ENV !== 'test' && romsService && romsService.expireOldRequests) {
     cron.schedule('0 * * * *', async () => {
         console.log('Running Auto-Expiry background task...');
         try {
@@ -140,7 +140,10 @@ const startServer = async () => {
     const PORT = process.env.PORT || 5000;
 
     try {
-        if (connectDB && typeof connectDB === 'function') {
+        // Check if already connected (for integration tests)
+        if (mongoose.connection.readyState === 1) {
+            console.log('✅ Already connected to MongoDB');
+        } else if (connectDB && typeof connectDB === 'function') {
             await connectDB();
             console.log('Connected to MongoDB via connectDB()');
         } else if (process.env.MONGODB_URI) {
@@ -201,4 +204,10 @@ const startServer = async () => {
     }
 };
 
-startServer();
+// Export app for testing
+module.exports = app;
+
+// Only start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+    startServer();
+}
