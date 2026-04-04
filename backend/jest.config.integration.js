@@ -4,7 +4,8 @@ module.exports = {
     '**/__tests__/integration/diagnostic.integration.test.js',
     '**/__tests__/integration/**/*.corrected.integration.test.js',
     '**/__tests__/integration/inquiry.integration.test.js',
-    '**/__tests__/integration/user-profile.integration.test.js'
+    '**/__tests__/integration/user-profile.integration.test.js',
+    '**/__tests__/integration/performance.integration.test.js'
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

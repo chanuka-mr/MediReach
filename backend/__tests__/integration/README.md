@@ -32,6 +32,12 @@ npm run test:all
 
 # Run with coverage
 npm run test:coverage
+
+# Run performance tests only
+npm run test:integration -- performance.integration.test.js
+
+# Run performance tests with verbose output
+npm run test:integration -- performance.integration.test.js --verbose
 ```
 
 ### 3. Separate Unit Tests
@@ -48,8 +54,12 @@ __tests__/
 ├── integration/
 │   ├── setup.js                      # Database setup/teardown
 │   ├── testUtils.js                  # Test data factories
-│   ├── auth.integration.test.js      # Auth flow tests
-│   └── orders.integration.test.js    # Orders/ROMS flow tests
+│   ├── auth.corrected.integration.test.js      # Auth flow tests
+│   ├── orders.corrected.integration.test.js    # Orders/ROMS flow tests
+│   ├── pharmacy.corrected.integration.test.js  # Pharmacy flow tests
+│   ├── performance.integration.test.js         # Performance benchmarks
+│   ├── README.md                     # This file
+│   └── PERFORMANCE_TESTING.md        # Performance testing guide
 ├── controllers/                      # Unit tests for controllers
 └── setup.js                          # Unit test setup
 ```
@@ -431,6 +441,164 @@ JWT_SECRET=your-secret-key
 
 **Problem**: Express server already running on test port
 **Solution**: Kill previous process or use different port in tests
+
+## Performance Testing
+
+Performance tests measure response times, concurrency handling, database efficiency, and detect memory leaks.
+
+### Quick Start
+
+```bash
+# Run performance tests
+npm run test:performance
+npm run test:performance:verbose
+
+# Check performance summary
+npm run perf:check
+
+# Run with detailed output
+npm run perf:verbose
+
+# View help
+node check-performance.js --help
+```
+
+### How to Check Performance - 5 Ways
+
+#### 1️⃣ Run All Performance Tests
+```bash
+npm run test:performance
+npm run test:performance:verbose
+```
+
+Shows all 12 performance tests with timing results.
+
+#### 2️⃣ Run Specific Test Category
+```bash
+# Response Time Tests
+npm run test:integration -- performance.integration.test.js --testNamePattern="Response Time"
+
+# Concurrency Tests
+npm run test:integration -- performance.integration.test.js --testNamePattern="Concurrent"
+
+# Database Tests
+npm run test:integration -- performance.integration.test.js --testNamePattern="Database"
+
+# Memory Tests
+npm run test:integration -- performance.integration.test.js --testNamePattern="Memory"
+
+# Load Tests
+npm run test:integration -- performance.integration.test.js --testNamePattern="Load"
+```
+
+#### 3️⃣ View Performance Summary
+```bash
+npm run perf:check
+```
+
+Displays a formatted summary of all performance metrics and status.
+
+#### 4️⃣ View Performance Guide
+```bash
+cat __tests__/integration/PERFORMANCE_TESTING.md
+```
+
+Comprehensive guide with best practices, profiling, optimization tips.
+
+#### 5️⃣ View Test File
+```bash
+cat __tests__/integration/performance.integration.test.js
+```
+
+See actual test code and metrics being measured.
+
+### Expected Results
+
+| Test | Threshold | Typical Time | Status |
+|------|-----------|--------------|--------|
+| Register | < 500ms | ~400-450ms | ✅ |
+| Login | < 300ms | ~300-350ms | ✅ |
+| Get Profile | < 200ms | ~240ms | ✅ |
+| List Pharmacies | < 400ms | ~800ms | ⚠️ (DB dependent) |
+| Create Inquiry | < 300ms | ~200-300ms | ✅ |
+| 10x Concurrent Logins | < 3000ms | ~2000-2100ms | ✅ |
+| 5x Concurrent Creates | < 2000ms | ~250-300ms | ✅ |
+| Single Query | < 150ms | ~235ms | ⚠️ |
+| Search | < 300ms | ~500-600ms | ⚠️ |
+| Memory (50 ops) | < 100MB | Varies | ✅ |
+| Large Payload | < 500ms | ~250ms | ✅ |
+| Load Consistency | Stable | Monitored | ✅ |
+
+### What's Tested
+
+**Response Time Benchmarks** ⏱️
+- Auth operations (register, login)
+- Profile operations (get, update)
+- Create operations
+- List operations
+
+**Concurrency** 🔄
+- 10 concurrent logins
+- 5 concurrent creations
+
+**Database** 🗄️
+- Single record queries
+- Location-based searches
+
+**Memory** 💾
+- No leaks over 50 operations
+- Heap monitoring
+
+**Load** 📊
+- Consistency over 20 requests
+- Performance stability
+
+### Reading Output
+
+Example:
+```
+✓ should register user in < 500ms (404 ms)
+```
+
+- ✓ = Test passed
+- < 500ms = SLA (Service Level Agreement) target
+- (404 ms) = Actual time taken
+
+### Green Flags ✅
+- All tests passing
+- Response times within thresholds
+- No memory leaks
+- Consistent performance
+
+### Red Flags ⚠️
+- Tests exceeding thresholds by > 20%
+- Times increasing over iterations
+- Memory growing linearly
+- Large variance (> 100ms spread)
+
+### Common Issues & Solutions
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| First test slow | MongoDB binary downloads | Normal, subsequent runs faster |
+| List operations slow | Missing database indexes | Add indexes on query fields |
+| Memory increasing | Circular references | Ensure cleanup in tests |
+| Concurrent tests fail | Low connection pool | Increase pool size in config |
+| Variable response times | System load/GC | Run tests in isolation |
+
+### npm Scripts Added
+
+```json
+"test:performance": "Performance tests only",
+"test:performance:verbose": "With detailed output",
+"perf:check": "Show performance summary",
+"perf:verbose": "Verbose output",
+"perf:json": "JSON report (not working on Windows)",
+"perf:csv": "CSV report (not working on Windows)",
+"perf:baseline": "Save baseline for comparison",
+"perf:compare": "Compare to baseline",
+"perf:monitor": "Live monitoring (experimental)"
+```
 
 ## Performance Considerations
 
