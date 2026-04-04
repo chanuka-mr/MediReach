@@ -520,26 +520,11 @@ export default function UserHome() {
       <div className="uh-root">
         <div className="uh-brand-top">
           <div className="uh-brand-left">
-            <div className="uh-brand-logo">+</div>
-            <div>
-              <div className="uh-brand-name">MediReach</div>
-              <div className="uh-brand-sub">Patient Portal</div>
-            </div>
           </div>
         </div>
 
         <div className="uh-hero-shell">
-          <LiveTicker items={tickerItems} />
-          <div className="uh-trust-strip">
-            <div className="uh-trust-inner">
-              {[...TRUST_ITEMS, ...TRUST_ITEMS, ...TRUST_ITEMS].map((item, idx) => (
-                <span key={idx} className="uh-trust-item">
-                  {item}
-                  <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
-                </span>
-              ))}
-            </div>
-          </div>
+
 
           <div style={{ position: "relative", padding: "70px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ position: "absolute", top: -80, right: -80, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle,rgba(56,189,248,0.1) 0%,transparent 60%)", pointerEvents: "none" }} />
