@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -11,6 +11,11 @@ export const ChatProvider = ({ children }) => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [selectedChat, setSelectedChat] = useState(null);
   const [user, setUser] = useState(null);
+
+  const selectedChatRef = useRef(selectedChat);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
 
   const fetchInitialUnread = useCallback(async (userInfo) => {
     try {
@@ -38,7 +43,7 @@ export const ChatProvider = ({ children }) => {
       fetchInitialUnread(userInfo);
 
       newSocket.on("message received", (newMessage) => {
-        if (!selectedChat || selectedChat._id !== newMessage.chat._id) {
+        if (!selectedChatRef.current || selectedChatRef.current._id !== newMessage.chat._id) {
           setUnreadCounts(prev => ({
             ...prev,
             [newMessage.chat._id]: (prev[newMessage.chat._id] || 0) + 1
@@ -50,7 +55,7 @@ export const ChatProvider = ({ children }) => {
         newSocket.disconnect();
       };
     }
-  }, [selectedChat, fetchInitialUnread]);
+  }, [fetchInitialUnread]);
 
   const markAsRead = async (chatId) => {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));

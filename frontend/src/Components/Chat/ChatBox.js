@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Building2, MessageSquare } from 'lucide-react';
+import { Send, User, Building2, MessageSquare, X } from 'lucide-react';
 import axios from 'axios';
 import { useChat } from '../../context/ChatContext';
 
 const ENDPOINT = "http://localhost:5000";
 
 const ChatBox = ({ currentUser, currentRole }) => {
-  const { socket, selectedChat, markAsRead } = useChat();
+  const { socket, selectedChat, setSelectedChat, markAsRead } = useChat();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
@@ -15,7 +15,7 @@ const ChatBox = ({ currentUser, currentRole }) => {
     if (!socket) return;
 
     const handleMessageReceived = (newMessageReceived) => {
-      if (selectedChat && selectedChat._id === newMessageReceived.chat._id) {
+      if (selectedChat && String(selectedChat._id) === String(newMessageReceived.chat._id)) {
         setMessages((prev) => [...prev, newMessageReceived]);
         markAsRead(selectedChat._id);
       }
@@ -96,16 +96,26 @@ const ChatBox = ({ currentUser, currentRole }) => {
   return (
     <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 h-full max-h-[800px]">
       {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center shadow-md z-10">
-        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-md font-bold text-lg">
-          {otherParticipant?.name?.charAt(0).toUpperCase()}
+      <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-between shadow-md z-10">
+        <div className="flex items-center">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-md font-bold text-lg">
+            {otherParticipant?.name?.charAt(0).toUpperCase()}
+          </div>
+          <div className="ml-4">
+            <h2 className="text-white font-bold text-lg tracking-wide">{otherParticipant?.name || 'Unknown'}</h2>
+            <p className="text-blue-100 text-xs font-medium">
+              {currentRole === 'pharmacy' ? 'Patient' : 'Pharmacy'}
+            </p>
+          </div>
         </div>
-        <div className="ml-4">
-          <h2 className="text-white font-bold text-lg tracking-wide">{otherParticipant?.name || 'Unknown'}</h2>
-          <p className="text-blue-100 text-xs font-medium">
-            {currentRole === 'pharmacy' ? 'Patient' : 'Pharmacy'}
-          </p>
-        </div>
+        
+        <button 
+          onClick={() => setSelectedChat(null)}
+          className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+          title="Close Chat"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Messages */}

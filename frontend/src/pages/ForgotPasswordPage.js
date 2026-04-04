@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const API = "http://localhost:8080/api/auth";
+const API = "http://localhost:5000/api/auth";
 
 // ── Icons ─────────────────────────────────────────────
 const GridIcon = () => (
