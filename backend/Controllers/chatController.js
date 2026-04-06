@@ -1,5 +1,6 @@
 const Chat = require("../Models/chatModel");
 const User = require("../Models/userModel");
+const Message = require("../Models/messageModel");
 
 /**
  * @desc Create or fetch a one-on-one chat between two users
@@ -70,7 +71,20 @@ const fetchChats = async (req, res) => {
           path: "latestMessage.sender",
           select: "name email contactNumber",
         });
-        res.status(200).send(results);
+
+        // Add unreadCount to each chat
+        const chatWithUnread = await Promise.all(
+          results.map(async (chat) => {
+            const unreadCount = await Message.countDocuments({
+              chat: chat._id,
+              readBy: { $ne: req.user._id },
+              sender: { $ne: req.user._id },
+            });
+            return { ...chat._doc, unreadCount };
+          })
+        );
+
+        res.status(200).send(chatWithUnread);
       });
   } catch (error) {
     res.status(400);

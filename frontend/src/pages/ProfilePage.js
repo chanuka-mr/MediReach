@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { userAPI } from "../utils/apiEndpoints";
+import ForgotPasswordPage from "./ForgotPasswordPage";
+
 
 // ── Icons ─────────────────────────────────────────────
 const GridIcon = () => (
@@ -276,6 +278,7 @@ export default function ProfilePage() {
   const [focused, setFocused]   = useState(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" });
+  const [showForgot, setShowForgot] = useState(false);
   const [savedUser, setSavedUser] = useState({});
 
   // Load user data from localStorage
@@ -367,6 +370,7 @@ export default function ProfilePage() {
 
       const res = await userAPI.updateProfile(payload);
       const data = res.data;
+
       
       localStorage.setItem("userInfo", JSON.stringify({ ...parsed, user: data, ...data, token: token }));
       
@@ -396,6 +400,7 @@ export default function ProfilePage() {
       const res = await userAPI.updateProfile({ password: newPass });
       const data = res.data;
 
+
       setCurrentPass(""); setNewPass(""); setConfPass("");
       showToast("Password changed successfully!");
     } catch (err) { 
@@ -411,6 +416,7 @@ export default function ProfilePage() {
       const parsed = JSON.parse(saved);
       const res = await userAPI.updateProfile({ addresses: updatedAddresses });
       const data = res.data;
+
       
       setAddresses(data.addresses || updatedAddresses);
       localStorage.setItem("userInfo", JSON.stringify({ ...parsed, user: data, ...data, token: parsed.token }));
@@ -471,6 +477,10 @@ export default function ProfilePage() {
     { key: "addresses", label: "Addresses" },
     { key: "security",  label: "Security" },
   ];
+
+  if (showForgot) {
+    return <ForgotPasswordPage onBackToLogin={() => setShowForgot(false)} />;
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col" style={{ fontFamily: "'DM Sans','Segoe UI',sans-serif", background: "#F7F9FC" }}>
@@ -639,19 +649,7 @@ export default function ProfilePage() {
             {/* TAB: PROFILE */}
             {activeTab === "profile" && (
               <>
-                <div className="rounded-[12px] px-5 py-4 flex items-center justify-between"
-                  style={{ background: `linear-gradient(135deg, ${INDIGO}12, ${INDIGO}06)`, border: `1.5px solid ${INDIGO}25` }}>
-                  <div>
-                    <div className="text-[13px] font-bold text-[#0F172A]">Profile Completion</div>
-                    <div className="text-[11.5px] text-[#64748B] mt-0.5">Add missing details to complete your profile</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-2 rounded-full bg-[#E2E8F0] overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: "78%", background: `linear-gradient(90deg, ${INDIGO}, #6E8FF8)` }} />
-                    </div>
-                    <span className="text-[13px] font-bold" style={{ color: INDIGO }}>78%</span>
-                  </div>
-                </div>
+
 
                 <SectionCard>
                   <SectionHeader title="Personal Information" subtitle="Your basic account details" />
@@ -851,6 +849,13 @@ export default function ProfilePage() {
                       }}>
                       {loading ? <><Spinner /> Updating...</> : <>Update Password</>}
                     </button>
+                    <div className="text-center mt-4">
+                      <button type="button" onClick={() => setShowForgot(true)}
+                        className="text-[12.5px] font-semibold bg-transparent border-none cursor-pointer transition-colors"
+                        style={{ color: INDIGO }}>
+                        Forgot your password?
+                      </button>
+                    </div>
                   </form>
                 </SectionCard>
 

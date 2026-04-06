@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare } from 'lucide-react';
 import ChatBox from '../../Components/Chat/ChatBox';
+import { useChat } from '../../context/ChatContext';
 
 const PharmacyChats = () => {
+    const { setSelectedChat, selectedChat, unreadCounts, markAsRead } = useChat();
     const [chats, setChats] = useState([]);
-    const [selectedChat, setSelectedChat] = useState(null);
     const [loggedPharmacy, setLoggedPharmacy] = useState(null);
 
     useEffect(() => {
@@ -48,8 +49,11 @@ const PharmacyChats = () => {
                         return (
                             <div
                                 key={chat._id}
-                                onClick={() => setSelectedChat(chat)}
-                                className={`px-5 py-4 cursor-pointer border-b border-slate-100 flex items-center gap-3 transition-colors ${
+                                onClick={() => {
+                                    setSelectedChat(chat);
+                                    markAsRead(chat._id);
+                                }}
+                                className={`px-5 py-4 cursor-pointer border-b border-slate-100 flex items-center gap-3 transition-colors relative ${
                                     selectedChat?._id === chat._id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : 'hover:bg-white'
                                 }}`}
                             >
@@ -65,6 +69,11 @@ const PharmacyChats = () => {
                                         </p>
                                     )}
                                 </div>
+                                {unreadCounts[chat._id] > 0 && selectedChat?._id !== chat._id && (
+                                    <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-sm">
+                                        {unreadCounts[chat._id]}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

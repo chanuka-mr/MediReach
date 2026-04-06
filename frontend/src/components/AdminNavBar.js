@@ -359,7 +359,14 @@ export default function AdminNavBar() {
           border-radius: 14px;
           background: rgba(255,255,255,0.04);
           border: 1px solid rgba(255,255,255,0.08);
-          overflow: hidden; cursor: default; position: relative;
+          overflow: hidden; cursor: pointer; position: relative;
+          width: 100%; transition: all 0.2s;
+        }
+
+        .mr-profile:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.15);
+          transform: translateY(-1px);
         }
 
         .mr-profile::before {
@@ -620,24 +627,28 @@ export default function AdminNavBar() {
 
             {/* Profile + Logout */}
             <div className="mr-bottom">
-              <div className="mr-profile" style={{
-                padding: collapsed ? '10px 0' : '10px 12px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-              }}>
+              <button 
+                className="mr-profile" 
+                onClick={() => navigate('/profile')}
+                style={{
+                  padding: collapsed ? '10px 0' : '10px 12px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                }}
+              >
                 <div className="mr-avatar">
                   {userInitials}
                   <div className="mr-online-dot" />
                 </div>
                 {!collapsed && (
                   <>
-                    <div className="mr-profile-info">
+                    <div className="mr-profile-info" style={{ textAlign: 'left' }}>
                       <div className="mr-profile-name">{userName}</div>
                       <div className="mr-profile-email">{user?.email || "admin@medireach.lk"}</div>
                     </div>
                     <span className="mr-pro-badge">{userRole}</span>
                   </>
                 )}
-              </div>
+              </button>
 
               <button
                 className="mr-logout"

@@ -481,13 +481,13 @@ export default function InventoryDashboard() {
   const stats = useMemo(() => ({
     totalMedicines:  medicines.length,
     totalPharmacies: pharmacyList.length,
-    totalOrders:     pharmacies.reduce((s,p) => s + p.orders, 0),
+    totalOrders:     pharmacies.reduce((s,p) => s + (p.pendingOrders || 0), 0), // Real pending orders count
     lowStock:        medicines.filter(m => {
                        const q = Number(m.mediStock) || 0
                        return q > 0 && q <= 50
                      }).length,
-    outOfStock:      medicines.filter(m => (Number(m.mediStock) || 0) === 0).length,
-  }), [medicines, pharmacies, pharmacyList])
+    outOfStock:      medicines.filter(m => Number(m.mediStock) === 0).length,
+  }), [pharmacies, medicines, pharmacyList])
 
   const counts = useMemo(() => ({
     active:  pharmacies.filter(p=>p.status==="active").length,
