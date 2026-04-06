@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import { romsAPI } from '../utils/apiEndpoints';
 import {
     CreditCard,
     ShieldCheck,
@@ -34,7 +34,7 @@ const PaymentUI = () => {
             return;
         }
         try {
-            const res = await api.get(`/roms/request/${orderId}`);
+            const res = await romsAPI.getRequestById(orderId);
             setOrder(res.data);
         } catch (error) {
             console.error('Error fetching order for payment:', error);
@@ -53,7 +53,7 @@ const PaymentUI = () => {
         
         try {
             // Update order status to VerificationPending
-            await api.put(`/roms/${orderId}/process`, {
+            await romsAPI.processRequest(orderId, {
                 action: 'payment'
             });
             
@@ -98,13 +98,13 @@ const PaymentUI = () => {
                         <div className="flex flex-col gap-3">
                             <button 
                                 className="w-full bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]"
-                                onClick={() => navigate('/order-details')}
+                                onClick={() => navigate('/orderhistory')}
                             >
                                 Back to My Orders
                             </button>
                             <button 
                                 className="w-full bg-transparent border border-primary-light text-primary-light py-3 px-6 rounded-lg font-bold transition-all hover:bg-primary-light hover:text-white"
-                                onClick={() => navigate('/contact-us')}
+                                onClick={() => navigate('/contact')}
                             >
                                 Contact Us
                             </button>

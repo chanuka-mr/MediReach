@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import { Search, RefreshCw, AlertCircle, MapPin } from 'lucide-react';
 import PharmacyCard from './PharmacyCard';
 import PharmacyUserCard from '../pharmacyUserView/PharmacyUserCard';
-
-const API_URL = 'http://localhost:5000/api';
 
 const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView = false, onViewInfo }) => {
   const [pharmacies, setPharmacies] = useState([]);
@@ -20,25 +18,18 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
     setLoading(true);
     setError(null);
     try {
-      let endpoint = '';
       let queryParams = { ...extraParams, ...params };
-
-      switch (type) {
-        case 'nearby':
-          endpoint = '/pharmacies/nearby';
-          break;
-        case 'open-now':
-          endpoint = '/pharmacies/open-now';
-          break;
-        case '24-7':
-          endpoint = '/pharmacies/24-7';
-          break;
-        default:
-          endpoint = '/pharmacies';
+      
+      let response;
+      if (type === 'active') {
+        response = await pharmacyAPI.getActivePharmacies();
+      } else if (type === 'nearby') {
+        response = await pharmacyAPI.getAllPharmacies({ params: queryParams });
+      } else {
+        response = await pharmacyAPI.getAllPharmacies({ params: queryParams });
       }
-
-      const response = await axios.get(`${API_URL}${endpoint}`, { params: queryParams });
-      setPharmacies(response.data.data.pharmacies);
+      
+      setPharmacies(response.data.data?.pharmacies || response.data.pharmacies || []);
     } catch (err) {
       console.error(`Error fetching ${type} pharmacies:`, err);
       setError(err.response?.data?.message || `Failed to load ${title}.`);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, Building2 } from 'lucide-react';
 import io from 'socket.io-client';
-import axios from 'axios';
+import { messageAPI } from '../../utils/apiEndpoints';
 
 const ENDPOINT = "http://localhost:5000";
 let socket;
@@ -34,11 +34,7 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
 
     const fetchMessages = async () => {
       try {
-        const { data } = await axios.get(`${ENDPOINT}/api/messages/${selectedChat._id}`, {
-            headers: {
-                Authorization: `Bearer ${JSON.parse(localStorage.getItem("userInfo")).token}`,
-            },
-        });
+        const { data } = await messageAPI.getMessagesByChatId(selectedChat._id);
         setMessages(data);
         socket.emit("join chat", selectedChat._id);
       } catch (error) {
@@ -60,13 +56,9 @@ const ChatBox = ({ selectedChat, currentUser, currentRole }) => {
       setNewMessage("");
 
       try {
-        const { data } = await axios.post(`${ENDPOINT}/api/messages`, {
+        const { data } = await messageAPI.sendMessage({
           chatId: selectedChat._id,
           content: messageText,
-        }, {
-            headers: {
-                Authorization: `Bearer ${JSON.parse(localStorage.getItem("userInfo")).token}`,
-            },
         });
 
         socket.emit("new message", data);

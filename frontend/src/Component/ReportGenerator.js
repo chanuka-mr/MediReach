@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText, Download, Calendar, AlertCircle, Package, Pill,
   Clock, TrendingDown, Building2, Filter, Loader2, CheckCircle
-} from 'lucide-react'
+} from 'lucide-react';
+import { reportAPI } from '../utils/apiEndpoints';
 
 // ── Palette ───────────────────────────────────────────────────────
 const C = {
@@ -16,8 +18,6 @@ const C = {
   warn:      "#B45309",
   danger:    "#C0392B",
 }
-
-const API = "http://localhost:5000/api/reports"
 
 const categories = [
   "Antibiotic","Antidiabetic","Cardiovascular","Respiratory",
@@ -113,7 +113,7 @@ export default function ReportGenerator({ type = 'inventory', filters = {} }) {
         }
       })
 
-      const response = await fetch(`${API}/${type}?${params}`)
+      const response = await reportAPI.generateReport(type, params.toString())
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))

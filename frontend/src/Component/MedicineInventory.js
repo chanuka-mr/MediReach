@@ -1,15 +1,19 @@
-import React, { useState, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Search, Filter, Package, AlertTriangle, CheckCircle2,
-  XCircle, ChevronDown, ChevronUp, ArrowUpDown,
-  Pill, Building2, Calendar, Tag, DollarSign,
-  TrendingDown, RefreshCw, Download, Eye,
-  ShieldCheck, ShieldOff, ShieldAlert, Hash,
-  ChevronLeft, ChevronRight,
-  Beaker, Clock, Layers, Loader2, PencilLine, Trash2, X, FileText
-} from 'lucide-react'
-import ReportGenerator from './ReportGenerator'
+  Search, Filter, ShoppingCart, Clock, Building2,
+  ChevronRight, RefreshCw, Download, Eye,
+  AlertTriangle, Truck, CheckCircle2,
+  DollarSign, Hash, Calendar, MapPin,
+  Pill, TrendingUp, ClipboardList,
+  Hourglass, Ban, CircleDot, X,
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  XCircle, ShieldCheck, ShieldOff, Trash2, Loader2,
+  ArrowUpDown, ChevronUp, ChevronDown, Layers,
+  Package, PencilLine, Tag, Beaker, ChevronLeft
+} from 'lucide-react';
+import { medicineAPI } from '../utils/apiEndpoints';
+import ReportGenerator from './ReportGenerator';
 
 // ── Palette — matches InventoryDashboard ─────────────────────────
 const C = {
@@ -23,8 +27,6 @@ const C = {
   warn:      "#B45309",
   danger:    "#C0392B",
 }
-
-const API = "http://localhost:5000/medicines"
 
 // Map DB field names → normalised shape used in the UI
 function normalise(m) {
@@ -238,10 +240,9 @@ export default function MedicineInventory() {
   const fetchMedicines = async () => {
     setLoading(true); setFetchError(null)
     try {
-      const res  = await fetch(API)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Failed to fetch")
-      const list = Array.isArray(data) ? data : (data.medicines || [])
+      const res = await medicineAPI.getAllMedicines()
+      const data = res.data
+      const list = Array.isArray(data) ? data : (data.medicines || data.data || [])
       setAllMedicines(list.map(normalise))
     } catch (err) {
       setFetchError(err.message)
@@ -262,9 +263,11 @@ export default function MedicineInventory() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`${API}/${deleteTarget.id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Failed to delete")
+      const res = await medicineAPI.deleteMedicine(deleteTarget.id)
+      const data = res.data
+      if (res.status !== 200 && res.status !== 204) {
+        throw new Error(data.message || "Failed to delete")
+      }
 
       // Remove from local state instantly — no need to re-fetch
       setAllMedicines(prev => prev.filter(m => m.id !== deleteTarget.id))

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { pharmacyAPI } from '../utils/apiEndpoints';
 
 const C = {
   success: "#0E7C5B", lilacAsh: "#4C6EF5",
@@ -89,7 +90,6 @@ const DOCTORS = [
   { init:"LC", name:"Dr. Lena Cho",      spec:"Mental Health", exp:"11 yrs", rating:"4.96", bg:"rgba(245,158,11,0.15)", cl:"#D97706" },
 ];
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const HOST_URL = window.location.origin;
 
 export default function PreHome() {
@@ -138,8 +138,8 @@ export default function PreHome() {
     setQrLoading(true);
     setQrError('');
     try {
-      const response = await fetch(`${API_URL}/pharmacies`);
-      const data = await response.json();
+      const response = await pharmacyAPI.getAllPharmacies();
+      const data = response.data;
       const pharmacies = data?.data?.pharmacies || data?.pharmacies || [];
       if (!Array.isArray(pharmacies) || pharmacies.length === 0) {
         setQrError('No pharmacy records are available right now.');

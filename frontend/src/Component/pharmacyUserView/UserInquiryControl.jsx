@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { inquiryAPI } from '../../utils/apiEndpoints';
 import {
   History,
   Search,
@@ -13,8 +13,6 @@ import {
   Save,
   ShieldAlert
 } from 'lucide-react';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const UserInquiryControl = () => {
   const [email, setEmail] = useState('');
@@ -30,13 +28,12 @@ const UserInquiryControl = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`${API_URL}/inquiries/by-email/${searchEmail}`);
-      if (response.data.status === 'success') {
-        setInquiries(response.data.data.inquiries);
-        setHasSearched(true);
-      }
+      const response = await inquiryAPI.getInquiriesByUser(searchEmail);
+      setInquiries(response.data.data?.inquiries || response.data.inquiries || []);
+      setHasSearched(true);
     } catch (err) {
-      setError('Could not retrieve inquiries. Please verify your email and try again.');
+      console.error('Error fetching inquiries:', err);
+      setError(err.response?.data?.message || 'Failed to fetch inquiries');
     } finally {
       setLoading(false);
     }
@@ -60,25 +57,22 @@ const UserInquiryControl = () => {
 
   const handleUpdate = async (id) => {
     try {
-      const response = await axios.patch(`${API_URL}/inquiries/user/${id}`, editFormData);
-      if (response.data.status === 'success') {
-        setInquiries(inquiries.map(inq => inq._id === id ? response.data.data.inquiry : inq));
-        setEditingId(null);
-      }
+      const response = await inquiryAPI.updateInquiry(id, editFormData);
+      setInquiries(inquiries.map(inq => inq._id === id ? response.data.data.inquiry : inq));
+      setEditingId(null);
+      setEditFormData({ subject: '', message: '' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Update failed');
+      console.error('Error updating inquiry:', err);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to permanently withdraw this inquiry?')) return;
     try {
-      const response = await axios.delete(`${API_URL}/inquiries/user/${id}`);
-      if (response.status === 204) {
-        setInquiries(inquiries.filter(inq => inq._id !== id));
-      }
+      await inquiryAPI.deleteInquiry(id);
+      setInquiries(inquiries.filter(inq => inq._id !== id));
     } catch (err) {
-      alert('Deletion failed');
+      console.error('Error deleting inquiry:', err);
     }
   };
 

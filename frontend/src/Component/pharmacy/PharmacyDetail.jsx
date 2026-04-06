@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
@@ -20,12 +20,10 @@ const PharmacyDetail = () => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({});
 
-  const API_URL = 'http://localhost:5000/api';
-
   const fetchPharmacy = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/pharmacies/${id}`);
-      setPharmacy(response.data.data.pharmacy);
+      const response = await pharmacyAPI.getPharmacyById(id);
+      setPharmacy(response.data.data?.pharmacy || response.data.pharmacy);
     } catch (error) {
       console.error('Error fetching pharmacy details:', error);
     } finally {
@@ -39,7 +37,7 @@ const PharmacyDetail = () => {
 
   const handleToggleStatus = async () => {
     try {
-      await axios.patch(`${API_URL}/pharmacies/${id}/toggle-status`);
+      await pharmacyAPI.toggleStatus(id);
       fetchPharmacy();
     } catch (error) {
       console.error('Error toggling status:', error);
@@ -64,7 +62,7 @@ const PharmacyDetail = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put(`${API_URL}/pharmacies/${id}`, formData);
+      await pharmacyAPI.updatePharmacy(id, formData);
       setShowEditModal(false);
       fetchPharmacy();
     } catch (error) {

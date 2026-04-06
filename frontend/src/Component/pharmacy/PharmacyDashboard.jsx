@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import {
   Building2,
   Clock,
@@ -19,8 +19,6 @@ import {
   Search
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, ComposedChart, Line, Area, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-
-const API_URL = 'http://localhost:5000/api';
 
 const PharmacyDashboard = () => {
   const [stats, setStats] = useState({
@@ -44,20 +42,18 @@ const PharmacyDashboard = () => {
   const fetchPharmacyStats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/pharmacies`);
-      const pharmacies = response.data.data.pharmacies;
+      const response = await pharmacyAPI.getAllPharmacies();
+      const pharmacies = response.data.data?.pharmacies || response.data.pharmacies || (Array.isArray(response.data) ? response.data : []);
 
-      const active = pharmacies.filter(p => p.isActive).length;
-      const inactive = pharmacies.filter(p => !p.isActive).length;
-      const districts = [...new Set(pharmacies.map(p => p.district))];
-
-      setStats({
+      const stats = {
         totalPharmacies: pharmacies.length,
-        activePharmacies: active,
-        inactivePharmacies: inactive,
-        totalDistricts: districts.length,
+        activePharmacies: pharmacies.filter(p => p.isActive).length,
+        inactivePharmacies: pharmacies.filter(p => !p.isActive).length,
+        totalDistricts: [...new Set(pharmacies.map(p => p.district).filter(Boolean))].length,
         pharmaciesList: pharmacies
-      });
+      };
+
+      setStats(stats);
       setError(null);
     } catch (err) {
       console.error('Error fetching stats:', err);

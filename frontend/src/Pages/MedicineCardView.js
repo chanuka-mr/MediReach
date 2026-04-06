@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, Package, Heart, Loader2,
   AlertTriangle, ArrowUpRight, Sparkles, Zap, Tag
 } from 'lucide-react';
+import { medicineAPI, pharmacyAPI } from '../utils/apiEndpoints';
 
 // ── Palette — MediReach brand ─────────────────────────────────────
 const C = {
@@ -20,8 +21,6 @@ const C = {
   danger:    "#C0392B",
 }
 
-const API          = "http://localhost:5000/medicines";
-const PHARMACY_API = "http://localhost:5000/api/pharmacies";
 
 // ── Prescription badge config ────────────────────────────────────
 const RX_CFG = {
@@ -397,15 +396,26 @@ const MedicineCardView = () => {
   const fetchData = async () => {
     setLoading(true); setFetchError(null);
     try {
-      const [medRes, pharmRes] = await Promise.all([fetch(API), fetch(PHARMACY_API)]);
-      const medData   = await medRes.json();
-      const pharmData = await pharmRes.json();
-      if (!medRes.ok)  throw new Error(medData.message  || "Failed to fetch medicines");
-      if (!pharmRes.ok) throw new Error(pharmData.message || "Failed to fetch pharmacies");
-      setMedicines(Array.isArray(medData) ? medData : (medData.medicines || []));
-      setPharmacies(pharmData.data?.pharmacies || []);
+      const [medRes, pharmRes] = await Promise.all([medicineAPI.getAllMedicines(), pharmacyAPI.getAllPharmacies()]);
+      const medData   = medRes.data;
+      const pharmData = pharmRes.data;
+      
+      // Ensure medicines is always an array
+      const medicinesArray = Array.isArray(medData) ? medData : 
+                            medData?.data?.medicines || 
+                            medData?.medicines || 
+                            medData?.data || 
+                            [];
+      
+      console.log('Medicines data:', medData);
+      console.log('Medicines array:', medicinesArray);
+      
+      setMedicines(medicinesArray);
+      setPharmacies(pharmData.data?.pharmacies || pharmData.pharmacies || []);
     } catch (error) {
-      setFetchError(error.message);
+      console.error(error);
+      setFetchError("Failed to fetch data. Please try again later.");
+      setMedicines([]); // Ensure medicines is always an array on error
     } finally {
       setLoading(false);
     }

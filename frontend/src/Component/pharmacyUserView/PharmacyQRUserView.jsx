@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import { QRCodeSVG } from 'qrcode.react';
 import {
    Building2,
@@ -15,7 +15,6 @@ import {
    Download
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const HOST_URL = window.location.origin;
 
 const PharmacyQRUserView = () => {
@@ -82,13 +81,11 @@ const PharmacyQRUserView = () => {
 
    const fetchPharmacies = async () => {
       try {
-         const response = await axios.get(`${API_URL}/pharmacies`);
-         if (response.data.status === 'success') {
-            const pharms = response.data.data.pharmacies;
-            setPharmacies(pharms);
-            const dists = [...new Set(pharms.map(p => p.district || 'Unspecified'))].sort();
-            if (dists.length > 0) setActiveDistrict(dists[0]);
-         }
+         const response = await pharmacyAPI.getAllPharmacies();
+         const pharms = response.data.data?.pharmacies || response.data.pharmacies || [];
+         setPharmacies(pharms);
+         const dists = [...new Set(pharms.map(p => p.district).filter(Boolean))];
+         if (dists.length > 0) setActiveDistrict(dists[0]);
       } catch (error) {
          console.error('Error fetching pharmacies:', error);
       } finally {

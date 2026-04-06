@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { inquiryAPI } from '../../utils/apiEndpoints';
 import { 
   Mail, 
   Trash2, 
@@ -13,8 +13,6 @@ import {
   Quote,
   RotateCcw
 } from 'lucide-react';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const InquiryManagement = () => {
   const [inquiries, setInquiries] = useState([]);
@@ -30,10 +28,8 @@ const InquiryManagement = () => {
   const fetchInquiries = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/inquiries`);
-      if (response.data.status === 'success') {
-        setInquiries(response.data.data.inquiries);
-      }
+      const response = await inquiryAPI.getAllInquiries();
+      setInquiries(response.data.data?.inquiries || response.data.inquiries || []);
     } catch (err) {
       console.error('Error fetching inquiries:', err);
     } finally {
@@ -43,11 +39,9 @@ const InquiryManagement = () => {
 
   const updateStatus = async (id, newStatus) => {
     try {
-      const response = await axios.patch(`${API_URL}/inquiries/${id}`, { status: newStatus });
-      if (response.data.status === 'success') {
-        setInquiries(inquiries.map(inq => inq._id === id ? response.data.data.inquiry : inq));
-        if (selectedInquiry?._id === id) setSelectedInquiry(response.data.data.inquiry);
-      }
+      const response = await inquiryAPI.updateInquiry(id, { status: newStatus });
+      setInquiries(inquiries.map(inq => inq._id === id ? response.data.data.inquiry : inq));
+      if (selectedInquiry?._id === id) setSelectedInquiry(response.data.data.inquiry);
     } catch (err) {
       console.error('Error updating status:', err);
     }
@@ -56,11 +50,9 @@ const InquiryManagement = () => {
   const deleteInquiry = async (id) => {
     if (!window.confirm('Are you sure you want to permanently delete this inquiry?')) return;
     try {
-      const response = await axios.delete(`${API_URL}/inquiries/${id}`);
-      if (response.status === 204) {
-        setInquiries(inquiries.filter(inq => inq._id !== id));
-        if (selectedInquiry?._id === id) setSelectedInquiry(null);
-      }
+      await inquiryAPI.deleteInquiry(id);
+      setInquiries(inquiries.filter(inq => inq._id !== id));
+      if (selectedInquiry?._id === id) setSelectedInquiry(null);
     } catch (err) {
       console.error('Error deleting inquiry:', err);
     }

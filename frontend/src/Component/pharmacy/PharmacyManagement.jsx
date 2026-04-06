@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Plus, Search, RefreshCw, X, ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import PharmacyCard from './PharmacyCard';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -53,15 +53,12 @@ const PharmacyManagement = () => {
 
   const districts = ['Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Galle', 'Matara', 'Jaffna', 'Kurunegala', 'Badulla'];
 
-  // API Base URL
-  const API_URL = 'http://localhost:5000/api';
-
   // Fetch all pharmacies
   const fetchPharmacies = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/pharmacies`);
-      setPharmacies(response.data.data.pharmacies);
+      const response = await pharmacyAPI.getAllPharmacies();
+      setPharmacies(response.data.data?.pharmacies || response.data.pharmacies || (Array.isArray(response.data) ? response.data : []));
     } catch (error) {
       console.error('Error fetching pharmacies:', error);
     } finally {
@@ -78,9 +75,9 @@ const PharmacyManagement = () => {
     e.preventDefault();
     try {
       if (editingPharmacy) {
-        await axios.put(`${API_URL}/pharmacies/${editingPharmacy._id}`, formData);
+        await pharmacyAPI.updatePharmacy(editingPharmacy._id, formData);
       } else {
-        await axios.post(`${API_URL}/pharmacies`, formData);
+        await pharmacyAPI.createPharmacy(formData);
       }
       fetchPharmacies();
       setShowModal(false);
@@ -95,7 +92,7 @@ const PharmacyManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this pharmacy?')) {
       try {
-        await axios.delete(`${API_URL}/pharmacies/${id}`);
+        await pharmacyAPI.deletePharmacy(id);
         fetchPharmacies();
       } catch (error) {
         console.error('Error deleting pharmacy:', error);
@@ -107,7 +104,7 @@ const PharmacyManagement = () => {
   // Toggle status
   const handleToggleStatus = async (id, currentStatus) => {
     try {
-      await axios.patch(`${API_URL}/pharmacies/${id}/toggle-status`);
+      await pharmacyAPI.toggleStatus(id);
       fetchPharmacies();
     } catch (error) {
       console.error('Error toggling status:', error);
@@ -117,7 +114,7 @@ const PharmacyManagement = () => {
   // Generate QR Code
   const handleGenerateQR = async (id, name) => {
     try {
-      const response = await axios.get(`${API_URL}/pharmacies/${id}/qrcode`);
+      const response = await pharmacyAPI.generateQRCode(id);
       setQrCode(response.data.data.qrCode);
       setQrPharmacyName(name);
       setShowQRModal(true);
@@ -224,7 +221,7 @@ const PharmacyManagement = () => {
   const handleBulkDelete = async () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} pharmacies?`)) return;
     try {
-      await axios.post(`${API_URL}/pharmacies/bulk-delete`, { ids: Array.from(selectedIds) });
+      await pharmacyAPI.bulkDelete(Array.from(selectedIds));
       setSelectedIds(new Set());
       fetchPharmacies();
     } catch (error) {

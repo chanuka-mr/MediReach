@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/api';
 import {
     Search,
     Filter,
@@ -13,6 +12,7 @@ import {
     StickyNote,
     X
 } from 'lucide-react';
+import { romsAPI } from '../utils/apiEndpoints';
 
 const OrderDashboard = () => {
     const [orders, setOrders] = useState([]);
@@ -24,7 +24,7 @@ const OrderDashboard = () => {
     const fetchOrders = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         try {
-            const res = await api.get(`/roms/pharmacy-tasks?pharmacy_id=${pharmacyId}&t=${Date.now()}`);
+            const res = await romsAPI.getPharmacyTasks(pharmacyId === 'ALL' ? undefined : pharmacyId);
             setOrders(res.data);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
@@ -44,7 +44,7 @@ const OrderDashboard = () => {
 
     const handleAction = async (orderId, pharmacyIdForOrder, action) => {
         try {
-            await api.put(`/roms/${orderId}/process`, {
+            await romsAPI.processRequest(orderId, {
                 action: action,
                 pharmacy_id: pharmacyIdForOrder,
                 // Removed generic notes to preserve patient's original instructions

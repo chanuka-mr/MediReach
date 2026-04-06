@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { romsAPI, medicineAPI } from '../utils/apiEndpoints'
 import {
   Search, Filter, ShoppingCart, Clock, Building2,
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
@@ -25,9 +26,6 @@ const C = {
   warn:      "#B45309",
   danger:    "#C0392B",
 }
-
-// API endpoint for fetching orders
-const API = "http://localhost:5000/api/roms/pharmacy-tasks";
 
 const STATUS_CFG = {
   pending:    { label:"Pending",    color:"#92400E", bg:"rgba(180,83,9,0.08)",    border:"rgba(180,83,9,0.22)",    icon:Hourglass     },
@@ -723,27 +721,16 @@ export default function PharmacyOrders() {
     setLoading(true)
     setFetchError(null)
     try {
-      const url = new URL(API)
-      // Add pharmacy filter if specified
-      if (pharmFilter && pharmFilter !== 'All') {
-        url.searchParams.append('pharmacy_id', pharmFilter)
-      }
-      
-      const res = await fetch(url.toString())
-      const data = await res.json()
-      
-      if (!res.ok) throw new Error(data.message || "Failed to fetch orders")
+      const data = await romsAPI.getPharmacyTasks(pharmFilter);
+      const orders = data.data || data;
       
       // Transform database orders to match UI structure and fetch routing status
-      const transformedOrders = await Promise.all(data.map(async (order) => {
+      const transformedOrders = await Promise.all(orders.map(async (order) => {
         // Fetch routing status for each order
         let routingStatus = null;
         try {
-          const routingRes = await fetch(`http://localhost:5000/api/roms/${order._id}/routing-status`);
-          if (routingRes.ok) {
-            const routingData = await routingRes.json();
-            routingStatus = routingData.route_status;
-          }
+          const routingData = await romsAPI.getRoutingStatus(order._id);
+          routingStatus = routingData.data.route_status;
         } catch (routingError) {
           console.log('Failed to fetch routing status for order:', order._id);
         }
@@ -872,15 +859,9 @@ export default function PharmacyOrders() {
                 console.log(`Updating stock for medicine: ${medicineName} (ID: ${medicineId}), quantity: ${quantity}`)
                 
                 // Call the new backend endpoint to update stock
-                const stockUpdateResponse = await fetch('http://localhost:5000/medicines/stock/update', {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
+                const stockUpdateResponse = await medicineAPI.updateStock({
                     medicineId: medicineId,
                     quantity: quantity
-                  })
                 });
                 
                 if (stockUpdateResponse.ok) {
@@ -899,9 +880,9 @@ export default function PharmacyOrders() {
             console.warn('⚠️ No medicines array found in order, falling back to old method');
             
             // Fallback: Find the medicine by name (old method)
-            const medicinesResponse = await fetch('http://localhost:5000/medicines');
-            if (medicinesResponse.ok) {
-              const medicines = await medicinesResponse.json();
+            try {
+              const medicinesResponse = await medicineAPI.getAllMedicines();
+              const medicines = medicinesResponse.data;
               const medicineArray = Array.isArray(medicines) ? medicines : (medicines.medicines || []);
               
               // Find the medicine by name
@@ -918,14 +899,8 @@ export default function PharmacyOrders() {
                 console.log(`Found medicine: ${targetMedicine.mediName}, current stock: ${currentStock}, order quantity: ${orderQuantity}, new stock: ${newStock}`);
                 
                 // Update the medicine stock
-                const updateResponse = await fetch(`http://localhost:5000/medicines/${targetMedicine._id}`, {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
+                const updateResponse = await medicineAPI.updateMedicine(targetMedicine._id, {
                     mediStock: newStock
-                  })
                 });
                 
                 if (updateResponse.ok) {
@@ -936,8 +911,8 @@ export default function PharmacyOrders() {
               } else {
                 console.warn('⚠️ Medicine not found:', order.medicine);
               }
-            } else {
-              console.error('❌ Failed to fetch medicines:', await medicinesResponse.text());
+            } catch (error) {
+              console.error('❌ Error updating stock (fallback):', error);
             }
           }
         } catch (stockError) {
@@ -946,16 +921,10 @@ export default function PharmacyOrders() {
         }
         
         // Accept action: Update order status to 'Accepted' in database
-        const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const response = await romsAPI.processRequest(order.id, {
             action: 'accept',
             pharmacy_id: order.pharmacy_id,
             notes: 'Order accepted by pharmacy'
-          })
         });
 
         console.log('API response status:', response.status)
@@ -988,17 +957,11 @@ export default function PharmacyOrders() {
                            action === 'accept' ? 'accept' : action;
       
       // For dispatch and reject actions, make API call to update order status
-      const response = await fetch(`http://localhost:5000/api/roms/${order.id}/process`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: backendAction,
-          pharmacy_id: order.pharmacy_id,
-          rejectionReason: action === 'reject' ? reason : undefined,
-          notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
-        })
+      const response = await romsAPI.processRequest(order.id, {
+        action: backendAction,
+        pharmacy_id: order.pharmacy_id,
+        rejectionReason: action === 'reject' ? reason : undefined,
+        notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
       });
 
       console.log('API response status:', response.status)

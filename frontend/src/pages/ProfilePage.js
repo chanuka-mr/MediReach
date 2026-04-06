@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { userAPI } from "../utils/apiEndpoints";
 
 // ── Icons ─────────────────────────────────────────────
 const GridIcon = () => (
@@ -364,17 +365,8 @@ export default function ProfilePage() {
         payload.dateOfBirth = dob || undefined;
       }
 
-      const res = await fetch("http://localhost:8080/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update profile");
+      const res = await userAPI.updateProfile(payload);
+      const data = res.data;
       
       localStorage.setItem("userInfo", JSON.stringify({ ...parsed, user: data, ...data, token: token }));
       
@@ -401,17 +393,8 @@ export default function ProfilePage() {
 
       // Without a currentPassword check in the backend, we only submit newPassword via the same PUT profile endpoint
       // Adjust if backend introduces a separate change-password route
-      const res = await fetch("http://localhost:8080/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: newPass })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update password");
+      const res = await userAPI.updateProfile({ password: newPass });
+      const data = res.data;
 
       setCurrentPass(""); setNewPass(""); setConfPass("");
       showToast("Password changed successfully!");
@@ -426,13 +409,8 @@ export default function ProfilePage() {
       const saved = localStorage.getItem("userInfo");
       if (!saved) throw new Error("Not logged in");
       const parsed = JSON.parse(saved);
-      const res = await fetch("http://localhost:8080/api/users/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${parsed.token}` },
-        body: JSON.stringify({ addresses: updatedAddresses })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      const res = await userAPI.updateProfile({ addresses: updatedAddresses });
+      const data = res.data;
       
       setAddresses(data.addresses || updatedAddresses);
       localStorage.setItem("userInfo", JSON.stringify({ ...parsed, user: data, ...data, token: parsed.token }));

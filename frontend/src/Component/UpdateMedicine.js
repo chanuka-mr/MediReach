@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronRight, AlertCircle, CheckCircle2,
-  Package, FileText, Pill, Building2, Calendar,
-  DollarSign, Hash, Tag, Upload, X,
-  Loader2, Check, ShieldCheck, ShieldAlert, ShieldOff,
-  Barcode, ImagePlus, ClipboardList, Info,
-  RefreshCw, Save, PencilLine, Eye, EyeOff,
-  AlertTriangle, Undo2
-} from 'lucide-react'
+  Search, Filter, ShoppingCart, Clock, Building2,
+  ChevronRight, RefreshCw, Download, Eye,
+  AlertTriangle, Truck, CheckCircle2,
+  DollarSign, Hash, Calendar, MapPin,
+  Pill, TrendingUp, ClipboardList,
+  Hourglass, Ban, CircleDot, X,
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  ShieldCheck, ShieldOff, Info, AlertCircle, PencilLine,
+  Loader2, Check, Undo2, ArrowLeft, EyeOff, Tag,
+  Barcode, ImagePlus, Upload, Save
+} from 'lucide-react';
+import { pharmacyAPI, medicineAPI } from '../utils/apiEndpoints';
 
 // ── Palette ───────────────────────────────────────────────────────
 const C = {
@@ -22,9 +26,6 @@ const C = {
   warn:      "#B45309",
   danger:    "#C0392B",
 }
-
-const API          = "http://localhost:5000/medicines"
-const PHARMACY_API = "http://localhost:5000/api/pharmacies"
 
 const categories = [
   "Antibiotic","Antidiabetic","Cardiovascular","Respiratory",
@@ -137,9 +138,8 @@ export default function MedicineUpdate() {
       setLoadingPharmacies(true)
       setPharmacyError(null)
       try {
-        const res  = await fetch(PHARMACY_API)
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || "Failed to fetch pharmacies")
+        const res = await pharmacyAPI.getAllPharmacies()
+        const data = res.data
         const list = data.data?.pharmacies || []
         // Show all pharmacies (active + inactive) in update form so existing assignments are always visible
         setPharmaciesList(list.map(p => p.name))
@@ -157,9 +157,8 @@ export default function MedicineUpdate() {
     const fetchMedicine = async () => {
       setLoading(true)
       try {
-        const res  = await fetch(`${API}/${id}`)
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || "Medicine not found")
+        const res = await medicineAPI.getMedicineById(id)
+        const data = res.data
         const m = data.medicine || data
         const loaded = {
           mediName:               m.mediName               || "",
@@ -271,13 +270,11 @@ export default function MedicineUpdate() {
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
     setSubmitting(true); setApiError(null)
     try {
-      const res = await fetch(`${API}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ ...form, mediPrice: Number(form.mediPrice), mediStock: Number(form.mediStock) }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Failed to update medicine")
+      const res = await medicineAPI.updateMedicine(id, { ...form, mediPrice: Number(form.mediPrice), mediStock: Number(form.mediStock) })
+      const data = res.data
+      if (res.status !== 200 && res.status !== 201) {
+        throw new Error(data.message || "Failed to update medicine")
+      }
       setOriginal({ ...form })
       setSaved(true)
       setTimeout(() => navigate(`/medicineInventory?pharmacy=${encodeURIComponent(form.Pharmacy)}`), 1500)

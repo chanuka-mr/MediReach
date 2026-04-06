@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { authAPI } from '../utils/apiEndpoints';
 import ForgotPasswordPage from "./ForgotPasswordPage";
 
 // ── Icons ────────────────────────────────────────────
@@ -167,6 +168,20 @@ export default function AuthPage({ onLoginSuccess }) {
     setMode(to);
   };
 
+  // Test login with hardcoded credentials
+  const testLogin = async () => {
+    try {
+      console.log('Testing login with hardcoded credentials...');
+      const res = await authAPI.login({ email: 'test@example.com', password: 'password123' });
+      console.log('Test login response:', res);
+      console.log('Test login data:', res.data);
+      alert(`Test Login Status: ${res.status}\nData: ${JSON.stringify(res.data, null, 2)}`);
+    } catch (error) {
+      console.error('Test login failed:', error);
+      alert('Test login failed. Check console for details.');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -176,18 +191,44 @@ export default function AuthPage({ onLoginSuccess }) {
         if (sPass !== sConf) { alert("Passwords do not match"); setLoading(false); return; }
         const payload = { name: sName, email: sEmail, password: sPass, contactNumber: sPhone, role: sRole === "customer" ? "user" : "pharmacy" };
         if (sRole === "pharmacy") { payload.pharmacyName = sPharmacy; payload.licenseNumber = sLicense; }
-        const res = await fetch("http://localhost:5000/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        const data = await res.json();
-        if (res.ok) { alert("Signup successful! Please login."); switchMode("login"); }
-        else alert(data.message || "Signup failed");
+        const res = await authAPI.register(payload);
+        const data = res.data;
+        if (res.ok || data.status === 'success' || data.success) { 
+          alert("Signup successful! Please login."); 
+          switchMode("login"); 
+        } else {
+          alert(data.message || "Signup failed");
+        }
       } else {
         if (!lEmail || !lPass) { alert("Please enter email and password"); setLoading(false); return; }
-        const res = await fetch("http://localhost:5000/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: lEmail, password: lPass }) });
-        const data = await res.json();
-        if (res.ok) { localStorage.setItem("userInfo", JSON.stringify(data)); if (onLoginSuccess) onLoginSuccess(); }
-        else alert(data.message || "Invalid credentials");
+        
+        console.log('Attempting login with:', { email: lEmail, password: '***' });
+        
+        const res = await authAPI.login({ email: lEmail, password: lPass });
+        console.log('Login response:', res);
+        console.log('Response status:', res.status);
+        console.log('Response data:', res.data);
+        
+        const data = res.data;
+        
+        // Check multiple possible success indicators
+        const isSuccess = res.status === 200 || res.ok || data.status === 'success' || data.success || data.token;
+        
+        console.log('Is success:', isSuccess);
+        
+        if (isSuccess) { 
+          console.log('Login successful, storing userInfo:', data);
+          localStorage.setItem("userInfo", JSON.stringify(data)); 
+          if (onLoginSuccess) onLoginSuccess(); 
+        } else {
+          console.log('Login failed:', data);
+          alert(data.message || "Invalid credentials");
+        }
       }
-    } catch (err) { console.error(err); alert("Something went wrong"); }
+    } catch (err) { 
+      console.error(err); 
+      alert("Something went wrong: " + (err.response?.data?.message || err.message || 'Unknown error')); 
+    }
     finally { setLoading(false); }
   };
 
@@ -415,6 +456,16 @@ export default function AuthPage({ onLoginSuccess }) {
               {loading ? <><Spinner /> Authenticating...</> : <>Sign In <ArrowRightIcon /></>}
             </button>
           </form>
+
+          {/* Test Login Button */}
+          <div className="mt-4 text-center">
+            <button 
+              onClick={testLogin}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+            >
+              🧪 Test Login
+            </button>
+          </div>
 
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-[#DDE3ED]" />

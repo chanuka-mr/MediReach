@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { pharmacyAPI, romsAPI } from '../utils/apiEndpoints';
 import { ClipboardList, Send, AlertCircle, Upload, FileCheck, Loader2, ShoppingCart, X, Plus, Minus } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 // ── Same API base used in MedicineAdd ─────────────────────────────
-const PHARMACY_API = "http://localhost:5000/api/pharmacies";
+const PHARMACY_API = pharmacyAPI;
 
 const OrderForm = () => {
     const [searchParams] = useSearchParams();
@@ -43,10 +43,9 @@ const OrderForm = () => {
             setLoadingPharmacies(true);
             setPharmacyError(null);
             try {
-                const res  = await fetch(PHARMACY_API);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || "Failed to fetch pharmacies");
-                const list = data.data?.pharmacies || [];
+                const res = await pharmacyAPI.getAllPharmacies();
+                const data = res.data;
+                const list = data.data?.pharmacies || data.pharmacies || data || [];
                 // Only active pharmacies — same filter as MedicineAdd
                 setPharmaciesList(list.filter(p => p.isActive).map(p => p.name));
             } catch (err) {
@@ -79,7 +78,7 @@ const OrderForm = () => {
 
             if (editId) {
                 try {
-                    const res   = await api.get(`/roms/request/${editId}`);
+                    const res = await romsAPI.getRequestById(editId);
                     const order = res.data;
                     setFormData({
                         patient_id:          order.patient_id,
@@ -169,11 +168,11 @@ const OrderForm = () => {
             }
 
             if (editId) {
-                await api.put(`/roms/request/${editId}`, data);
+                await romsAPI.updateRequest(editId, data);
                 setMessage({ type: 'success', text: 'Order updated! Redirecting...' });
                 setTimeout(() => navigate('/order-details'), 1500);
             } else {
-                await api.post('/roms/request', data);
+                await romsAPI.createRequest(data);
                 setMessage({ type: 'success', text: 'Order submitted! Redirecting...' });
                 setTimeout(() => navigate('/order-details'), 1500);
             }

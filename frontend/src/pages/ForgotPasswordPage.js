@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
-const API = "http://localhost:8080/api/auth";
+import { authAPI } from '../utils/apiEndpoints';
 
 // ── Icons ─────────────────────────────────────────────
 const GridIcon = () => (
@@ -214,19 +213,10 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
     setEmailError("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        goTo("otp");
-      } else {
-        setEmailError(data.message || "Something went wrong.");
-      }
-    } catch {
-      setEmailError("Could not connect to server. Please try again.");
+      const res = await authAPI.forgotPassword(email);
+      goTo("otp");
+    } catch (err) {
+      setEmailError(err.response?.data?.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -240,22 +230,13 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
     setOtpError("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: code }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        goTo("reset");
-      } else {
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-        setOtpError(data.message || "Invalid OTP. Please try again.");
-        setOtp(Array(6).fill(""));
-      }
-    } catch {
-      setOtpError("Could not connect to server. Please try again.");
+      const res = await authAPI.verifyOTP(email, code);
+      goTo("reset");
+    } catch (err) {
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      setOtpError(err.response?.data?.message || "Invalid OTP. Please try again.");
+      setOtp(Array(6).fill(""));
     } finally {
       setLoading(false);
     }
@@ -270,29 +251,21 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
     setPassError("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: otp.join(""), password: newPass }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        goTo("done");
+      const res = await authAPI.resetPassword(email, otp.join(""), newPass);
+      goTo("done");
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || "Something went wrong.";
+      // If OTP was wrong/expired, go back to OTP step
+      if (errorMessage && errorMessage.toLowerCase().includes("otp")) {
+        setPassError("");
+        setOtp(Array(6).fill(""));
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+        setOtpError(errorMessage);
+        goTo("otp");
       } else {
-        // If OTP was wrong/expired, go back to OTP step
-        if (data.message && data.message.toLowerCase().includes("otp")) {
-          setPassError("");
-          setOtp(Array(6).fill(""));
-          setShake(true);
-          setTimeout(() => setShake(false), 500);
-          setOtpError(data.message);
-          goTo("otp");
-        } else {
-          setPassError(data.message || "Something went wrong.");
-        }
+        setPassError(errorMessage);
       }
-    } catch {
-      setPassError("Could not connect to server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -304,11 +277,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
     setOtp(Array(6).fill(""));
     setOtpError("");
     try {
-      await fetch(`${API}/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      await authAPI.forgotPassword(email);
     } catch { /* silent */ }
     // Timer resets via the useEffect on step "otp" — trigger it by resetting timer manually
     setResendTimer(30);

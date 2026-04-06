@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
-import axios from 'axios';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Building2, Wifi, ChevronRight, Activity, Clock, Phone } from 'lucide-react';
 import L from 'leaflet';
@@ -27,16 +27,14 @@ const PharmacyNetworkMap = ({ isUserView = false, onViewInfo }) => {
    const [selectedFilter, setSelectedFilter] = useState('All');
    const navigate = useNavigate();
 
-   const API_URL = 'http://localhost:5000/api';
-
    useEffect(() => {
       fetchData();
    }, []);
 
    const fetchData = async () => {
       try {
-         const response = await axios.get(`${API_URL}/pharmacies`);
-         setPharmacies(response.data.data.pharmacies);
+         const response = await pharmacyAPI.getAllPharmacies();
+         setPharmacies(response.data.data?.pharmacies || response.data.pharmacies || []);
       } catch (error) {
          console.error('Error fetching map data:', error);
       }
@@ -49,7 +47,7 @@ const PharmacyNetworkMap = ({ isUserView = false, onViewInfo }) => {
       return 'online';
    };
 
-   const filteredPharmacies = pharmacies.filter(p => {
+   const displayedPharmacies = pharmacies.filter(p => {
       const status = getStatus(p);
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
          p.district.toLowerCase().includes(searchTerm.toLowerCase());
@@ -74,7 +72,7 @@ const PharmacyNetworkMap = ({ isUserView = false, onViewInfo }) => {
                         {isUserView ? 'Pharmacy Finder' : 'Live Network Status'}
                      </h2>
                      <p className="text-[10px] font-bold text-gray-400">
-                        {isUserView ? `Showing ${filteredPharmacies.length} pharmacies` : `Monitoring ${pharmacies.length} branches`}
+                        {isUserView ? `Showing ${displayedPharmacies.length} pharmacies` : `Monitoring ${pharmacies.length} branches`}
                      </p>
                   </div>
                </div>
@@ -120,7 +118,7 @@ const PharmacyNetworkMap = ({ isUserView = false, onViewInfo }) => {
                />
                <ZoomControl position="bottomright" />
 
-               {filteredPharmacies.map(p => {
+               {displayedPharmacies.map(p => {
                   if (!p.location || !p.location.coordinates || p.location.coordinates.length < 2) return null;
                   const status = getStatus(p);
                   return (

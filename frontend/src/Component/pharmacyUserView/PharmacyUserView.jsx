@@ -4,7 +4,7 @@ import PharmacyListView from '../pharmacy/PharmacyListView';
 import PharmacyNetworkMap from '../pharmacy/PharmacyNetworkMap';
 import PharmacyUserDetailModal from './PharmacyUserDetailModal';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { messageAPI } from '../../utils/apiEndpoints';
 
 const categories = [
   { id: 'open-now', label: 'Open Now', icon: Clock, color: '#34D399', sub: 'Available right now' },
@@ -32,7 +32,7 @@ export default function PharmacyUserView() {
         return;
       }
 
-      await axios.post('http://localhost:5000/api/chat/start', {
+      await messageAPI.startChat({
         userId: user._id || user.id,
         pharmacyId: pharmacyId
       });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import { pharmacyAPI } from '../../utils/apiEndpoints';
 import { 
   MapPin, 
   Phone, 
@@ -25,8 +25,6 @@ import {
   CreditCard
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
 const PharmacyQRDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
@@ -40,12 +38,11 @@ const PharmacyQRDetail = () => {
 
   const fetchPharmacyDetails = async () => {
     try {
-      const response = await axios.get(`${API_URL}/pharmacies/${id}`);
-      if (response.data.status === 'success') {
-        setPharmacy(response.data.data.pharmacy);
-      }
+      const response = await pharmacyAPI.getPharmacyById(id);
+      setPharmacy(response.data.data?.pharmacy || response.data.pharmacy);
     } catch (err) {
-      setError('Connection refused. Invalid scan matrix.');
+      console.error('Error fetching pharmacy details:', err);
+      setError('Failed to load pharmacy details');
     } finally {
       setLoading(false);
     }

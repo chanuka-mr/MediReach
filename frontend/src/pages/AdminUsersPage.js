@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Mail, Phone, Shield, Building2, User, Loader2, Activity } from 'lucide-react';
+import { userAPI } from '../utils/apiEndpoints';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -10,27 +11,8 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const saved = localStorage.getItem("userInfo");
-        const userInfo = saved ? JSON.parse(saved) : null;
-        
-        if (!userInfo || !userInfo.token) {
-          setError("Not authorized");
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`http://localhost:5000/api/users`, {
-          headers: {
-            'Authorization': `Bearer ${userInfo.token}`
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error('Failed to fetch users');
-        }
-
-        const data = await res.json();
-        setUsers(data);
+        const res = await userAPI.getAllUsers();
+        setUsers(res.data);
       } catch (err) {
         setError(err.message);
       } finally {

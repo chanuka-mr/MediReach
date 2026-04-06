@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import { romsAPI } from '../utils/apiEndpoints';
 import {
     Clock,
     CreditCard,
@@ -50,7 +50,7 @@ const OrderDetails = () => {
         setLoading(true);
         try {
             console.log(`Fetching orders for patient: ${patientId}`);
-            const res = await api.get(`/roms/request?patient_id=${patientId}`);
+            const res = await romsAPI.getRequestsByPatientId(patientId);
             console.log('Orders fetched:', res.data);
             setOrders(res.data || []);
         } catch (error) {
@@ -74,7 +74,7 @@ const OrderDetails = () => {
     const handleDelete = async (orderId) => {
         if (!window.confirm('Are you sure you want to delete this order?')) return;
         try {
-            await api.delete(`/roms/request/${orderId}`);
+            await romsAPI.deleteRequest(orderId);
             fetchMyOrders();
         } catch (error) {
             alert('Failed to delete order: ' + (error.response?.data?.message || error.message));

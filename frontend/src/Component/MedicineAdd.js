@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronRight, AlertCircle, CheckCircle2,
-  Package, FileText, Pill, Building2, Calendar,
-  DollarSign, Hash, Tag, Layers, Upload, X,
-  Loader2, Check, ShieldCheck, ShieldAlert, ShieldOff,
-  Stethoscope, FlaskConical, Barcode, ImagePlus,
-  ClipboardList, Info, LayoutGrid
-} from 'lucide-react'
+  Search, Filter, ShoppingCart, Clock, Building2,
+  ChevronRight, RefreshCw, Download, Eye,
+  AlertTriangle, Truck, CheckCircle2,
+  DollarSign, Hash, Calendar, MapPin,
+  Pill, TrendingUp, ClipboardList,
+  Hourglass, Ban, CircleDot, X,
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  ShieldCheck, ShieldOff, Info, AlertCircle, Package,
+  ArrowLeft, Check, Tag, Barcode, ImagePlus, Upload, Loader2
+} from 'lucide-react';
+import { pharmacyAPI, medicineAPI } from '../utils/apiEndpoints';
 
 // ── Palette — matches InventoryDashboard exactly ──────────────────
 const C = {
@@ -21,8 +26,6 @@ const C = {
   danger:    "#C0392B",
 }
 
-const API          = "http://localhost:5000/medicines"
-const PHARMACY_API = "http://localhost:5000/api/pharmacies"
 
 const categories = [
   "Antibiotic","Antidiabetic","Cardiovascular","Respiratory",
@@ -113,10 +116,9 @@ export default function MedicineAdd() {
       setLoadingPharmacies(true)
       setPharmacyError(null)
       try {
-        const res  = await fetch(PHARMACY_API)
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || "Failed to fetch pharmacies")
-        const list = data.data?.pharmacies || []
+        const res = await pharmacyAPI.getAllPharmacies()
+        const data = res.data
+        const list = data.data?.pharmacies || data.pharmacies || []
         // Only show active pharmacies in the dropdown
         setPharmaciesList(list.filter(p => p.isActive).map(p => p.name))
       } catch (err) {
@@ -226,14 +228,9 @@ export default function MedicineAdd() {
         mediPrescriptionStatus: form.mediPrescriptionStatus,
         Pharmacy:               form.Pharmacy,
       }
-      const res = await fetch(API, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      })
-      let data = {}
-      try { data = await res.json() } catch(_) {}
-      if (!res.ok) {
+      const res = await medicineAPI.createMedicine(payload)
+      const data = res.data
+      if (res.status !== 200 && res.status !== 201) {
         const msg = data.message || data.error || `Server error ${res.status}`
         throw new Error(msg)
       }

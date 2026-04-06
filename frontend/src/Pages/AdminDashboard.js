@@ -6,12 +6,8 @@ import {
   User, MapPin, ArrowUpRight, BarChart3, Check,
   ShoppingCart, Loader2
 } from 'lucide-react';
+import { pharmacyAPI, medicineAPI, userAPI, romsAPI } from '../utils/apiEndpoints';
 
-// ── Exact same API constants as other dashboards ──────────────────
-const PHARMACY_API = 'http://localhost:5000/api/pharmacies';
-const MEDICINE_API = 'http://localhost:5000/medicines';
-const USERS_API    = 'http://localhost:5000/api/users';
-const ROMS_API     = 'http://localhost:5000/api/roms/pharmacy-tasks?pharmacy_id=ALL';
 
 // ── Same color palette used across all pages ─────────────────────
 const C = {
@@ -200,29 +196,29 @@ export default function AdminDashboard() {
 
     // Same fetch pattern as InventoryDashboard (Promise.all)
     const [pharmRes, medRes, usersRes, romsRes] = await Promise.allSettled([
-      fetch(PHARMACY_API),
-      fetch(MEDICINE_API),
-      fetch(USERS_API, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-      fetch(ROMS_API,  { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+      pharmacyAPI.getAllPharmacies(),
+      medicineAPI.getAllMedicines(),
+      userAPI.getAllUsers(),
+      romsAPI.getPharmacyTasks('ALL'),
     ]);
 
-    if (pharmRes.status === 'fulfilled' && pharmRes.value.ok) {
-      const d = await pharmRes.value.json();
+    if (pharmRes.status === 'fulfilled') {
+      const d = pharmRes.value.data;
       setPharmacies(d.data?.pharmacies || d.pharmacies || (Array.isArray(d) ? d : []));
     } else errs.pharmacies = 'Failed to fetch pharmacies';
 
-    if (medRes.status === 'fulfilled' && medRes.value.ok) {
-      const d = await medRes.value.json();
+    if (medRes.status === 'fulfilled') {
+      const d = medRes.value.data;
       setMedicines(Array.isArray(d) ? d : (d.medicines || []));
     } else errs.medicines = 'Failed to fetch medicines';
 
-    if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
-      const d = await usersRes.value.json();
+    if (usersRes.status === 'fulfilled') {
+      const d = usersRes.value.data;
       setUsers(Array.isArray(d) ? d : (d.data || d.users || []));
     } else errs.users = 'Failed to fetch users';
 
-    if (romsRes.status === 'fulfilled' && romsRes.value.ok) {
-      const d = await romsRes.value.json();
+    if (romsRes.status === 'fulfilled') {
+      const d = romsRes.value.data;
       setOrders(Array.isArray(d) ? d : (d.data || []));
     } else errs.orders = 'Failed to fetch orders';
 

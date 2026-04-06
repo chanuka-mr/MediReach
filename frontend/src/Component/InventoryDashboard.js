@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Package, Clock, Building2, MapPin,
-  ChevronRight, ShoppingCart, ArrowUpRight,
-  Wifi, WifiOff, AlertTriangle, Activity, TrendingUp,
-  BarChart3, RefreshCw, LayoutGrid, Loader2
-} from 'lucide-react'
+  Search, Filter, ShoppingCart, Clock, Building2,
+  ChevronRight, RefreshCw, Download, Eye,
+  AlertTriangle, Truck, CheckCircle2,
+  DollarSign, Hash, Calendar, MapPin,
+  Pill, TrendingUp, ClipboardList,
+  Hourglass, Ban, CircleDot, X,
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  Wifi, WifiOff, Package, LayoutGrid, Plus,
+  ArrowUpRight, Activity, Loader2
+} from 'lucide-react';
+import { pharmacyAPI, medicineAPI, romsAPI } from '../utils/apiEndpoints';
 
 // ── Palette ───────────────────────────────────────────────────────
 const C = {
@@ -19,9 +25,6 @@ const C = {
   warn:      "#B45309",
   danger:    "#C0392B",
 }
-
-const PHARMACY_API = 'http://localhost:5000/api/pharmacies'
-const MEDICINE_API = "http://localhost:5000/medicines"
 
 // ── getMockData — same as PharmacyDashboard ───────────────────────
 const getMockData = (id) => {
@@ -43,8 +46,8 @@ const STATUS = {
 async function buildPharmacyList(pharmacies, medicines) {
   try {
     // Fetch medication requests from database
-    const ordersRes = await fetch('http://localhost:5000/api/roms/pharmacy-tasks');
-    const medicationRequests = ordersRes.ok ? await ordersRes.json() : [];
+    const ordersRes = await romsAPI.getAllRequests();
+    const medicationRequests = ordersRes.data || [];
 
     console.log('🔄 Building pharmacy list with medication requests...');
     console.log('📦 Total medication requests:', medicationRequests.length);
@@ -437,17 +440,15 @@ export default function InventoryDashboard() {
     setFetchError(null)
     try {
       const [pharmRes, medRes] = await Promise.all([
-        fetch(PHARMACY_API),
-        fetch(MEDICINE_API),
+        pharmacyAPI.getAllPharmacies(),
+        medicineAPI.getAllMedicines(),
       ])
 
-      const pharmData = await pharmRes.json()
-      const medData   = await medRes.json()
+      const pharmData = pharmRes.data
+      const medData   = medRes.data
 
-      if (!pharmRes.ok) throw new Error(pharmData.message || "Failed to fetch pharmacies")
-
-      const pharmacies = pharmData.data?.pharmacies || []
-      const meds       = Array.isArray(medData) ? medData : (medData.medicines || [])
+      const pharmacies = pharmData.data?.pharmacies || pharmData.pharmacies || []
+      const meds       = Array.isArray(medData) ? medData : (medData.medicines || medData.data || [])
 
       setPharmacyList(pharmacies)
       setMedicines(meds)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, Search, X, MessageCircle } from 'lucide-react';
 import ChatBox from '../Components/Chat/ChatBox';
+import { messageAPI, pharmacyAPI } from '../utils/apiEndpoints';
 
 const UserChats = () => {
     const [chats, setChats] = useState([]);
@@ -24,11 +25,7 @@ const UserChats = () => {
     const fetchChats = async () => {
         try {
             const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            const { data } = await axios.get(`http://localhost:5000/api/chat`, {
-                headers: {
-                    Authorization: `Bearer ${userInfo.token}`,
-                },
-            });
+            const { data } = await messageAPI.getUserChats(userInfo?.user?.id || userInfo?.id);
             setChats(data);
         } catch (error) {
             console.error("Failed to fetch chats", error);
@@ -38,13 +35,8 @@ const UserChats = () => {
     const fetchPharmacies = async () => {
         setLoading(true);
         try {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            const { data } = await axios.get(`http://localhost:5000/api/users/pharmacies`, {
-                headers: {
-                    Authorization: `Bearer ${userInfo.token}`,
-                },
-            });
-            setPharmacies(data);
+            const { data } = await pharmacyAPI.getAllPharmacies();
+            setPharmacies(data.data?.pharmacies || data.pharmacies || []);
         } catch (error) {
             console.error("Failed to fetch pharmacies", error);
         } finally {
@@ -55,12 +47,8 @@ const UserChats = () => {
     const startChat = async (pharmacyId) => {
         try {
             const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            const { data } = await axios.post(`http://localhost:5000/api/chat`, {
+            const { data } = await messageAPI.startChat({
                 userId: pharmacyId
-            }, {
-                headers: {
-                    Authorization: `Bearer ${userInfo.token}`,
-                },
             });
             
             if (!chats.find((c) => c._id === data._id)) {
