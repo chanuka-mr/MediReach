@@ -173,18 +173,19 @@ const startServer = async () => {
             console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
-                socket.join(userData._id);
-                console.log("User joined his own room: ", userData._id);
+                const userId = String(userData._id);
+                socket.join(userId);
+                console.log("User joined his own room: ", userId);
                 socket.emit("connected");
             });
 
             socket.on("join chat", (room) => {
-                socket.join(room);
+                socket.join(String(room));
                 console.log("User Joined Room: " + room);
             });
 
-            socket.on("typing", (room) => socket.in(room).emit("typing"));
-            socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
+            socket.on("typing", (room) => socket.in(String(room)).emit("typing"));
+            socket.on("stop typing", (room) => socket.in(String(room)).emit("stop typing"));
 
             socket.on("new message", (newMessageReceived) => {
                 var chat = newMessageReceived.chat;
@@ -192,9 +193,9 @@ const startServer = async () => {
                 if (!chat.users) return console.log("chat.users not defined");
 
                 chat.users.forEach((user) => {
-                    if (user._id == newMessageReceived.sender._id) return;
+                    if (String(user._id) == String(newMessageReceived.sender._id)) return;
 
-                    socket.in(user._id).emit("message received", newMessageReceived);
+                    socket.in(String(user._id)).emit("message received", newMessageReceived);
                 });
             });
 

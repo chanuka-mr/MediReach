@@ -1,8 +1,10 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Settings, FileText, Map, Clock, Activity } from 'lucide-react';
+import { LayoutDashboard, Settings, FileText, Map, Clock, Activity, MessageSquare } from 'lucide-react';
+import { useChat } from '../../context/ChatContext';
 
 const PharmacyLayout = () => {
+  const { totalUnreadCount } = useChat();
   const location = useLocation();
 
   const tabs = [
@@ -12,6 +14,7 @@ const PharmacyLayout = () => {
     { name: '24/7 Pharmacies', path: '/pharmacy/24-7', icon: Activity },
     { name: 'Live Map', path: '/pharmacy/map', icon: Map },
     { name: 'Reports', path: '/pharmacy/reports', icon: FileText },
+    { name: 'Chats', path: '/pharmacy/chats', icon: MessageSquare, badge: true },
   ];
 
   return (
@@ -36,6 +39,11 @@ const PharmacyLayout = () => {
               >
                 <tab.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 {tab.name}
+                {tab.badge && totalUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white shadow-sm">
+                    {totalUnreadCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}

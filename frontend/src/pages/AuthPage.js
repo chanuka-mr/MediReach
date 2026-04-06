@@ -168,20 +168,6 @@ export default function AuthPage({ onLoginSuccess }) {
     setMode(to);
   };
 
-  // Test login with hardcoded credentials
-  const testLogin = async () => {
-    try {
-      console.log('Testing login with hardcoded credentials...');
-      const res = await authAPI.login({ email: 'test@example.com', password: 'password123' });
-      console.log('Test login response:', res);
-      console.log('Test login data:', res.data);
-      alert(`Test Login Status: ${res.status}\nData: ${JSON.stringify(res.data, null, 2)}`);
-    } catch (error) {
-      console.error('Test login failed:', error);
-      alert('Test login failed. Check console for details.');
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -456,16 +442,6 @@ export default function AuthPage({ onLoginSuccess }) {
               {loading ? <><Spinner /> Authenticating...</> : <>Sign In <ArrowRightIcon /></>}
             </button>
           </form>
-
-          {/* Test Login Button */}
-          <div className="mt-4 text-center">
-            <button 
-              onClick={testLogin}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
-            >
-              🧪 Test Login
-            </button>
-          </div>
 
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-[#DDE3ED]" />
