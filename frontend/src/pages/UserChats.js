@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Plus, Search, X, MessageCircle } from 'lucide-react';
 import { useChat } from '../context/ChatContext';
 import ChatBox from '../Components/Chat/ChatBox';
-import { messageAPI, pharmacyAPI } from '../utils/apiEndpoints';
+import { chatAPI, userAPI } from '../utils/apiEndpoints';
 
 const UserChats = () => {
     const { setSelectedChat, selectedChat, unreadCounts, markAsRead } = useChat();
@@ -25,8 +24,7 @@ const UserChats = () => {
 
     const fetchChats = async () => {
         try {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            const { data } = await messageAPI.getUserChats(userInfo?.user?.id || userInfo?.id);
+            const { data } = await chatAPI.getUserChats();
             setChats(data);
         } catch (error) {
             console.error("Failed to fetch chats", error);
@@ -36,8 +34,8 @@ const UserChats = () => {
     const fetchPharmacies = async () => {
         setLoading(true);
         try {
-            const { data } = await pharmacyAPI.getAllPharmacies();
-            setPharmacies(data.data?.pharmacies || data.pharmacies || []);
+            const { data } = await userAPI.getPharmacyUsers();
+            setPharmacies(data);
         } catch (error) {
             console.error("Failed to fetch pharmacies", error);
         } finally {
@@ -47,8 +45,7 @@ const UserChats = () => {
 
     const startChat = async (pharmacyId) => {
         try {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            const { data } = await messageAPI.startChat({
+            const { data } = await chatAPI.startChat({
                 userId: pharmacyId
             });
             

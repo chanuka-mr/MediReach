@@ -27,6 +27,22 @@ const PaymentUI = () => {
     const [cvcVisible, setCvcVisible] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [showVerificationPopup, setShowVerificationPopup] = useState(false);
+    
+    // Form state
+    const [formData, setFormData] = useState({
+        cardholderName: '',
+        cardNumber: '',
+        expiryDate: '',
+        cvc: ''
+    });
+    
+    // Validation errors state
+    const [errors, setErrors] = useState({
+        cardholderName: '',
+        cardNumber: '',
+        expiryDate: '',
+        cvc: ''
+    });
 
     const fetchOrder = async () => {
         if (!orderId) {
@@ -46,10 +62,167 @@ const PaymentUI = () => {
     useEffect(() => {
         fetchOrder();
     }, [orderId]);
+
+    // Validation functions
+    const validateCardholderName = (name) => {
+        if (!name || name.trim() === '') {
+            return 'Cardholder name is required';
+        }
+        if (!/^[a-zA-Z\s'-]+$/.test(name)) {
+            return 'Cardholder name can only contain letters, spaces, hyphens, and apostrophes';
+        }
+        if (name.trim().length < 3) {
+            return 'Cardholder name must be at least 3 characters long';
+        }
+        return '';
+    };
+
+    const validateCardNumber = (number) => {
+        if (!number || number.trim() === '') {
+            return 'Card number is required';
+        }
+        // Remove spaces and dashes
+        const cleanNumber = number.replace(/[\s-]/g, '');
+        if (!/^\d{16}$/.test(cleanNumber)) {
+            return 'Card number must be exactly 16 digits';
+        }
+        // Basic Luhn algorithm check
+        let sum = 0;
+        let isEven = false;
+        for (let i = cleanNumber.length - 1; i >= 0; i--) {
+            let digit = parseInt(cleanNumber[i]);
+            if (isEven) {
+                digit *= 2;
+                if (digit > 9) {
+                    digit -= 9;
+                }
+            }
+            sum += digit;
+            isEven = !isEven;
+        }
+        if (sum % 10 !== 0) {
+            return 'Invalid card number';
+        }
+        return '';
+    };
+
+    const validateExpiryDate = (expiry) => {
+        if (!expiry || expiry.trim() === '') {
+            return 'Expiry date is required';
+        }
+        // Accept MM/YY, MM / YY, MMYY formats
+        const cleanExpiry = expiry.replace(/[\s\/]/g, '');
+        if (!/^\d{4}$/.test(cleanExpiry)) {
+            return 'Expiry date must be in MM/YY format';
+        }
+        
+        const month = parseInt(cleanExpiry.substring(0, 2));
+        const year = parseInt(cleanExpiry.substring(2, 4));
+        const currentYear = new Date().getFullYear() % 100;
+        const currentMonth = new Date().getMonth() + 1;
+        
+        if (month < 1 || month > 12) {
+            return 'Invalid month';
+        }
+        
+        if (year < currentYear || (year === currentYear && month < currentMonth)) {
+            return 'Card has expired or will expire soon';
+        }
+        
+        if (year > currentYear + 10) {
+            return 'Expiry date too far in the future';
+        }
+        
+        return '';
+    };
+
+    const validateCVC = (cvc) => {
+        if (!cvc || cvc.trim() === '') {
+            return 'CVC is required';
+        }
+        if (!/^\d{3}$/.test(cvc)) {
+            return 'CVC must be exactly 3 digits';
+        }
+        return '';
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            cardholderName: validateCardholderName(formData.cardholderName),
+            cardNumber: validateCardNumber(formData.cardNumber),
+            expiryDate: validateExpiryDate(formData.expiryDate),
+            cvc: validateCVC(formData.cvc)
+        };
+        
+        setErrors(newErrors);
+        
+        // Check if any errors exist
+        return !Object.values(newErrors).some(error => error !== '');
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        
+        // Clear error for this field when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+        
+        // Format card number with spaces
+        if (name === 'cardNumber') {
+            const cleanValue = value.replace(/\s/g, '');
+            const formattedValue = cleanValue.match(/.{1,4}/g)?.join(' ') || cleanValue;
+            if (formattedValue !== value) {
+                setFormData(prev => ({
+                    ...prev,
+                    cardNumber: formattedValue
+                }));
+            }
+        }
+        
+        // Format expiry date
+        if (name === 'expiryDate') {
+            const cleanValue = value.replace(/[\s\/]/g, '');
+            let formattedValue = cleanValue;
+            if (cleanValue.length >= 2) {
+                formattedValue = cleanValue.substring(0, 2) + ' / ' + cleanValue.substring(2, 4);
+            }
+            if (formattedValue !== value && cleanValue.length <= 4) {
+                setFormData(prev => ({
+                    ...prev,
+                    expiryDate: formattedValue
+                }));
+            }
+        }
+        
+        // Only allow numbers for CVC
+        if (name === 'cvc') {
+            const numericValue = value.replace(/\D/g, '');
+            if (numericValue !== value) {
+                setFormData(prev => ({
+                    ...prev,
+                    cvc: numericValue
+                }));
+            }
+        }
+    };
     
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        
+        // Validate all fields
+        if (!validateForm()) {
+            setMessage({ type: 'danger', text: 'Please correct the errors in the form before proceeding.' });
+            return;
+        }
         
         try {
             // Update order status to VerificationPending
@@ -202,12 +375,20 @@ const PaymentUI = () => {
                                 <input 
                                     type="text" 
                                     name="cardholderName"
+                                    value={formData.cardholderName}
+                                    onChange={handleInputChange}
                                     placeholder="John Doe" 
                                     required 
                                     autoComplete="off"
                                     data-lpignore="true"
-                                    className={inputClasses} 
+                                    className={`${inputClasses} ${errors.cardholderName ? 'border-danger focus:border-danger focus:ring-danger/10' : ''}`} 
                                 />
+                                {errors.cardholderName && (
+                                    <div className="flex items-center gap-1 text-danger text-xs font-medium mt-1">
+                                        <AlertCircle size={12} />
+                                        {errors.cardholderName}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mb-5 flex flex-col gap-2">
@@ -215,12 +396,21 @@ const PaymentUI = () => {
                                 <input 
                                     type="text" 
                                     name="cardNumber"
+                                    value={formData.cardNumber}
+                                    onChange={handleInputChange}
                                     placeholder="0000 0000 0000 0000" 
+                                    maxLength={19}
                                     required 
                                     autoComplete="off"
                                     data-lpignore="true"
-                                    className={inputClasses} 
+                                    className={`${inputClasses} ${errors.cardNumber ? 'border-danger focus:border-danger focus:ring-danger/10' : ''}`} 
                                 />
+                                {errors.cardNumber && (
+                                    <div className="flex items-center gap-1 text-danger text-xs font-medium mt-1">
+                                        <AlertCircle size={12} />
+                                        {errors.cardNumber}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-6 mb-6">
@@ -229,24 +419,42 @@ const PaymentUI = () => {
                                     <input 
                                         type="text" 
                                         name="expiryDate"
+                                        value={formData.expiryDate}
+                                        onChange={handleInputChange}
                                         placeholder="MM / YY" 
+                                        maxLength={7}
                                         required 
                                         autoComplete="off"
                                         data-lpignore="true"
-                                        className={inputClasses} 
+                                        className={`${inputClasses} ${errors.expiryDate ? 'border-danger focus:border-danger focus:ring-danger/10' : ''}`} 
                                     />
+                                    {errors.expiryDate && (
+                                        <div className="flex items-center gap-1 text-danger text-xs font-medium mt-1">
+                                            <AlertCircle size={12} />
+                                            {errors.expiryDate}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex-1 flex flex-col gap-2 relative">
                                     <label className="font-semibold text-sm text-text-muted">CVC / CVV</label>
                                     <input 
                                         type={cvcVisible ? 'text' : 'password'} 
                                         name="cvc"
+                                        value={formData.cvc}
+                                        onChange={handleInputChange}
                                         placeholder="***" 
+                                        maxLength={3}
                                         required 
                                         autoComplete="off"
                                         data-lpignore="true"
-                                        className={inputClasses} 
+                                        className={`${inputClasses} ${errors.cvc ? 'border-danger focus:border-danger focus:ring-danger/10' : ''}`} 
                                     />
+                                    {errors.cvc && (
+                                        <div className="flex items-center gap-1 text-danger text-xs font-medium mt-1">
+                                            <AlertCircle size={12} />
+                                            {errors.cvc}
+                                        </div>
+                                    )}
                                     <button
                                         type="button"
                                         className="absolute right-4 top-[38px] bg-transparent border-none text-slate-300 cursor-pointer"

@@ -107,14 +107,6 @@ const AboutUs = () => {
             <p className="text-xl text-slate-400 font-medium leading-relaxed max-w-2xl mx-auto lg:mx-0 mb-12">
               MediReach bridges the critical gap in emergency medicine accessibility using state-of-the-art networking and real-time inventory protocols.
             </p>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6">
-               <button className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-[0.1em] text-sm shadow-2xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95">
-                  Launch Platform
-               </button>
-               <button className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:bg-white/10 transition-all">
-                  Documentation
-               </button>
-            </div>
           </div>
           
           <div className="flex-1 relative hidden lg:block">

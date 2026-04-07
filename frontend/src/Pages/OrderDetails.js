@@ -165,10 +165,10 @@ const OrderDetails = () => {
                                                 <div className="flex gap-2">
                                                     <button
                                                         className="bg-transparent border border-primary-light text-primary-light py-1 px-3 rounded-md text-[0.75rem] font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:bg-primary-light hover:text-white"
-                                                        onClick={(e) => { e.stopPropagation(); navigate(`/order-form?id=${order._id}`); }}
+                                                        onClick={(e) => { e.stopPropagation(); navigate(`/orderform?id=${order._id}`); }}
                                                         title="Edit Order"
                                                     >
-                                                        <Info size={14} /> Edit
+                                                        <Info size={14} /> Edit  
                                                     </button>
                                                     <button
                                                         className="bg-transparent border border-danger text-danger py-1 px-3 rounded-md text-[0.75rem] font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:bg-danger hover:text-white"

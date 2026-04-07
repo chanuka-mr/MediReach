@@ -79,6 +79,9 @@ export const userAPI = {
     
     // Update user profile
     updateProfile: (userData) => api.put('/users/profile', userData),
+    
+    // Get users with role 'pharmacy'
+    getPharmacyUsers: () => api.get('/users/pharmacies'),
 };
 
 // ==================== PHARMACY APIS ====================
@@ -187,6 +190,27 @@ export const messageAPI = {
     
     // Start chat
     startChat: (chatData) => api.post('/chat/start', chatData),
+};
+
+// ==================== CHAT APIS ====================
+export const chatAPI = {
+    // Get all chats for current user
+    getUserChats: () => api.get('/chat'),
+    
+    // Start a new chat
+    startChat: (chatData) => api.post('/chat', chatData),
+    
+    // Get messages by chat ID
+    getMessagesByChatId: (chatId) => api.get(`/chat/${chatId}/messages`),
+    
+    // Send message
+    sendMessage: (chatId, messageData) => api.post(`/chat/${chatId}/messages`, messageData),
+    
+    // Mark chat as read
+    markAsRead: (chatId) => api.put(`/chat/${chatId}/read`),
+    
+    // Delete chat
+    deleteChat: (chatId) => api.delete(`/chat/${chatId}`),
 };
 
 // ==================== INQUIRY APIS ====================

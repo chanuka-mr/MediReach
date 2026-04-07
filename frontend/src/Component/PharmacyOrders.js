@@ -46,14 +46,16 @@ function Toast({ toast, onClose }) {
   useEffect(() => { const t = setTimeout(onClose,4000); return ()=>clearTimeout(t) },[onClose])
   const isDispatched = toast.type==="dispatched"
   const isAccepted = toast.type==="accepted"
-  const accent = isDispatched ? C.success : (isAccepted ? C.lilacAsh : C.danger)
-  const Icon   = isDispatched ? SendHorizonal : (isAccepted ? CheckCircle2 : ThumbsDown)
+  const isRejected = toast.type==="rejected"
+  const isError = toast.type==="error"
+  const accent = isError ? C.danger : (isDispatched ? C.success : (isAccepted ? C.lilacAsh : C.danger))
+  const Icon   = isError ? AlertTriangle : (isDispatched ? SendHorizonal : (isAccepted ? CheckCircle2 : ThumbsDown))
   return (
     <div style={{
       position:"fixed", bottom:32, right:32, zIndex:1000,
       display:"flex", alignItems:"flex-start", gap:14,
       padding:"16px 20px 18px", borderRadius:14,
-      background:C.white, border:`1.5px solid ${isDispatched ? "rgba(14,124,91,0.3)" : (isAccepted ? "rgba(76,110,245,0.3)" : "rgba(192,57,43,0.3)")}`,
+      background:C.white, border:"1.5px solid " + (isError ? "rgba(192,57,43,0.3)" : (isDispatched ? "rgba(14,124,91,0.3)" : (isAccepted ? "rgba(76,110,245,0.3)" : "rgba(192,57,43,0.3)"))) + "",
       boxShadow:"0 16px 48px rgba(2,62,138,0.14)",
       minWidth:300, maxWidth:380,
       animation:"toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
@@ -61,15 +63,15 @@ function Toast({ toast, onClose }) {
     }}>
       <div style={{
         width:40, height:40, borderRadius:"50%", flexShrink:0,
-        background: isDispatched ? "rgba(14,124,91,0.1)" : (isAccepted ? "rgba(76,110,245,0.1)" : "rgba(192,57,43,0.1)"),
-        border:`1px solid ${isDispatched ? "rgba(14,124,91,0.25)" : (isAccepted ? "rgba(76,110,245,0.25)" : "rgba(192,57,43,0.25)")}`,
+        background: isError ? "rgba(192,57,43,0.1)" : (isDispatched ? "rgba(14,124,91,0.1)" : (isAccepted ? "rgba(76,110,245,0.1)" : "rgba(192,57,43,0.1)")),
+        border:`1px solid ${isError ? "rgba(192,57,43,0.25)" : (isDispatched ? "rgba(14,124,91,0.25)" : (isAccepted ? "rgba(76,110,245,0.25)" : "rgba(192,57,43,0.25)"))}`,
         display:"flex", alignItems:"center", justifyContent:"center",
       }}>
         <Icon size={17} color={accent} strokeWidth={2} />
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
-          {isDispatched ? "Order Dispatched" : (isAccepted ? "Order Accepted" : "Order Rejected")}
+          {isError ? "Failed to Update Order" : (isDispatched ? "Order Dispatched" : (isAccepted ? "Order Accepted" : "Order Rejected"))}
         </p>
         <p style={{ margin:0, fontSize:12, color:accent, fontWeight:600 }}>{toast.orderId} · {toast.medicine}</p>
         <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{toast.pharmacy}</p>
@@ -107,9 +109,9 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
         boxShadow:"0 32px 80px rgba(2,62,138,0.18)",
         overflow:"hidden", animation:"modalIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both",
       }}>
-        <div style={{ height:3, background:isAccept
-          ? `linear-gradient(90deg, ${C.techBlue}, ${C.success})`
-          : `linear-gradient(90deg, ${C.techBlue}, ${C.danger})` }} />
+        <div style={{ height:3, background: isAccept
+          ? "linear-gradient(90deg, " + C.techBlue + ", " + C.success + ")"
+          : "linear-gradient(90deg, " + C.techBlue + ", " + C.danger + ")" }} />
         <div style={{ padding:"24px 26px 18px", borderBottom:`1px solid ${C.paleSlate}` }}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
             <div style={{
@@ -919,22 +921,41 @@ export default function PharmacyOrders() {
           console.error('❌ Error updating stock:', stockError);
           // Continue with order acceptance even if stock update fails
         }
-        
+
         // Accept action: Update order status to 'Accepted' in database
+        console.log('Making API call to process request:', order.id);
         const response = await romsAPI.processRequest(order.id, {
             action: 'accept',
             pharmacy_id: order.pharmacy_id,
             notes: 'Order accepted by pharmacy'
+        }).catch(error => {
+            console.error('Axios error:', error);
+            console.error('Error response:', error.response);
+            throw error;
         });
 
-        console.log('API response status:', response.status)
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error('API error response:', errorText)
-          throw new Error(`Failed to accept order: ${errorText}`);
+        console.log('API response:', response);
+        console.log('API response status:', response.status);
+        console.log('API response data:', response.data);
+        
+        // Check if response exists and has status
+        if (!response) {
+            console.error('No response received');
+            throw new Error('No response received from server');
+        }
+        
+        if (!response.status) {
+            console.error('No status in response');
+            throw new Error('Invalid response from server');
+        }
+        
+        if (response.status < 200 || response.status >= 300) {
+            const errorText = response.data?.message || response.statusText || 'Unknown error';
+            console.error('API error response:', errorText);
+            throw new Error(`Failed to accept order: ${errorText}`);
         }
 
-        const updatedOrder = await response.json();
+        const updatedOrder = response.data;
         console.log('API success:', updatedOrder)
         
         // Update local state with the response
@@ -962,16 +983,34 @@ export default function PharmacyOrders() {
         pharmacy_id: order.pharmacy_id,
         rejectionReason: action === 'reject' ? reason : undefined,
         notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
+      }).catch(error => {
+        console.error('Axios error:', error);
+        console.error('Error response:', error.response);
+        throw error;
       });
 
-      console.log('API response status:', response.status)
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('API error response:', errorText)
-        throw new Error(`Failed to update order: ${errorText}`);
+      console.log('API response:', response);
+      console.log('API response status:', response.status);
+      console.log('API response data:', response.data);
+      
+      // Check if response exists and has status
+      if (!response) {
+          console.error('No response received');
+          throw new Error('No response received from server');
+      }
+      
+      if (!response.status) {
+          console.error('No status in response');
+          throw new Error('Invalid response from server');
+      }
+      
+      if (response.status < 200 || response.status >= 300) {
+          const errorText = response.data?.message || response.statusText || 'Unknown error';
+          console.error('API error response:', errorText);
+          throw new Error(`Failed to update order: ${errorText}`);
       }
 
-      const updatedOrder = await response.json();
+      const updatedOrder = response.data;
       console.log('API success:', updatedOrder)
       
       // Update local state with the response
@@ -988,14 +1027,10 @@ export default function PharmacyOrders() {
       
       setToast({ type: action === "dispatch" ? "dispatched" : (action === "reject" ? "rejected" : "accepted"), orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
       setModal(null);
-      
-      // Refresh orders to get latest status from database
-      setTimeout(() => {
-        fetchOrders();
-      }, 500);
     } catch (error) {
       console.error('Error updating order:', error);
-      alert('Failed to update order: ' + error.message);
+      setToast({ type: "error", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
+      setModal(null);
     }
   }
 
