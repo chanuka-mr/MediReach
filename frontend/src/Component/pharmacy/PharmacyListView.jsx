@@ -25,6 +25,10 @@ const PharmacyListView = ({ title, subTitle, type, extraParams = {}, isUserView 
         response = await pharmacyAPI.getActivePharmacies();
       } else if (type === 'nearby') {
         response = await pharmacyAPI.getAllPharmacies({ params: queryParams });
+      } else if (type === '24-7') {
+        response = await pharmacyAPI.get247Pharmacies();
+      } else if (type === 'open-now') {
+        response = await pharmacyAPI.getOpenNowPharmacies();
       } else {
         response = await pharmacyAPI.getAllPharmacies({ params: queryParams });
       }

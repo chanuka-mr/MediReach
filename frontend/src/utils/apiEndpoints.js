@@ -113,6 +113,12 @@ export const pharmacyAPI = {
     // Generate QR code
     generateQRCode: (pharmacyId) => api.get(`/pharmacies/${pharmacyId}/qrcode`),
     
+    // Get 24/7 pharmacies
+    get247Pharmacies: () => api.get('/pharmacies/24-7'),
+    
+    // Get open now pharmacies
+    getOpenNowPharmacies: () => api.get('/pharmacies/open-now'),
+    
     // Bulk delete pharmacies
     bulkDelete: (pharmacyIds) => api.post('/pharmacies/bulk-delete', { ids: pharmacyIds }),
 };
