@@ -80,7 +80,6 @@ const navItems = [
 ]
 
 const bottomNav = [
-  { label: "Notifications", path: "/notifications", icon: Bell },
   { label: "Settings", path: "/profile", icon: Settings },
 ]
 

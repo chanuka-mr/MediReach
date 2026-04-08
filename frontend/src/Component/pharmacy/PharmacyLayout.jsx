@@ -11,10 +11,9 @@ const PharmacyLayout = () => {
     { name: 'Dashboard', path: '/pharmacy', icon: LayoutDashboard, exact: true },
     { name: 'Network Management', path: '/pharmacy/manage', icon: Settings },
     { name: 'Open Now', path: '/pharmacy/open-now', icon: Clock },
-    { name: '24/7 Pharmacies', path: '/pharmacy/24-7', icon: Activity },
+    { name: '24/7 Pharmacies', path: '/pharmacy/24-7', icon: Activity }, 
     { name: 'Live Map', path: '/pharmacy/map', icon: Map },
     { name: 'Reports', path: '/pharmacy/reports', icon: FileText },
-    { name: 'Chats', path: '/pharmacy/chats', icon: MessageSquare, badge: true },
   ];
 
   return (

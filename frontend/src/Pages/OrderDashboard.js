@@ -12,20 +12,36 @@ import {
     StickyNote,
     X
 } from 'lucide-react';
-import { romsAPI } from '../utils/apiEndpoints';
+import { romsAPI, pharmacyAPI } from '../utils/apiEndpoints';
 
 const OrderDashboard = () => {
     const [orders, setOrders] = useState([]);
+    const [pharmacies, setPharmacies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [pharmacyId, setPharmacyId] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [showNote, setShowNote] = useState(null);
+
+    const fetchPharmacies = async () => {
+        try {
+            const res = await pharmacyAPI.getAllPharmacies();
+            // Ensure we always set an array, even if response structure is different
+            const pharmacyData = res.data?.data || res.data || [];
+            setPharmacies(Array.isArray(pharmacyData) ? pharmacyData : []);
+        } catch (error) {
+            console.error('Failed to fetch pharmacies:', error);
+            // Set empty array on error to prevent map errors
+            setPharmacies([]);
+        }
+    };
 
     const fetchOrders = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         try {
             const res = await romsAPI.getPharmacyTasks(pharmacyId === 'ALL' ? undefined : pharmacyId);
-            setOrders(res.data);
+            const filteredData = statusFilter === 'ALL' ? res.data : res.data.filter(order => order.status === statusFilter);
+            setOrders(filteredData);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
         } finally {
@@ -34,13 +50,14 @@ const OrderDashboard = () => {
     };
 
     useEffect(() => {
+        fetchPharmacies();
         fetchOrders();
         // Add 10s interval for faster "live" updates during testing
         const interval = setInterval(() => {
             fetchOrders(true);
         }, 10000);
         return () => clearInterval(interval);
-    }, [pharmacyId]);
+    }, [pharmacyId, statusFilter]);
 
     const handleAction = async (orderId, pharmacyIdForOrder, action) => {
         try {
@@ -74,7 +91,9 @@ const OrderDashboard = () => {
     const filteredOrders = orders.filter(order => {
         const patientMatch = (order.patient_id || '').toLowerCase().includes(searchTerm.toLowerCase());
         const statusMatch = (order.status || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return patientMatch || statusMatch;
+        const matchesSearch = patientMatch || statusMatch;
+        const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+        return matchesSearch && matchesStatus;
     });
 
     useEffect(() => {
@@ -132,11 +151,12 @@ const OrderDashboard = () => {
                             value={pharmacyId}
                             onChange={(e) => setPharmacyId(e.target.value)}
                         >
-                            <option value="ALL">🌍 Show All Branches</option>
-                            <option value="PHARM-001">Kandy Central Pharmacy</option>
-                            <option value="PHARM-002">Galle Fort MedPoint</option>
-                            <option value="PHARM-003">Jaffna Community Rx</option>
-                            <option value="PHARM-004">Matara Rural Clinic</option>
+                            <option value="ALL">Show All Branches</option>
+                            {Array.isArray(pharmacies) && pharmacies.map((pharmacy) => (
+                                <option key={pharmacy._id || pharmacy.id} value={pharmacy._id || pharmacy.id}>
+                                    {pharmacy.name || 'Unknown Pharmacy'}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -144,6 +164,19 @@ const OrderDashboard = () => {
                     <button className="w-11 h-11 flex items-center justify-center bg-white border border-border-custom rounded-[10px] text-text-muted transition-all hover:bg-bg-color hover:text-primary-light" onClick={fetchOrders} title="Refresh Dashboard">
                         <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
                     </button>
+                    <select
+                        className="p-1.5 px-3 rounded-lg border-[1.5px] border-border-custom font-bold text-primary-deep bg-[#f1f4f9] cursor-pointer transition-all focus:outline-none focus:border-primary-light focus:bg-white focus:ring-2 focus:ring-primary-light/10"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="ALL">🌍 All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Ready">Ready</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
                 </div>
             </nav>
 
@@ -261,9 +294,8 @@ const OrderDashboard = () => {
                                         </button>
                                     </td>
                                     <td className="p-5 px-8 border-b border-border-custom">
-                                    <div className="flex gap-2">
-                                        {order.status === 'Accepted' && (
-                                            
+                                        <div className="flex gap-2">
+                                            {order.status === 'Accepted' && (
                                                 <button
                                                     className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-success/10 text-success hover:bg-success hover:text-white"
                                                     title="Approve"
@@ -271,10 +303,8 @@ const OrderDashboard = () => {
                                                 >
                                                     <Check size={16} />
                                                 </button>
-                                                
-                                                )}
+                                            )}
                                             {order.status === 'VerificationPending' && (
-                                            
                                                 <button
                                                     className="w-[34px] h-[34px] rounded-lg border-none flex items-center justify-center transition-all cursor-pointer bg-primary-light/10 text-primary-light hover:bg-primary-light hover:text-white"
                                                     title="Payment Verification"
@@ -282,12 +312,11 @@ const OrderDashboard = () => {
                                                 >
                                                     <CheckCircle size={16} />
                                                 </button>
-                                            
                                             )}
-                                            </div>
-                                        {['Ready', 'Rejected', 'Cancelled', 'Expired'].includes(order.status) && (
-                                            <button className="bg-transparent border-none text-slate-300 cursor-default"><MoreVertical size={16} /></button>
-                                        )}
+                                            {['Ready', 'Rejected', 'Cancelled', 'Expired'].includes(order.status) && (
+                                                <button className="bg-transparent border-none text-slate-300 cursor-default"><MoreVertical size={16} /></button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
