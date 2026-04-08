@@ -6,10 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import { 
   MapPin, Phone, Mail, Clock, 
   ArrowLeft, Edit, Power, QrCode, TrendingUp,
-  Package, ShoppingCart, Activity, ShieldCheck,
-  Calendar, Map as MapIcon, ChevronRight, X, Loader2, Plus
+  Activity, Calendar, Map as MapIcon, ChevronRight, X, Loader2, Plus, ShieldCheck,
+  AlertCircle, CheckCircle, AlertTriangle, Zap, Users, Package as PackageIcon
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const PharmacyDetail = () => {
   const { id } = useParams();
@@ -17,6 +16,7 @@ const PharmacyDetail = () => {
   const [pharmacy, setPharmacy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showHealthDiagnosticsModal, setShowHealthDiagnosticsModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({});
 
@@ -76,18 +76,6 @@ const PharmacyDetail = () => {
   if (loading) return <div className="p-12 text-center text-gray-500">Initializing store cockpit...</div>;
   if (!pharmacy) return <div className="p-12 text-center text-red-500">Pharmacy branch not found in the network.</div>;
 
-  // Mock Performance Data
-  const orderData = [
-    { name: '08:00', orders: 4 }, { name: '10:00', orders: 12 }, { name: '12:00', orders: 18 },
-    { name: '14:00', orders: 9 }, { name: '16:00', orders: 15 }, { name: '18:00', orders: 28 },
-    { name: '20:00', orders: 14 }, { name: '22:00', orders: 5 }
-  ];
-
-  const stockData = [
-    { name: 'Vitalize', level: 85 }, { name: 'Panadol', level: 32 }, { name: 'Amoxil', level: 90 },
-    { name: 'Cetrizin', level: 12 }, { name: 'Insulin', level: 45 }, { name: 'CoughS', level: 78 }
-  ];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Top Breadcrumb & Actions */}
@@ -145,79 +133,82 @@ const PharmacyDetail = () => {
 
       {/* Content Grid */}
       <div className="grid grid-cols-3 gap-8">
-         {/* Left Column: Branch Specific Stats */}
+         {/* Left Column: Branch Information */}
          <div className="col-span-2 space-y-8">
+            {/* Pharmacy Details Overview */}
             <div className="grid grid-cols-3 gap-6">
                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                   <div className="flex items-center gap-2 text-blue-600 mb-4">
-                     <TrendingUp size={20} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Today's Sales</span>
+                     <MapPin size={20} />
+                     <span className="text-[10px] font-black uppercase tracking-widest">Location</span>
                   </div>
-                  <p className="text-3xl font-black text-gray-800">Rs. 84.2k</p>
-                  <p className="text-xs font-bold text-green-500 mt-2">+12% vs average</p>
+                  <p className="text-sm font-black text-gray-800">{pharmacy.district}</p>
+                  <p className="text-xs font-bold text-gray-400 mt-2">Network Hub</p>
                </div>
                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                   <div className="flex items-center gap-2 text-purple-600 mb-4">
-                     <ShoppingCart size={20} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Order Queue</span>
+                     <Clock size={20} />
+                     <span className="text-[10px] font-black uppercase tracking-widest">Hours</span>
                   </div>
-                  <p className="text-3xl font-black text-gray-800">14</p>
-                  <p className="text-xs font-bold text-slate-400 mt-2">Active processing</p>
+                  <p className="text-sm font-black text-gray-800">{pharmacy.operatingHours.open} - {pharmacy.operatingHours.close}</p>
+                  <p className="text-xs font-bold text-gray-400 mt-2">Operating Hours</p>
                </div>
                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                   <div className="flex items-center gap-2 text-emerald-600 mb-4">
-                     <Package size={20} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Inventory Health</span>
+                     <ShieldCheck size={20} />
                   </div>
-                  <p className="text-3xl font-black text-gray-800">92%</p>
-                  <p className="text-xs font-bold text-emerald-500 mt-2">Stock Optimized</p>
+                  <p className={`text-sm font-black ${pharmacy.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                     {pharmacy.isActive ? 'Active' : 'Inactive'}
+                  </p>
+                  <p className="text-xs font-bold text-gray-400 mt-2">Status</p>
                </div>
             </div>
 
-            {/* Performance Chart */}
+            {/* Pharmacy Information Card */}
             <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
                <div className="flex justify-between items-center mb-8">
                   <div>
-                     <h3 className="text-lg font-black text-gray-800">Traffic Density Analytics</h3>
-                     <p className="text-xs font-bold text-gray-400">Hourly order patterns for {pharmacy.name}</p>
-                  </div>
-                  <div className="flex bg-gray-50 p-1 rounded-xl">
-                     <button className="px-4 py-1.5 bg-white shadow-sm rounded-lg text-xs font-black text-blue-600">Daily</button>
-                     <button className="px-4 py-1.5 text-xs font-black text-gray-400">Weekly</button>
+                     <h3 className="text-lg font-black text-gray-800">Details</h3>
+                     <p className="text-xs font-bold text-gray-400">Complete pharmacy information</p>
                   </div>
                </div>
-               <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                     <AreaChart data={orderData}>
-                        <defs>
-                           <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                           </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
-                        <Tooltip />
-                        <Area type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
-                     </AreaChart>
-                  </ResponsiveContainer>
-               </div>
-            </div>
-
-            {/* Stock Levels */}
-            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-               <h3 className="text-lg font-black text-gray-800 mb-6">Stock Shortages Awareness</h3>
-               <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                     <BarChart data={stockData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                        <XAxis type="number" axisLine={false} tickLine={false} hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#64748b'}} width={80} />
-                        <Tooltip />
-                        <Bar dataKey="level" fill="#94a3b8" radius={[0, 4, 4, 0]} barSize={12} />
-                     </BarChart>
-                  </ResponsiveContainer>
+               <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Pharmacy ID</label>
+                        <p className="text-sm font-bold text-gray-800 font-mono bg-gray-50 p-3 rounded-lg">{pharmacy._id}</p>
+                     </div>
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Pharmacist Name</label>
+                        <p className="text-sm font-bold text-gray-800">{pharmacy.pharmacistName}</p>
+                     </div>
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Contact Number</label>
+                        <p className="text-sm font-bold text-blue-600"><a href={`tel:${pharmacy.contactNumber}`}>{pharmacy.contactNumber}</a></p>
+                     </div>
+                  </div>
+                  <div className="space-y-6">
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Email Address</label>
+                        <p className="text-sm font-bold text-blue-600"><a href={`mailto:${pharmacy.email}`}>{pharmacy.email}</a></p>
+                     </div>
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Status</label>
+                        <p className={`text-sm font-bold inline-block px-3 py-1 rounded-full ${
+                           pharmacy.isActive 
+                           ? 'bg-green-100 text-green-700' 
+                           : 'bg-red-100 text-red-700'
+                        }`}>
+                           {pharmacy.isActive ? '🟢 Active' : '🔴 Inactive'}
+                        </p>
+                     </div>
+                     <div>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Created Date</label>
+                        <p className="text-sm font-bold text-gray-800">
+                           {pharmacy.createdAt ? new Date(pharmacy.createdAt).toLocaleDateString() : 'N/A'}
+                        </p>
+                     </div>
+                  </div>
                </div>
             </div>
          </div>
@@ -261,7 +252,9 @@ const PharmacyDetail = () => {
                      </div>
                      <ChevronRight size={16} className="text-gray-300" />
                   </button>
-                  <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-all group">
+                  <button 
+                     onClick={() => setShowHealthDiagnosticsModal(true)}
+                     className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-all group">
                      <div className="flex items-center gap-4">
                         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
                            <Activity size={20} />
@@ -473,6 +466,204 @@ const PharmacyDetail = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Health Diagnostics Modal */}
+      {showHealthDiagnosticsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20">
+            <div className="flex justify-between items-center p-8 border-b border-gray-100">
+              <div>
+                <h2 className="text-2xl font-black text-gray-800">Health Diagnostics</h2>
+                <p className="text-sm font-bold text-gray-400 mt-1">System status & operational metrics for {pharmacy.name}</p>
+              </div>
+              <button 
+                onClick={() => setShowHealthDiagnosticsModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-8">
+              {/* System Status Section */}
+              <div>
+                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                  <CheckCircle size={20} className="text-green-600" />
+                  System Status
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-600">Operational Status</span>
+                      <CheckCircle size={20} className="text-green-600" />
+                    </div>
+                    <p className="text-2xl font-black text-green-700">🟢 Online</p>
+                    <p className="text-xs font-bold text-green-600 mt-2">{pharmacy.isActive ? 'Active' : 'Inactive'}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-600">System Uptime</span>
+                      <Zap size={20} className="text-blue-600" />
+                    </div>
+                    <p className="text-2xl font-black text-blue-700">99.8%</p>
+                    <p className="text-xs font-bold text-blue-600 mt-2">Last 30 days</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-600">Response Time</span>
+                      <TrendingUp size={20} className="text-purple-600" />
+                    </div>
+                    <p className="text-2xl font-black text-purple-700">145ms</p>
+                    <p className="text-xs font-bold text-purple-600 mt-2">Average response</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-600">Last Connection</span>
+                      <Activity size={20} className="text-orange-600" />
+                    </div>
+                    <p className="text-2xl font-black text-orange-700">Now</p>
+                    <p className="text-xs font-bold text-orange-600 mt-2">Just now</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Operational Metrics */}
+              <div>
+                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                  <TrendingUp size={20} className="text-blue-600" />
+                  Operational Metrics
+                </h3>
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-bold text-gray-700">Orders Processed (Today)</span>
+                      <span className="text-xl font-black text-gray-900">42</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full" style={{width: '68%'}}></div>
+                    </div>
+                    <p className="text-xs font-bold text-gray-500 mt-2">68% of daily average</p>
+                  </div>
+                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-bold text-gray-700">Active Users</span>
+                      <span className="text-xl font-black text-gray-900">3</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-600 h-2 rounded-full" style={{width: '45%'}}></div>
+                    </div>
+                    <p className="text-xs font-bold text-gray-500 mt-2">Staff members connected</p>
+                  </div>
+                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-bold text-gray-700">Database Size</span>
+                      <span className="text-xl font-black text-gray-900">245 MB</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-purple-600 h-2 rounded-full" style={{width: '35%'}}></div>
+                    </div>
+                    <p className="text-xs font-bold text-gray-500 mt-2">35% storage capacity used</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Checks */}
+              <div>
+                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                  <ShieldCheck size={20} className="text-emerald-600" />
+                  System Checks
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-100 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle size={20} className="text-green-600" />
+                      <span className="text-sm font-bold text-gray-700">Database Connection</span>
+                    </div>
+                    <span className="text-xs font-black bg-green-100 text-green-700 px-3 py-1 rounded-full">OK</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-100 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle size={20} className="text-green-600" />
+                      <span className="text-sm font-bold text-gray-700">API Endpoints</span>
+                    </div>
+                    <span className="text-xs font-black bg-green-100 text-green-700 px-3 py-1 rounded-full">OK</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-100 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle size={20} className="text-green-600" />
+                      <span className="text-sm font-bold text-gray-700">File Storage</span>
+                    </div>
+                    <span className="text-xs font-black bg-green-100 text-green-700 px-3 py-1 rounded-full">OK</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle size={20} className="text-amber-600" />
+                      <span className="text-sm font-bold text-gray-700">Cache Performance</span>
+                    </div>
+                    <span className="text-xs font-black bg-amber-100 text-amber-700 px-3 py-1 rounded-full">WARNING</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alerts & Notifications */}
+              <div>
+                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                  <AlertCircle size={20} className="text-amber-600" />
+                  Alerts & Notifications
+                </h3>
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+                    <div className="flex gap-3">
+                      <CheckCircle size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-black text-blue-900">System updated successfully</p>
+                        <p className="text-xs font-bold text-blue-700 mt-1">2 hours ago</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-100 p-4 rounded-2xl">
+                    <div className="flex gap-3">
+                      <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-black text-green-900">Backup completed</p>
+                        <p className="text-xs font-bold text-green-700 mt-1">4 hours ago</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl">
+                    <div className="flex gap-3">
+                      <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-black text-amber-900">High order volume detected</p>
+                        <p className="text-xs font-bold text-amber-700 mt-1">Peak hours (18:00-20:00)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+                    <div className="flex gap-3">
+                      <CheckCircle size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-black text-blue-900">All checks passed</p>
+                        <p className="text-xs font-bold text-blue-700 mt-1">Last check: 5 minutes ago</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end pt-6 border-t border-gray-100">
+                <button
+                  onClick={() => setShowHealthDiagnosticsModal(false)}
+                  className="px-10 py-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl text-sm font-black shadow-lg shadow-slate-200 transition-all active:scale-95"
+                >
+                  CLOSE DIAGNOSTICS
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
