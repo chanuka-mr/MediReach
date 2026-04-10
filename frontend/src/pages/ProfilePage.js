@@ -134,7 +134,7 @@ const INDIGO = "#4C6EF5";
 const NAVY   = "#023E8A";
 const GREEN  = "#0E7C5B";
 
-function Field({ icon, type = "text", placeholder, value, onChange, fk, focused, setFocused, right, name, disabled }) {
+function Field({ icon, type = "text", placeholder, value, onChange, fk, focused, setFocused, right, name, disabled, ...props }) {
   const isFocused = focused === fk;
   return (
     <div className="flex items-center gap-[9px] rounded-[10px] px-3 transition-all duration-200"
@@ -146,7 +146,7 @@ function Field({ icon, type = "text", placeholder, value, onChange, fk, focused,
       <span className="flex flex-shrink-0" style={{ color: disabled ? "#C4CEDD" : isFocused ? INDIGO : "#94A3B8" }}>{icon}</span>
       <input type={type} placeholder={placeholder} value={value} onChange={onChange}
         onFocus={() => !disabled && setFocused(fk)} onBlur={() => setFocused(null)}
-        autoComplete={name} name={name} disabled={disabled}
+        autoComplete={name} name={name} disabled={disabled} {...props}
         className="flex-1 border-none outline-none bg-transparent text-[13px] py-[11px] font-sans"
         style={{ color: disabled ? "#A0AEC0" : "#0F172A", cursor: disabled ? "not-allowed" : "text" }} />
       {right}
@@ -347,6 +347,27 @@ export default function ProfilePage() {
   };
 
   const handleSaveProfile = async () => {
+    if (/[^a-zA-Z\s.]/.test(name)) {
+      showToast("Name can only contain letters, spaces, and periods", "error");
+      return;
+    }
+    if (!/^\d{10}$/.test(phone)) {
+      showToast("Phone number must be exactly 10 digits", "error");
+      return;
+    }
+    if (role !== 'pharmacy' && dob) {
+      const today = new Date();
+      const birthDate = new Date(dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+      }
+      if (age < 18) {
+         showToast("You must be at least 18 years old", "error");
+         return;
+      }
+    }
     setLoading(true);
     try {
       const saved = localStorage.getItem("userInfo");
@@ -660,12 +681,12 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Full Name</Label>
-                      <Field icon={<UserIcon />} placeholder="John Silva" value={name} onChange={e => setName(e.target.value)}
+                      <Field icon={<UserIcon />} placeholder="John Silva" value={name} onChange={e => setName(e.target.value.replace(/[^a-zA-Z\s.]/g, ""))}
                         fk="name" focused={focused} setFocused={setFocused} name="name" disabled={!editMode} />
                     </div>
                     <div>
                       <Label>Phone Number</Label>
-                      <Field icon={<PhoneIcon />} type="tel" placeholder="+94 77 123 4567" value={phone} onChange={e => setPhone(e.target.value)}
+                      <Field icon={<PhoneIcon />} type="tel" placeholder="0771234567" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         fk="phone" focused={focused} setFocused={setFocused} name="tel" disabled={!editMode} />
                     </div>
                     <div className="col-span-2">
@@ -690,7 +711,7 @@ export default function ProfilePage() {
                         <div>
                           <Label>Date of Birth</Label>
                           <Field icon={<CalendarIcon />} type="date" value={dob} onChange={e => setDob(e.target.value)}
-                            fk="dob" focused={focused} setFocused={setFocused} name="bday" disabled={!editMode} />
+                            fk="dob" focused={focused} setFocused={setFocused} name="bday" disabled={!editMode} max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]} />
                         </div>
                       </>
                     )}

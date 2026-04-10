@@ -515,7 +515,7 @@ export default function AuthPage({ onLoginSuccess }) {
             <div className="grid grid-cols-2 gap-[11px] mb-[11px]">
               <div>
                 <label className="field-label">Full Name</label>
-                <Field icon={<UserIcon />} placeholder="John Silva" value={sName} onChange={e => setSName(e.target.value)}
+                <Field icon={<UserIcon />} placeholder="John Silva" value={sName} onChange={e => setSName(e.target.value.replace(/[^a-zA-Z\s.]/g, ""))}
                   fk="sname" focused={focused} setFocused={setFocused} name="name" />
               </div>
               <div>
