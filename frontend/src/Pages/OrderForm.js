@@ -170,11 +170,11 @@ const OrderForm = () => {
             if (editId) {
                 await romsAPI.updateRequest(editId, data);
                 setMessage({ type: 'success', text: 'Order updated! Redirecting...' });
-                setTimeout(() => navigate('/order-details'), 1500);
+                setTimeout(() => navigate('/orderhistory'), 1500);
             } else {
                 await romsAPI.createRequest(data);
                 setMessage({ type: 'success', text: 'Order submitted! Redirecting...' });
-                setTimeout(() => navigate('/order-details'), 1500);
+                setTimeout(() => navigate('/orderhistory'), 1500);
             }
 
             // Clear cart after successful submission
@@ -469,6 +469,7 @@ const OrderForm = () => {
                         <button
                             type="submit"
                             disabled={loading || loadingPharmacies}
+                            navigate="/orderhistory"
                             className="flex items-center gap-2 bg-primary-deep text-white py-3 px-7 rounded-[10px] font-bold text-lg transition-all hover:bg-[#022c61] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:bg-text-muted disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                         >
                             {loading ? (editId ? 'Updating...' : 'Submitting...') : (

@@ -142,7 +142,7 @@ const OrderDetails = () => {
                             <FileText size={48} className="text-slate-300" />
                             <h3 className="text-2xl font-bold text-primary-deep m-0">No orders found</h3>
                             <p className="text-text-muted mb-6">You haven't submitted any medication requests yet.</p>
-                            <button className="flex items-center gap-2 bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]" onClick={() => navigate('/orderform')}>
+                            <button className="flex items-center gap-2 bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]" onClick={() => navigate('/medicineshop')}>
                                 Place New Order
                             </button>
                         </div>
