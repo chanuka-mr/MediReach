@@ -8,14 +8,14 @@ import Inquiry from './Component/pharmacyUserView/UserInquiryControl.jsx';
 
 // User management imports
 import PreHome from './Component/PreHome.jsx';
-import AuthPage from './Pages/AuthPage';
+import AuthPage from './pages/AuthPage';
 import UserHome from './Pages/UserHome';
-import ProfilePage from './Pages/ProfilePage';
+import ProfilePage from './pages/ProfilePage';
 import UserNavBar from './Components/UserNavBar';
 import AdminNavBar from './Components/AdminNavBar';
-import AdminUsersPage from './Pages/AdminUsersPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import AdminDashboard from './Pages/AdminDashboard';
-import UserChats from './Pages/UserChats';
+import UserChats from './pages/UserChats';
 
 // Admin/Inventory imports
 import InventoryDashboard from './Component/InventoryDashboard';
