@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { userAPI } from "../utils/apiEndpoints";
-import ForgotPasswordPage from "../Test/ForgotPasswordPage";
+import ForgotPasswordPage from "./ForgotPasswordPage";
 
 
 // ── Icons ─────────────────────────────────────────────
