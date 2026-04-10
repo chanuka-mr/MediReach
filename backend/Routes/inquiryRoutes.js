@@ -13,7 +13,7 @@ router.use((req, res, next) => {
 // Create a new inquiry (Contact Us form)
 router.post('/', inquiryController.createInquiry);
 
-// ============= USER ROUTES =============
+// ============= USER ROUTES =============    
 // Get inquiries by email
 router.get('/by-email/:email', inquiryController.getInquiriesByEmail);
 

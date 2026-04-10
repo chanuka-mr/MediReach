@@ -13,7 +13,6 @@ import {
   Package, PencilLine, Tag, Beaker, ChevronLeft
 } from 'lucide-react';
 import { medicineAPI } from '../utils/apiEndpoints';
-import ReportGenerator from './ReportGenerator';
 
 // ── Palette — matches InventoryDashboard ─────────────────────────
 const C = {
@@ -26,6 +25,183 @@ const C = {
   success:   "#0E7C5B",
   warn:      "#B45309",
   danger:    "#C0392B",
+}
+
+// ── PDF generation (jsPDF + autotable via CDN) ────────────────────
+async function loadJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-jspdf]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.setAttribute('data-jspdf', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-autotable]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s.setAttribute('data-autotable', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+async function generateMedicineInventoryPDF(medicines) {
+  const JsPDF = await loadJsPDF();
+  const doc   = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  const BLUE    = [2, 62, 138];
+  const SNOW    = [247, 249, 252];
+  const WHITE   = [255, 255, 255];
+  const SLATE   = [74, 85, 104];
+  const PALE    = [221, 227, 237];
+  const SUCCESS = [14, 124, 91];
+  const WARN    = [180, 83, 9];
+  const DANGER  = [192, 57, 43];
+
+  function drawHeader() {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, 0, pageW, 48, 'F');
+    doc.setFillColor(76, 110, 245);
+    doc.rect(0, 48, pageW, 4, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach · Pharmacy Management System', 16, 14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...WHITE);
+    doc.text('Medicine Inventory Report', 16, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 210, 255);
+    doc.text(`Complete stock registry across all pharmacies · ${medicines.length} medicines`, 16, 41);
+    const now = new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    doc.text(`Generated: ${now}`, pageW - 16, 41, { align: 'right' });
+  }
+
+  function drawFooter(pg, tot) {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, pageH - 18, pageW, 18, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach — Confidential Report', 16, pageH - 6);
+    doc.text(`Page ${pg} of ${tot}`, pageW - 16, pageH - 6, { align: 'right' });
+  }
+
+  drawHeader();
+
+  const total   = medicines.length;
+  const inStock = medicines.filter(m => Number(m.mediStock || m.stock || 0) > 50).length;
+  const low     = medicines.filter(m => { const s = Number(m.mediStock || m.stock || 0); return s > 0 && s <= 50; }).length;
+  const out     = medicines.filter(m => Number(m.mediStock || m.stock || 0) === 0).length;
+
+  const boxY = 62, boxH = 36, boxW = (pageW - 32) / 4, boxGap = 8;
+  [
+    { label: 'Total Medicines', value: String(total),    color: BLUE    },
+    { label: 'In Stock',        value: String(inStock),  color: SUCCESS },
+    { label: 'Low Stock',       value: String(low),      color: WARN    },
+    { label: 'Out of Stock',    value: String(out),      color: DANGER  },
+  ].forEach((s, i) => {
+    const x = 16 + i * (boxW + boxGap);
+    doc.setFillColor(...SNOW);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'F');
+    doc.setDrawColor(...PALE);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'S');
+    doc.setFillColor(...s.color);
+    doc.roundedRect(x, boxY, 4, boxH, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(...s.color);
+    doc.text(s.value, x + 14, boxY + 23);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE);
+    doc.text(s.label, x + 14, boxY + 31);
+  });
+
+  const rows = medicines.map((m, idx) => {
+    const stock = Number(m.mediStock || m.stock || 0);
+    const stockLabel = stock === 0 ? 'Out of Stock' : stock <= 50 ? 'Low Stock' : 'In Stock';
+    const exp = m.mediExpiryDate
+      ? new Date(m.mediExpiryDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+    return [
+      String(idx + 1).padStart(3, '0'),
+      m.mediName   || m.name     || '—',
+      m.mediCategory || m.category || '—',
+      stock.toLocaleString(),
+      stockLabel,
+      m.Pharmacy   || m.pharmacy || '—',
+      m.mediPrice  ? `LKR ${Number(m.mediPrice).toLocaleString()}` : '—',
+      exp,
+    ];
+  });
+
+  doc.autoTable({
+    startY: boxY + boxH + 12,
+    head: [['#', 'Medicine Name', 'Category', 'Stock', 'Stock Status', 'Related Pharmacy', 'Unit Price', 'Expiry Date']],
+    body: rows,
+    theme: 'plain',
+    headStyles: {
+      fillColor: BLUE,
+      textColor: WHITE,
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: { top: 7, bottom: 7, left: 8, right: 8 },
+    },
+    alternateRowStyles: { fillColor: SNOW },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: SLATE,
+      cellPadding: { top: 6, bottom: 6, left: 8, right: 8 },
+    },
+    columnStyles: {
+      0: { cellWidth: 28, halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 'auto', fontStyle: 'bold', textColor: BLUE },
+      2: { cellWidth: 80 },
+      3: { cellWidth: 55, halign: 'right', fontStyle: 'bold' },
+      4: { cellWidth: 72, halign: 'center' },
+      5: { cellWidth: 'auto' },
+      6: { cellWidth: 70, halign: 'right', fontStyle: 'bold', textColor: BLUE },
+      7: { cellWidth: 72, halign: 'center' },
+    },
+    didDrawCell(data) {
+      if (data.section === 'body' && data.column.index === 4) {
+        const v = data.cell.raw;
+        const col = v === 'Out of Stock' ? DANGER : v === 'Low Stock' ? WARN : SUCCESS;
+        const { x, y, width, height } = data.cell;
+        const pad = 3;
+        doc.setFillColor(col[0], col[1], col[2]);
+        doc.roundedRect(x + pad, y + pad, width - pad * 2, height - pad * 2, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...WHITE);
+        doc.text(v, x + width / 2, y + height / 2 + 2.5, { align: 'center' });
+      }
+    },
+    didDrawPage() {
+      const pg  = doc.internal.getCurrentPageInfo().pageNumber;
+      const tot = doc.internal.getNumberOfPages();
+      drawFooter(pg, tot);
+    },
+    margin: { left: 16, right: 16, bottom: 28 },
+  });
+
+  const totalPgs = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPgs; p++) {
+    doc.setPage(p);
+    drawFooter(p, totalPgs);
+  }
+
+  doc.save(`MediReach_Inventory_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 // Map DB field names → normalised shape used in the UI
@@ -41,6 +217,7 @@ function normalise(m) {
     mfgDate:  m.mediManufactureDate || m.mfgDate || "",
     expDate:  m.mediExpiryDate      || m.expDate || "",
     rxStatus: m.mediPrescriptionStatus || m.rxStatus || "",
+    _raw:     m,
   }
 }
 
@@ -130,11 +307,8 @@ function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
         boxShadow:"0 32px 80px rgba(2,62,138,0.22)",
         overflow:"hidden", animation:"fadeUp 0.25s ease both",
       }}>
-        {/* Red top stripe */}
         <div style={{ height:3, background:`linear-gradient(90deg, ${C.danger}, rgba(192,57,43,0.4))` }} />
-
         <div style={{ padding:"28px 28px 24px" }}>
-          {/* Icon + title */}
           <div style={{ display:"flex", alignItems:"center", gap:13, marginBottom:16 }}>
             <div style={{
               width:46, height:46, borderRadius:13, flexShrink:0,
@@ -149,8 +323,6 @@ function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
               <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>This action cannot be undone</p>
             </div>
           </div>
-
-          {/* Medicine info card */}
           <div style={{
             borderRadius:10, padding:"12px 14px", marginBottom:20,
             background:"rgba(192,57,43,0.04)", border:`1px solid rgba(192,57,43,0.16)`,
@@ -160,12 +332,9 @@ function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
               {medicine.category} · {medicine.company} · {medicine.stock.toLocaleString()} units in stock
             </p>
           </div>
-
           <p style={{ margin:"0 0 22px", fontSize:13, color:C.blueSlate, lineHeight:1.6 }}>
             Are you sure you want to permanently remove <strong>{medicine.name}</strong> from the inventory? All associated data will be deleted.
           </p>
-
-          {/* Actions */}
           <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
             <button
               onClick={onCancel}
@@ -176,11 +345,9 @@ function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
                 color:C.blueSlate, fontWeight:600, fontSize:13, transition:"all 0.2s",
                 opacity: deleting ? 0.5 : 1,
               }}
-              onMouseEnter={e=>{ if(!deleting){ e.currentTarget.style.borderColor=C.blueSlate }}}
+              onMouseEnter={e=>{ if(!deleting) e.currentTarget.style.borderColor=C.blueSlate }}
               onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate }}
-            >
-              Cancel
-            </button>
+            >Cancel</button>
             <button
               onClick={onConfirm}
               disabled={deleting}
@@ -229,11 +396,15 @@ export default function MedicineInventory() {
   const [expanded,     setExpanded]     = useState(null)
   const [showFilters,  setShowFilters]  = useState(false)
   const [focusSearch,  setFocusSearch]  = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
 
   // Delete state
-  const [deleteTarget,  setDeleteTarget]  = useState(null)   // medicine object to delete
-  const [deleting,      setDeleting]      = useState(false)  // spinner flag
-  const [deleteSuccess, setDeleteSuccess] = useState(null)   // success toast message
+  const [deleteTarget,  setDeleteTarget]  = useState(null)
+  const [deleting,      setDeleting]      = useState(false)
+  const [deleteSuccess, setDeleteSuccess] = useState(null)
+
+  // Raw medicines (for PDF — unfiltered)
+  const [rawMedicines, setRawMedicines] = useState([])
 
   const PER_PAGE = 8
 
@@ -243,6 +414,7 @@ export default function MedicineInventory() {
       const res = await medicineAPI.getAllMedicines()
       const data = res.data
       const list = Array.isArray(data) ? data : (data.medicines || data.data || [])
+      setRawMedicines(list)
       setAllMedicines(list.map(normalise))
     } catch (err) {
       setFetchError(err.message)
@@ -258,6 +430,19 @@ export default function MedicineInventory() {
     setPage(1)
   }, [urlPharmacy])
 
+  // ── Export PDF ───────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    setExportLoading(true)
+    try {
+      await generateMedicineInventoryPDF(rawMedicines)
+    } catch (err) {
+      console.error('PDF generation error:', err)
+      alert('Failed to generate PDF: ' + err.message)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
   // ── Delete handler ───────────────────────────────────────────────
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return
@@ -268,16 +453,11 @@ export default function MedicineInventory() {
       if (res.status !== 200 && res.status !== 204) {
         throw new Error(data.message || "Failed to delete")
       }
-
-      // Remove from local state instantly — no need to re-fetch
       setAllMedicines(prev => prev.filter(m => m.id !== deleteTarget.id))
-
-      // Close modal & show success toast
+      setRawMedicines(prev => prev.filter(m => (m._id || m.id) !== deleteTarget.id))
       setDeleteTarget(null)
       setDeleteSuccess(`"${deleteTarget.name}" was deleted successfully.`)
       setTimeout(() => setDeleteSuccess(null), 3500)
-
-      // If current page becomes empty after deletion, step back
       setPage(p => Math.max(1, p))
     } catch (err) {
       setFetchError(err.message)
@@ -363,16 +543,13 @@ export default function MedicineInventory() {
         table { border-collapse:collapse; width:100%; }
       `}</style>
 
-      {/* Top palette stripe */}
       <div style={{ position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
         background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
 
-      {/* Dot grid bg */}
       <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
         backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
         backgroundSize:"28px 28px", opacity:0.35 }} />
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <DeleteModal
           medicine={deleteTarget}
@@ -382,7 +559,6 @@ export default function MedicineInventory() {
         />
       )}
 
-      {/* Success toast */}
       {deleteSuccess && (
         <div style={{
           position:"fixed", top:24, right:28, zIndex:999,
@@ -436,18 +612,29 @@ export default function MedicineInventory() {
                 onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
               ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
-              <button onClick={() => setShowReportGenerator(true)} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-                border:"none", background:C.techBlue, color:C.snow, fontWeight:600, fontSize:13,
-                display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
-                boxShadow:`0 4px 18px rgba(2,62,138,0.28)` }}
-                onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}
-                onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 18px rgba(2,62,138,0.28)" }}
-              ><Download size={13} strokeWidth={2}/> Export</button>
+
+              {/* ── Export PDF Button ── */}
+              <button
+                onClick={handleExportPDF}
+                disabled={exportLoading || loading}
+                style={{ padding:"10px 18px", borderRadius:10, cursor: exportLoading||loading ? "not-allowed" : "pointer",
+                  fontFamily:"inherit", border:"none",
+                  background: exportLoading||loading ? "rgba(2,62,138,0.5)" : C.techBlue,
+                  color:C.snow, fontWeight:600, fontSize:13,
+                  display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
+                  boxShadow: exportLoading||loading ? "none" : `0 4px 18px rgba(2,62,138,0.28)` }}
+                onMouseEnter={e=>{ if(!exportLoading&&!loading){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}}
+                onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=exportLoading||loading?"none":"0 4px 18px rgba(2,62,138,0.28)" }}
+              >
+                {exportLoading
+                  ? <><Loader2 size={13} style={{ animation:"spin 0.9s linear infinite" }}/> Generating...</>
+                  : <><Download size={13} strokeWidth={2}/> Export PDF</>
+                }
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Fetch error banner */}
         {fetchError && (
           <div style={{
             padding:"12px 18px", borderRadius:10, marginBottom:20,
@@ -476,7 +663,6 @@ export default function MedicineInventory() {
           <StatCard icon={Clock}         value={loading ? "—" : stats.expiring} label="Expiring Soon"   sub="Within 6 months"       delay="0.19s" />
         </div>
 
-        {/* Pharmacy context banner */}
         {pharmFilter !== "All" && (
           <div style={{
             display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -647,7 +833,6 @@ export default function MedicineInventory() {
                         onMouseEnter={e=>{ if(!isOpen) e.currentTarget.style.background="rgba(2,62,138,0.02)" }}
                         onMouseLeave={e=>{ if(!isOpen) e.currentTarget.style.background=C.white }}
                       >
-                        {/* Name */}
                         <td style={{ padding:"13px 16px", minWidth:190 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                             <div style={{
@@ -668,19 +853,16 @@ export default function MedicineInventory() {
                           </div>
                         </td>
 
-                        {/* Category */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           <span style={{ fontSize:11.5, fontWeight:600, padding:"3px 10px", borderRadius:99,
                             background:"rgba(76,110,245,0.08)", color:C.lilacAsh,
                             border:`1px solid rgba(76,110,245,0.18)` }}>{med.category}</span>
                         </td>
 
-                        {/* Company */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           <span style={{ fontSize:13, color:C.blueSlate, fontWeight:500 }}>{med.company}</span>
                         </td>
 
-                        {/* Price */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           <span style={{ fontSize:14, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>
                             {med.price.toLocaleString()}
@@ -688,7 +870,6 @@ export default function MedicineInventory() {
                           <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>LKR</span>
                         </td>
 
-                        {/* Stock */}
                         <td style={{ padding:"13px 16px", minWidth:160 }}>
                           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                             <div style={{ display:"inline-flex", alignItems:"center", gap:4,
@@ -700,7 +881,6 @@ export default function MedicineInventory() {
                           </div>
                         </td>
 
-                        {/* Rx status */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                             <RxI size={13} color={rx?.color ?? C.lilacAsh} strokeWidth={1.8} />
@@ -710,7 +890,6 @@ export default function MedicineInventory() {
                           </div>
                         </td>
 
-                        {/* Expiry */}
                         <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
                           {exp ? (
                             <span style={{ fontSize:11.5, fontWeight:700, color:C.danger, display:"flex", alignItems:"center", gap:4 }}>
@@ -725,11 +904,8 @@ export default function MedicineInventory() {
                           )}
                         </td>
 
-                        {/* Actions */}
                         <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
                           <div style={{ display:"flex", gap:7, alignItems:"center" }}>
-
-                            {/* Update */}
                             <button
                               onClick={()=>navigate(`/updateMedicine/${med.id}`)}
                               style={{
@@ -740,25 +916,12 @@ export default function MedicineInventory() {
                                 fontWeight:600, fontSize:12, transition:"all 0.2s",
                                 display:"flex", alignItems:"center", gap:5,
                               }}
-                              onMouseEnter={e=>{
-                                e.currentTarget.style.background=C.lilacAsh
-                                e.currentTarget.style.borderColor=C.lilacAsh
-                                e.currentTarget.style.color=C.snow
-                                e.currentTarget.style.transform="translateY(-1px)"
-                                e.currentTarget.style.boxShadow="0 4px 14px rgba(76,110,245,0.28)"
-                              }}
-                              onMouseLeave={e=>{
-                                e.currentTarget.style.background="rgba(76,110,245,0.07)"
-                                e.currentTarget.style.borderColor="rgba(76,110,245,0.28)"
-                                e.currentTarget.style.color=C.lilacAsh
-                                e.currentTarget.style.transform="none"
-                                e.currentTarget.style.boxShadow="none"
-                              }}
+                              onMouseEnter={e=>{ e.currentTarget.style.background=C.lilacAsh; e.currentTarget.style.borderColor=C.lilacAsh; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(76,110,245,0.28)" }}
+                              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(76,110,245,0.07)"; e.currentTarget.style.borderColor="rgba(76,110,245,0.28)"; e.currentTarget.style.color=C.lilacAsh; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
                             >
                               <PencilLine size={12} strokeWidth={2} /> Update
                             </button>
 
-                            {/* View / Hide */}
                             <button
                               onClick={()=>setExpanded(isOpen ? null : med.id)}
                               style={{
@@ -775,7 +938,6 @@ export default function MedicineInventory() {
                               <Eye size={12} strokeWidth={2} /> {isOpen ? "Hide" : "View"}
                             </button>
 
-                            {/* ── Delete ── */}
                             <button
                               onClick={()=>setDeleteTarget(med)}
                               style={{
@@ -786,29 +948,15 @@ export default function MedicineInventory() {
                                 fontWeight:600, fontSize:12, transition:"all 0.2s",
                                 display:"flex", alignItems:"center", gap:5,
                               }}
-                              onMouseEnter={e=>{
-                                e.currentTarget.style.background=C.danger
-                                e.currentTarget.style.borderColor=C.danger
-                                e.currentTarget.style.color=C.snow
-                                e.currentTarget.style.transform="translateY(-1px)"
-                                e.currentTarget.style.boxShadow="0 4px 14px rgba(192,57,43,0.32)"
-                              }}
-                              onMouseLeave={e=>{
-                                e.currentTarget.style.background="rgba(192,57,43,0.06)"
-                                e.currentTarget.style.borderColor="rgba(192,57,43,0.28)"
-                                e.currentTarget.style.color=C.danger
-                                e.currentTarget.style.transform="none"
-                                e.currentTarget.style.boxShadow="none"
-                              }}
+                              onMouseEnter={e=>{ e.currentTarget.style.background=C.danger; e.currentTarget.style.borderColor=C.danger; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(192,57,43,0.32)" }}
+                              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(192,57,43,0.06)"; e.currentTarget.style.borderColor="rgba(192,57,43,0.28)"; e.currentTarget.style.color=C.danger; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
                             >
                               <Trash2 size={12} strokeWidth={2} /> Delete
                             </button>
-
                           </div>
                         </td>
                       </tr>
 
-                      {/* Expanded detail */}
                       {isOpen && (
                         <tr style={{ borderBottom:`1px solid ${C.paleSlate}` }}>
                           <td colSpan={9} style={{ padding:"0 22px 16px" }}>
@@ -851,7 +999,6 @@ export default function MedicineInventory() {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages>1 && (
             <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
               background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -888,72 +1035,6 @@ export default function MedicineInventory() {
           )}
         </div>
       </div>
-
-      {/* Report Generator Modal */}
-      {showReportGenerator && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 1000,
-          background: "rgba(4,18,38,0.55)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          animation: "fadeUp 0.2s ease both",
-        }}>
-          <div style={{
-            width: "100%", maxWidth: 600, maxHeight: "90vh", overflow: "auto",
-            borderRadius: 18, background: C.snow, border: `1.5px solid ${C.paleSlate}`,
-            boxShadow: "0 32px 80px rgba(2,62,138,0.22)",
-            animation: "fadeUp 0.25s ease both",
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: "24px 28px 20px", borderBottom: `1px solid ${C.paleSlate}`,
-              display: "flex", alignItems: "center", justifyContent: "space-between"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: `${C.techBlue}15`,
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}>
-                  <FileText size={20} color={C.techBlue} strokeWidth={2} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.blueSlate }}>
-                    Generate Report
-                  </h3>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: C.lilacAsh }}>
-                    Download inventory reports in PDF or JSON format
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowReportGenerator(false)}
-                style={{
-                  width: 32, height: 32, borderRadius: 8,
-                  border: `1.5px solid ${C.paleSlate}`, background: C.white,
-                  color: C.lilacAsh, cursor: "pointer", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.techBlue; e.currentTarget.style.color = C.techBlue }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.paleSlate; e.currentTarget.style.color = C.lilacAsh }}
-              >
-                <X size={16} strokeWidth={2} />
-              </button>
-            </div>
-
-            {/* Report Generator Content */}
-            <div style={{ padding: "24px 28px" }}>
-              <ReportGenerator 
-                type="inventory" 
-                filters={{
-                  pharmacy: pharmFilter === "All" ? "" : pharmFilter,
-                  category: catFilter === "All" ? "" : catFilter
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

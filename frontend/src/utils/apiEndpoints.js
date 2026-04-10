@@ -79,6 +79,9 @@ export const userAPI = {
     
     // Update user profile
     updateProfile: (userData) => api.put('/users/profile', userData),
+    
+    // Get users with role 'pharmacy'
+    getPharmacyUsers: () => api.get('/users/pharmacies'),
 };
 
 // ==================== PHARMACY APIS ====================
@@ -109,6 +112,12 @@ export const pharmacyAPI = {
     
     // Generate QR code
     generateQRCode: (pharmacyId) => api.get(`/pharmacies/${pharmacyId}/qrcode`),
+    
+    // Get 24/7 pharmacies
+    get247Pharmacies: () => api.get('/pharmacies/24-7'),
+    
+    // Get open now pharmacies
+    getOpenNowPharmacies: () => api.get('/pharmacies/open-now'),
     
     // Bulk delete pharmacies
     bulkDelete: (pharmacyIds) => api.post('/pharmacies/bulk-delete', { ids: pharmacyIds }),
@@ -187,6 +196,27 @@ export const messageAPI = {
     
     // Start chat
     startChat: (chatData) => api.post('/chat/start', chatData),
+};
+
+// ==================== CHAT APIS ====================
+export const chatAPI = {
+    // Get all chats for current user
+    getUserChats: () => api.get('/chat'),
+    
+    // Start a new chat
+    startChat: (chatData) => api.post('/chat', chatData),
+    
+    // Get messages by chat ID
+    getMessagesByChatId: (chatId) => api.get(`/chat/${chatId}/messages`),
+    
+    // Send message
+    sendMessage: (chatId, messageData) => api.post(`/chat/${chatId}/messages`, messageData),
+    
+    // Mark chat as read
+    markAsRead: (chatId) => api.put(`/chat/${chatId}/read`),
+    
+    // Delete chat
+    deleteChat: (chatId) => api.delete(`/chat/${chatId}`),
 };
 
 // ==================== INQUIRY APIS ====================

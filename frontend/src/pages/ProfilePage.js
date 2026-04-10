@@ -364,8 +364,12 @@ export default function ProfilePage() {
         payload.pharmacyName = pharmacyName;
         payload.licenseNumber = licenseNumber;
       } else {
-        payload.gender = gender;
-        payload.dateOfBirth = dob || undefined;
+        if (gender && gender.trim() !== '') {
+          payload.gender = gender;
+        }
+        if (dob && dob.trim() !== '') {
+          payload.dateOfBirth = dob;
+        }
       }
 
       const res = await userAPI.updateProfile(payload);

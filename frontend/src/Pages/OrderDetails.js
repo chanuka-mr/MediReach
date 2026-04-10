@@ -142,7 +142,7 @@ const OrderDetails = () => {
                             <FileText size={48} className="text-slate-300" />
                             <h3 className="text-2xl font-bold text-primary-deep m-0">No orders found</h3>
                             <p className="text-text-muted mb-6">You haven't submitted any medication requests yet.</p>
-                            <button className="flex items-center gap-2 bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]" onClick={() => navigate('/orderform')}>
+                            <button className="flex items-center gap-2 bg-primary-deep text-white py-3 px-6 rounded-lg font-bold transition-all hover:bg-[#022c61]" onClick={() => navigate('/medicineshop')}>
                                 Place New Order
                             </button>
                         </div>
@@ -165,10 +165,10 @@ const OrderDetails = () => {
                                                 <div className="flex gap-2">
                                                     <button
                                                         className="bg-transparent border border-primary-light text-primary-light py-1 px-3 rounded-md text-[0.75rem] font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:bg-primary-light hover:text-white"
-                                                        onClick={(e) => { e.stopPropagation(); navigate(`/order-form?id=${order._id}`); }}
+                                                        onClick={(e) => { e.stopPropagation(); navigate(`/orderform?id=${order._id}`); }}
                                                         title="Edit Order"
                                                     >
-                                                        <Info size={14} /> Edit
+                                                        <Info size={14} /> Edit  
                                                     </button>
                                                     <button
                                                         className="bg-transparent border border-danger text-danger py-1 px-3 rounded-md text-[0.75rem] font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:bg-danger hover:text-white"

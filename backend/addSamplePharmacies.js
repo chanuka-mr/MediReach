@@ -69,7 +69,7 @@ async function addSamplePharmacies() {
         location: { type: 'Point', coordinates: [79.8612, 6.9271] },
         contactNumber: '+94111234567',
         email: 'colombo@citypharmacy.com',
-        operatingHours: { open: '24/7', close: '24/7' },
+        operatingHours: { open: '00:00', close: '00:00' },
         pharmacistName: 'Dr. E. Wickramasinghe',
         isActive: true,
         address: 'No. 100, Galle Road, Colombo 03'

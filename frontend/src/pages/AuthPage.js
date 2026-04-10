@@ -449,13 +449,6 @@ export default function AuthPage({ onLoginSuccess }) {
             <div className="flex-1 h-px bg-[#DDE3ED]" />
           </div>
 
-          <button
-            className="w-full py-[10px] bg-white rounded-[10px] text-[12.5px] font-semibold text-[#4A5568] flex items-center justify-center gap-2 font-sans transition-colors duration-200 cursor-pointer"
-            style={{ border: "1.5px solid #DDE3ED" }}
-          >
-            <BuildingIcon /> Sign in with Organisation SSO
-          </button>
-
           <p className="text-center text-[12.5px] text-[#4A5568] mt-[18px]">
             No account?{" "}<button className="link-btn" onClick={() => switchMode("signup")}>Sign up free</button>
           </p>

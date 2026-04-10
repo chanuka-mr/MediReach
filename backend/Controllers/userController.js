@@ -4,25 +4,43 @@ const User = require("../Models/userModel");
 // @route   GET /api/users/profile
 // @access  Private
 const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
+  try {
+    console.log('getUserProfile called for user:', req.user?._id);
+    
+    if (!req.user || !req.user._id) {
+      console.error('No user or user._id in request');
+      return res.status(401).json({ message: "User not authenticated" });
+    }
 
-  if (user) {
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      contactNumber: user.contactNumber,
-      role: user.role,
-      pharmacyName: user.pharmacyName,
-      licenseNumber: user.licenseNumber,
-      gender: user.gender,
-      dateOfBirth: user.dateOfBirth,
-      addresses: user.addresses,
-      location: user.location,
-      isProfileComplete: user.isProfileComplete,
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      console.log('User found:', user._id);
+      res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        contactNumber: user.contactNumber,
+        role: user.role,
+        pharmacyName: user.pharmacyName,
+        licenseNumber: user.licenseNumber,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        addresses: user.addresses,
+        location: user.location,
+        isProfileComplete: user.isProfileComplete,
+      });
+    } else {
+      console.error('User not found for ID:', req.user._id);
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    console.error('Error in getUserProfile:', error);
+    res.status(500).json({ 
+      message: "Server Error", 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
-  } else {
-    res.status(404).json({ message: "User not found" });
   }
 };
 
@@ -30,57 +48,86 @@ const getUserProfile = async (req, res) => {
 // @route   PUT /api/users/profile
 // @access  Private
 const updateUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
+  try {
+    console.log('updateUserProfile called for user:', req.user?._id);
+    console.log('Request body:', req.body);
+    
+    if (!req.user || !req.user._id) {
+      console.error('No user or user._id in request');
+      return res.status(401).json({ message: "User not authenticated" });
+    }
 
-  if (user) {
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
-    user.contactNumber = req.body.contactNumber || user.contactNumber;
-    
-    // Additional profile fields
-    if (req.body.gender !== undefined) user.gender = req.body.gender;
-    if (req.body.dateOfBirth !== undefined) user.dateOfBirth = req.body.dateOfBirth;
-    if (req.body.addresses !== undefined) user.addresses = req.body.addresses;
-    
-    if (req.body.location !== undefined) {
-      if (!user.location) user.location = { type: 'Point' };
-      if (req.body.location.coordinates) {
-          user.location.coordinates = req.body.location.coordinates;
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      console.log('User found for update:', user._id);
+      
+      // Update basic fields
+      if (req.body.name !== undefined) user.name = req.body.name;
+      if (req.body.email !== undefined) user.email = req.body.email;
+      if (req.body.contactNumber !== undefined) user.contactNumber = req.body.contactNumber;
+      
+      // Additional profile fields
+      if (req.body.gender !== undefined) {
+        // Only set gender if it's a valid enum value or empty/null
+        if (req.body.gender === '' || req.body.gender === null || req.body.gender === undefined) {
+          user.gender = undefined; // Clear the field
+        } else {
+          user.gender = req.body.gender;
+        }
       }
-    }
-    
-    // Check profile completeness
-    if (user.gender && user.dateOfBirth && user.location && user.location.coordinates && user.location.coordinates.length > 0) {
-       user.isProfileComplete = true;
-    }
+      if (req.body.dateOfBirth !== undefined) user.dateOfBirth = req.body.dateOfBirth;
+      if (req.body.addresses !== undefined) user.addresses = req.body.addresses;
+      
+      if (req.body.location !== undefined) {
+        if (!user.location) user.location = { type: 'Point' };
+        if (req.body.location.coordinates) {
+            user.location.coordinates = req.body.location.coordinates;
+        }
+      }
+      
+      // Check profile completeness
+      if (user.gender && user.dateOfBirth && user.location && user.location.coordinates && user.location.coordinates.length > 0) {
+         user.isProfileComplete = true;
+      }
 
-    if (req.body.password) {
-      user.password = req.body.password;
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      if (user.role === 'pharmacy') {
+          if (req.body.pharmacyName !== undefined) user.pharmacyName = req.body.pharmacyName;
+          if (req.body.licenseNumber !== undefined) user.licenseNumber = req.body.licenseNumber;
+      }
+
+      const updatedUser = await user.save();
+      console.log('User updated successfully:', updatedUser._id);
+
+      res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        contactNumber: updatedUser.contactNumber,
+        role: updatedUser.role,
+        pharmacyName: updatedUser.pharmacyName,
+        licenseNumber: updatedUser.licenseNumber,
+        gender: updatedUser.gender,
+        dateOfBirth: updatedUser.dateOfBirth,
+        addresses: updatedUser.addresses,
+        location: updatedUser.location,
+        isProfileComplete: updatedUser.isProfileComplete,
+      });
+    } else {
+      console.error('User not found for update, ID:', req.user._id);
+      res.status(404).json({ message: "User not found" });
     }
-
-    if (user.role === 'pharmacy') {
-        user.pharmacyName = req.body.pharmacyName || user.pharmacyName;
-        user.licenseNumber = req.body.licenseNumber || user.licenseNumber;
-    }
-
-    const updatedUser = await user.save();
-
-    res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      contactNumber: updatedUser.contactNumber,
-      role: updatedUser.role,
-      pharmacyName: updatedUser.pharmacyName,
-      licenseNumber: updatedUser.licenseNumber,
-      gender: updatedUser.gender,
-      dateOfBirth: updatedUser.dateOfBirth,
-      addresses: updatedUser.addresses,
-      location: updatedUser.location,
-      isProfileComplete: updatedUser.isProfileComplete,
+  } catch (error) {
+    console.error('Error in updateUserProfile:', error);
+    res.status(500).json({ 
+      message: "Server Error", 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
-  } else {
-    res.status(404).json({ message: "User not found" });
   }
 };
 

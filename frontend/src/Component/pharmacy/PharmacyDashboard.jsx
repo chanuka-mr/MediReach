@@ -525,9 +525,6 @@ const PharmacyDashboard = () => {
                             >
                               <TrendingUp size={12} strokeWidth={2.5} /> Analytics
                             </button>
-                            <button className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-paleSlate rounded-lg text-blueSlate text-[11px] font-extrabold hover:border-lilacAsh hover:text-techBlue transition-all shadow-sm focus:ring-2 focus:ring-paleSlate">
-                              <Package size={12} strokeWidth={2.5} /> Inventory
-                            </button>
                           </div>
                         </td>
                       </tr>

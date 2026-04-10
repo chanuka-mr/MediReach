@@ -12,7 +12,6 @@ import {
   ShieldAlert, SendHorizonal, ThumbsDown, FileText,
   ArrowLeft, Building, Loader2
 } from 'lucide-react'
-import ReportGenerator from './ReportGenerator'
 
 // ── Palette ───────────────────────────────────────────────────────
 const C = {
@@ -41,19 +40,235 @@ const CAN_ACT    = ["pending","processing","in_transit"]
 const fmtDate    = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—"
 const totalVal   = (o) => o.qty * o.unitPrice
 
+// ── PDF generation (jsPDF + autotable via CDN) ────────────────────
+async function loadJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-jspdf]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.setAttribute('data-jspdf', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-autotable]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s.setAttribute('data-autotable', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+async function generatePharmacyOrdersPDF(orders) {
+  const JsPDF = await loadJsPDF();
+  const doc   = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  const BLUE    = [2, 62, 138];
+  const SNOW    = [247, 249, 252];
+  const WHITE   = [255, 255, 255];
+  const SLATE   = [74, 85, 104];
+  const PALE    = [221, 227, 237];
+  const SUCCESS = [14, 124, 91];
+  const WARN    = [180, 83, 9];
+  const DANGER  = [192, 57, 43];
+  const PURPLE  = [91, 33, 182];
+
+  function drawHeader() {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, 0, pageW, 48, 'F');
+    doc.setFillColor(76, 110, 245);
+    doc.rect(0, 48, pageW, 4, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach · Pharmacy Management System', 16, 14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...WHITE);
+    doc.text('Pharmacy Orders Report', 16, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 210, 255);
+    doc.text(`Complete order registry across the pharmacy network · ${orders.length} orders`, 16, 41);
+    const now = new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    doc.text(`Generated: ${now}`, pageW - 16, 41, { align: 'right' });
+  }
+
+  function drawFooter(pg, tot) {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, pageH - 18, pageW, 18, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach — Confidential Report', 16, pageH - 6);
+    doc.text(`Page ${pg} of ${tot}`, pageW - 16, pageH - 6, { align: 'right' });
+  }
+
+  drawHeader();
+
+  const total      = orders.length;
+  const pending    = orders.filter(o => o.status === 'pending').length;
+  const dispatched = orders.filter(o => o.status === 'dispatched').length;
+  const rejected   = orders.filter(o => o.status === 'rejected' || o.status === 'cancelled').length;
+  const urgent     = orders.filter(o => o.priority === 'urgent').length;
+
+  const boxY = 62, boxH = 36, boxW = (pageW - 32) / 5, boxGap = 6;
+  [
+    { label: 'Total Orders',           value: String(total),      color: BLUE    },
+    { label: 'Pending',                value: String(pending),    color: WARN    },
+    { label: 'Dispatched',             value: String(dispatched), color: SUCCESS },
+    { label: 'Cancelled / Rejected',   value: String(rejected),   color: DANGER  },
+    { label: 'Urgent',                 value: String(urgent),     color: PURPLE  },
+  ].forEach((s, i) => {
+    const x = 16 + i * (boxW + boxGap);
+    doc.setFillColor(...SNOW);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'F');
+    doc.setDrawColor(...PALE);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'S');
+    doc.setFillColor(...s.color);
+    doc.roundedRect(x, boxY, 4, boxH, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(...s.color);
+    doc.text(s.value, x + 14, boxY + 23);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE);
+    doc.text(s.label, x + 14, boxY + 31);
+  });
+
+  const STATUS_LABEL = {
+    pending: 'Pending', processing: 'Accepted', in_transit: 'Ready',
+    delivered: 'Delivered', cancelled: 'Cancelled', dispatched: 'Dispatched', rejected: 'Rejected',
+  };
+  const STATUS_COLOR = {
+    Pending: WARN, Accepted: [76, 110, 245], Ready: PURPLE,
+    Delivered: SUCCESS, Cancelled: DANGER, Dispatched: SUCCESS, Rejected: DANGER,
+  };
+
+  const rows = orders.map((o, idx) => {
+    const medicines = Array.isArray(o.medicines) && o.medicines.length > 0
+      ? o.medicines.map(m => `${m.medicine_name} x${m.quantity}`).join('\n')
+      : o.medicine || '—';
+
+    const tv = Array.isArray(o.medicines) && o.medicines.length > 0
+      ? o.medicines.reduce((s, m) => s + (m.total_price || 0), 0)
+      : totalVal(o);
+
+    const orderedDate = o.orderedAt
+      ? new Date(o.orderedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+
+    const statusLabel = STATUS_LABEL[o.status] || o.status || '—';
+
+    return [
+      String(idx + 1).padStart(3, '0'),
+      o.id || '—',
+      medicines,
+      o.pharmacy || '—',
+      statusLabel,
+      o.priority === 'urgent' ? 'URGENT' : 'Normal',
+      tv > 0 ? `LKR ${tv.toLocaleString()}` : '—',
+      orderedDate,
+    ];
+  });
+
+  doc.autoTable({
+    startY: boxY + boxH + 12,
+    head: [['#', 'Order Number', 'Ordered Medicines', 'Ordered Pharmacy Name', 'Status', 'Priority', 'Total Value', 'Order Date']],
+    body: rows,
+    theme: 'plain',
+    headStyles: {
+      fillColor: BLUE,
+      textColor: WHITE,
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: { top: 7, bottom: 7, left: 8, right: 8 },
+    },
+    alternateRowStyles: { fillColor: SNOW },
+    bodyStyles: {
+      fontSize: 7.5,
+      textColor: SLATE,
+      cellPadding: { top: 6, bottom: 6, left: 8, right: 8 },
+      valign: 'middle',
+    },
+    columnStyles: {
+      0: { cellWidth: 24,  halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 85,  fontStyle: 'bold', textColor: BLUE, fontSize: 7 },
+      2: { cellWidth: 'auto' },
+      3: { cellWidth: 110, fontStyle: 'bold', textColor: BLUE },
+      4: { cellWidth: 64,  halign: 'center' },
+      5: { cellWidth: 48,  halign: 'center' },
+      6: { cellWidth: 70,  halign: 'right', fontStyle: 'bold', textColor: BLUE },
+      7: { cellWidth: 65,  halign: 'center' },
+    },
+    didDrawCell(data) {
+      // Status badge
+      if (data.section === 'body' && data.column.index === 4) {
+        const v   = data.cell.raw;
+        const col = STATUS_COLOR[v] || SLATE;
+        const { x, y, width, height } = data.cell;
+        const pad = 3;
+        doc.setFillColor(...col);
+        doc.roundedRect(x + pad, y + pad, width - pad * 2, height - pad * 2, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...WHITE);
+        doc.text(v, x + width / 2, y + height / 2 + 2.5, { align: 'center' });
+      }
+      // Priority badge
+      if (data.section === 'body' && data.column.index === 5) {
+        const v   = data.cell.raw;
+        if (v === 'URGENT') {
+          const { x, y, width, height } = data.cell;
+          const pad = 3;
+          doc.setFillColor(...DANGER);
+          doc.roundedRect(x + pad, y + pad, width - pad * 2, height - pad * 2, 3, 3, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6.5);
+          doc.setTextColor(...WHITE);
+          doc.text(v, x + width / 2, y + height / 2 + 2.5, { align: 'center' });
+        }
+      }
+    },
+    didDrawPage() {
+      const pg  = doc.internal.getCurrentPageInfo().pageNumber;
+      const tot = doc.internal.getNumberOfPages();
+      drawFooter(pg, tot);
+    },
+    margin: { left: 16, right: 16, bottom: 28 },
+  });
+
+  const totalPgs = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPgs; p++) {
+    doc.setPage(p);
+    drawFooter(p, totalPgs);
+  }
+
+  doc.save(`MediReach_Orders_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 // ── Toast ─────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
   useEffect(() => { const t = setTimeout(onClose,4000); return ()=>clearTimeout(t) },[onClose])
   const isDispatched = toast.type==="dispatched"
   const isAccepted = toast.type==="accepted"
-  const accent = isDispatched ? C.success : (isAccepted ? C.lilacAsh : C.danger)
-  const Icon   = isDispatched ? SendHorizonal : (isAccepted ? CheckCircle2 : ThumbsDown)
+  const isRejected = toast.type==="rejected"
+  const isError = toast.type==="error"
+  const accent = isError ? C.danger : (isDispatched ? C.success : (isAccepted ? C.lilacAsh : C.danger))
+  const Icon   = isError ? AlertTriangle : (isDispatched ? SendHorizonal : (isAccepted ? CheckCircle2 : ThumbsDown))
   return (
     <div style={{
       position:"fixed", bottom:32, right:32, zIndex:1000,
       display:"flex", alignItems:"flex-start", gap:14,
       padding:"16px 20px 18px", borderRadius:14,
-      background:C.white, border:`1.5px solid ${isDispatched ? "rgba(14,124,91,0.3)" : (isAccepted ? "rgba(76,110,245,0.3)" : "rgba(192,57,43,0.3)")}`,
+      background:C.white, border:"1.5px solid " + (isError ? "rgba(192,57,43,0.3)" : (isDispatched ? "rgba(14,124,91,0.3)" : (isAccepted ? "rgba(76,110,245,0.3)" : "rgba(192,57,43,0.3)"))) + "",
       boxShadow:"0 16px 48px rgba(2,62,138,0.14)",
       minWidth:300, maxWidth:380,
       animation:"toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
@@ -61,15 +276,15 @@ function Toast({ toast, onClose }) {
     }}>
       <div style={{
         width:40, height:40, borderRadius:"50%", flexShrink:0,
-        background: isDispatched ? "rgba(14,124,91,0.1)" : (isAccepted ? "rgba(76,110,245,0.1)" : "rgba(192,57,43,0.1)"),
-        border:`1px solid ${isDispatched ? "rgba(14,124,91,0.25)" : (isAccepted ? "rgba(76,110,245,0.25)" : "rgba(192,57,43,0.25)")}`,
+        background: isError ? "rgba(192,57,43,0.1)" : (isDispatched ? "rgba(14,124,91,0.1)" : (isAccepted ? "rgba(76,110,245,0.1)" : "rgba(192,57,43,0.1)")),
+        border:`1px solid ${isError ? "rgba(192,57,43,0.25)" : (isDispatched ? "rgba(14,124,91,0.25)" : (isAccepted ? "rgba(76,110,245,0.25)" : "rgba(192,57,43,0.25)"))}`,
         display:"flex", alignItems:"center", justifyContent:"center",
       }}>
         <Icon size={17} color={accent} strokeWidth={2} />
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
-          {isDispatched ? "Order Dispatched" : (isAccepted ? "Order Accepted" : "Order Rejected")}
+          {isError ? "Failed to Update Order" : (isDispatched ? "Order Dispatched" : (isAccepted ? "Order Accepted" : "Order Rejected"))}
         </p>
         <p style={{ margin:0, fontSize:12, color:accent, fontWeight:600 }}>{toast.orderId} · {toast.medicine}</p>
         <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{toast.pharmacy}</p>
@@ -107,9 +322,9 @@ function ConfirmModal({ modal, onConfirm, onClose }) {
         boxShadow:"0 32px 80px rgba(2,62,138,0.18)",
         overflow:"hidden", animation:"modalIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both",
       }}>
-        <div style={{ height:3, background:isAccept
-          ? `linear-gradient(90deg, ${C.techBlue}, ${C.success})`
-          : `linear-gradient(90deg, ${C.techBlue}, ${C.danger})` }} />
+        <div style={{ height:3, background: isAccept
+          ? "linear-gradient(90deg, " + C.techBlue + ", " + C.success + ")"
+          : "linear-gradient(90deg, " + C.techBlue + ", " + C.danger + ")" }} />
         <div style={{ padding:"24px 26px 18px", borderBottom:`1px solid ${C.paleSlate}` }}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
             <div style={{
@@ -448,7 +663,6 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
         </td>
       </tr>
 
-      {/* Expanded detail row */}
       {isOpen && (
         <tr style={{ borderBottom:`1px solid ${C.paleSlate}` }}>
           <td colSpan={9} style={{ padding:"0 22px 16px" }}>
@@ -556,29 +770,11 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                       <button
                         onClick={() => {
                           const modal = document.createElement('div');
-                          modal.style.cssText = `
-                            position: fixed;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            bottom: 0;
-                            background: rgba(0,0,0,0.8);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            z-index: 1000;
-                          `;
+                          modal.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;`;
                           modal.onclick = () => document.body.removeChild(modal);
-                          
                           const img = document.createElement('img');
                           img.src = order.prescription_image;
-                          img.style.cssText = `
-                            max-width: 90%;
-                            max-height: 90%;
-                            border-radius: 8px;
-                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                          `;
-                          
+                          img.style.cssText = `max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.3);`;
                           modal.appendChild(img);
                           document.body.appendChild(modal);
                         }}
@@ -589,25 +785,12 @@ function OrderRow({ order, index, expanded, onToggle, onAction }) {
                           fontWeight:600, fontSize:12, transition:"all 0.2s",
                           display:"flex", alignItems:"center", gap:6,
                         }}
-                        onMouseEnter={e=>{ 
-                          e.currentTarget.style.background=C.techBlue; 
-                          e.currentTarget.style.color=C.snow; 
-                          e.currentTarget.style.transform="translateY(-1px)"; 
-                          e.currentTarget.style.boxShadow="0 4px 12px rgba(2,62,138,0.2)"; 
-                        }}
-                        onMouseLeave={e=>{ 
-                          e.currentTarget.style.background=C.white; 
-                          e.currentTarget.style.color=C.techBlue; 
-                          e.currentTarget.style.transform="none"; 
-                          e.currentTarget.style.boxShadow="none"; 
-                        }}
+                        onMouseEnter={e=>{ e.currentTarget.style.background=C.techBlue; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 12px rgba(2,62,138,0.2)"; }}
+                        onMouseLeave={e=>{ e.currentTarget.style.background=C.white; e.currentTarget.style.color=C.techBlue; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
                       >
                         <Eye size={12} strokeWidth={2} />
                         View Prescription
                       </button>
-                      <span style={{ fontSize:11.5, color:C.lilacAsh, fontStyle:"italic" }}>
-                        Click to view prescription
-                      </span>
                     </div>
                   </div>
                 )}
@@ -689,15 +872,15 @@ export default function PharmacyOrders() {
   const navigate   = useNavigate()
   const location   = useLocation()
 
-  // ── Read ?pharmacy=... from URL (set by InventoryDashboard) ──
   const urlParams        = new URLSearchParams(location.search)
-  const urlPharmacy      = urlParams.get("pharmacy") || ""   // "" means "show all"
+  const urlPharmacy      = urlParams.get("pharmacy") || ""
 
   const [orderData,    setOrderData]    = useState([])
+  const [rawOrders,    setRawOrders]    = useState([])   // for PDF export (unfiltered)
   const [loading,      setLoading]      = useState(true)
   const [fetchError,   setFetchError]   = useState(null)
   const [search,       setSearch]       = useState("")
-  const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)  // ← pre-set from URL
+  const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)
   const [statusFilter, setStatusFilter] = useState("All")
   const [catFilter,    setCatFilter]    = useState("All")
   const [prioFilter,   setPrioFilter]   = useState("All")
@@ -709,10 +892,9 @@ export default function PharmacyOrders() {
   const [modal,        setModal]        = useState(null)
   const [toast,        setToast]        = useState(null)
   const [focusSearch,  setFocusSearch]  = useState(false)
-  const [showReportGenerator, setShowReportGenerator] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
   const PER_PAGE = 8
 
-  // Fetch orders from database
   useEffect(() => {
     fetchOrders()
   }, [pharmFilter])
@@ -721,49 +903,51 @@ export default function PharmacyOrders() {
     setLoading(true)
     setFetchError(null)
     try {
-      const data = await romsAPI.getPharmacyTasks(pharmFilter);
-      const orders = data.data || data;
-      
-      // Transform database orders to match UI structure and fetch routing status
+      // Use getAllRequests for the full dataset (needed for PDF export)
+      const allData = await romsAPI.getAllRequests()
+      const allOrders = allData.data || allData
+
+      // Also fetch pharmacy-filtered view for display
+      const data = await romsAPI.getPharmacyTasks(pharmFilter)
+      const orders = data.data || data
+
+      // Store raw for PDF
+      setRawOrders(allOrders)
+
       const transformedOrders = await Promise.all(orders.map(async (order) => {
-        // Fetch routing status for each order
-        let routingStatus = null;
+        let routingStatus = null
         try {
-          const routingData = await romsAPI.getRoutingStatus(order._id);
-          routingStatus = routingData.data.route_status;
+          const routingData = await romsAPI.getRoutingStatus(order._id)
+          routingStatus = routingData.data.route_status
         } catch (routingError) {
-          console.log('Failed to fetch routing status for order:', order._id);
+          console.log('Failed to fetch routing status for order:', order._id)
         }
-        
-        // Handle medicines array - if it exists, display the medicines, otherwise fallback to notes
-        let medicineDisplay = 'Medication Request';
-        let totalQuantity = 1;
-        let totalValue = 0;
-        
+
+        let medicineDisplay = 'Medication Request'
+        let totalQuantity = 1
+        let totalValue = 0
+
         if (order.medicines && order.medicines.length > 0) {
-          // If we have medicines array, display them
-          const medicineNames = order.medicines.map(med => med.medicine_name).join(', ');
-          medicineDisplay = medicineNames;
-          totalQuantity = order.medicines.reduce((sum, med) => sum + med.quantity, 0);
-          totalValue = order.medicines.reduce((sum, med) => sum + med.total_price, 0);
+          const medicineNames = order.medicines.map(med => med.medicine_name).join(', ')
+          medicineDisplay = medicineNames
+          totalQuantity = order.medicines.reduce((sum, med) => sum + med.quantity, 0)
+          totalValue = order.medicines.reduce((sum, med) => sum + med.total_price, 0)
         } else if (order.notes && order.notes.trim()) {
-          // Fallback to notes if no medicines array
-          medicineDisplay = order.notes.split(' - ')[0].trim();
+          medicineDisplay = order.notes.split(' - ')[0].trim()
         } else if (order.patient_id) {
-          // Final fallback
-          medicineDisplay = `Prescription for ${order.patient_id}`;
+          medicineDisplay = `Prescription for ${order.patient_id}`
         }
-        
+
         return {
           id: order._id || `ORD-${order.patient_id}`,
           pharmacy: order.pharmacy_id || 'Unknown Pharmacy',
-          location: 'Sri Lanka', // Default location
+          location: 'Sri Lanka',
           medicine: medicineDisplay,
           category: 'Prescription',
           qty: totalQuantity,
           unitPrice: totalValue / totalQuantity || 0,
           status: routingStatus ? mapRoutingStatus(routingStatus) : mapStatus(order.status),
-          originalStatus: order.status, // Store original database status
+          originalStatus: order.status,
           priority: mapPriority(order.priority_level),
           orderedAt: order.createdAt || order.request_date,
           deliveredAt: null,
@@ -771,10 +955,10 @@ export default function PharmacyOrders() {
           patient_id: order.patient_id,
           expiry_time: order.expiry_time,
           prescription_image: order.prescription_image,
-          medicines: order.medicines || [] // Store the full medicines array for detailed view
+          medicines: order.medicines || []
         }
       }))
-      
+
       setOrderData(transformedOrders)
     } catch (error) {
       setFetchError(error.message)
@@ -784,7 +968,6 @@ export default function PharmacyOrders() {
     }
   }
 
-  // Map database status to UI status
   const mapStatus = (status) => {
     switch (status) {
       case 'Pending': return 'pending'
@@ -800,18 +983,16 @@ export default function PharmacyOrders() {
     }
   }
 
-  // Map routing status to UI status
   const mapRoutingStatus = (routingStatus) => {
     switch (routingStatus) {
       case 'Pending': return 'pending'
-      case 'Accepted': return 'processing' // This will show as green/processing color
+      case 'Accepted': return 'processing'
       case 'Dispatched': return 'dispatched'
       case 'Rejected': return 'rejected'
       default: return 'pending'
     }
   }
 
-  // Map database priority to UI priority
   const mapPriority = (priority) => {
     switch (priority) {
       case 'Emergency': return 'urgent'
@@ -821,13 +1002,26 @@ export default function PharmacyOrders() {
     }
   }
 
-  // Sync pharmFilter if URL param changes (e.g. browser back/forward)
   useEffect(() => {
     setPharmFilter(urlPharmacy)
     setPage(1)
   }, [urlPharmacy])
 
-  // Derive unique pharmacy & category lists from current data
+  // ── Export PDF using getAllRequests data ───────────────────────────
+  const handleExportPDF = async () => {
+    setExportLoading(true)
+    try {
+      // Build PDF-ready order objects from raw API data
+      const pdfOrders = orderData // use current transformed data
+      await generatePharmacyOrdersPDF(pdfOrders)
+    } catch (err) {
+      console.error('PDF generation error:', err)
+      alert('Failed to generate PDF: ' + err.message)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
   const pharmacies = ["All", ...new Set(orderData.map(o => o.pharmacy))]
   const categories = ["All", ...new Set(orderData.map(o => o.category))]
 
@@ -836,170 +1030,94 @@ export default function PharmacyOrders() {
   const handleConfirm = async (reason) => {
     const { order, action } = modal
     console.log('handleConfirm called with action:', action, 'order:', order.id)
-    
+
     try {
       if (action === "accept") {
-        console.log('Processing accept action')
-        
-        // First, update the medicine stock to reduce quantity using medicine_id
         try {
-          console.log('Updating medicine stock for order:', order.id, 'medicines:', order.medicines)
-          
-          // Get medicines from the order - use the medicines array with medicine_id
           if (order.medicines && order.medicines.length > 0) {
-            console.log('Processing medicines array:', order.medicines)
-            
-            // Process each medicine in the order
             for (const medicineItem of order.medicines) {
-              const medicineId = medicineItem.medicine_id;
-              const quantity = medicineItem.quantity;
-              const medicineName = medicineItem.medicine_name;
-              
+              const medicineId = medicineItem.medicine_id
+              const quantity = medicineItem.quantity
+              const medicineName = medicineItem.medicine_name
+
               if (medicineId && quantity) {
-                console.log(`Updating stock for medicine: ${medicineName} (ID: ${medicineId}), quantity: ${quantity}`)
-                
-                // Call the new backend endpoint to update stock
                 const stockUpdateResponse = await medicineAPI.updateStock({
-                    medicineId: medicineId,
-                    quantity: quantity
-                });
-                
+                  medicineId: medicineId,
+                  quantity: quantity
+                })
                 if (stockUpdateResponse.ok) {
-                  const stockResult = await stockUpdateResponse.json();
-                  console.log('✅ Medicine stock updated successfully:', stockResult);
+                  const stockResult = await stockUpdateResponse.json()
+                  console.log('Medicine stock updated:', stockResult)
                 } else {
-                  const errorText = await stockUpdateResponse.text();
-                  console.error('❌ Failed to update medicine stock:', errorText);
-                  // Continue with order acceptance even if stock update fails
+                  console.error('Failed to update medicine stock')
                 }
-              } else {
-                console.warn('⚠️ Missing medicine_id or quantity for medicine item:', medicineItem);
               }
             }
           } else {
-            console.warn('⚠️ No medicines array found in order, falling back to old method');
-            
-            // Fallback: Find the medicine by name (old method)
             try {
-              const medicinesResponse = await medicineAPI.getAllMedicines();
-              const medicines = medicinesResponse.data;
-              const medicineArray = Array.isArray(medicines) ? medicines : (medicines.medicines || []);
-              
-              // Find the medicine by name
-              const targetMedicine = medicineArray.find(med => 
-                med.mediName === order.medicine || 
-                med.name === order.medicine
-              );
-              
+              const medicinesResponse = await medicineAPI.getAllMedicines()
+              const medicines = medicinesResponse.data
+              const medicineArray = Array.isArray(medicines) ? medicines : (medicines.medicines || [])
+              const targetMedicine = medicineArray.find(med =>
+                med.mediName === order.medicine || med.name === order.medicine
+              )
               if (targetMedicine) {
-                const currentStock = Number(targetMedicine.mediStock) || 0;
-                const orderQuantity = Number(order.qty) || 0;
-                const newStock = Math.max(0, currentStock - orderQuantity);
-                
-                console.log(`Found medicine: ${targetMedicine.mediName}, current stock: ${currentStock}, order quantity: ${orderQuantity}, new stock: ${newStock}`);
-                
-                // Update the medicine stock
-                const updateResponse = await medicineAPI.updateMedicine(targetMedicine._id, {
-                    mediStock: newStock
-                });
-                
-                if (updateResponse.ok) {
-                  console.log('✅ Medicine stock updated successfully (fallback method)');
-                } else {
-                  console.error('❌ Failed to update medicine stock (fallback):', await updateResponse.text());
-                }
-              } else {
-                console.warn('⚠️ Medicine not found:', order.medicine);
+                const currentStock = Number(targetMedicine.mediStock) || 0
+                const orderQuantity = Number(order.qty) || 0
+                const newStock = Math.max(0, currentStock - orderQuantity)
+                await medicineAPI.updateMedicine(targetMedicine._id, { mediStock: newStock })
               }
             } catch (error) {
-              console.error('❌ Error updating stock (fallback):', error);
+              console.error('Error updating stock (fallback):', error)
             }
           }
         } catch (stockError) {
-          console.error('❌ Error updating stock:', stockError);
-          // Continue with order acceptance even if stock update fails
+          console.error('Error updating stock:', stockError)
         }
-        
-        // Accept action: Update order status to 'Accepted' in database
+
         const response = await romsAPI.processRequest(order.id, {
-            action: 'accept',
-            pharmacy_id: order.pharmacy_id,
-            notes: 'Order accepted by pharmacy'
-        });
+          action: 'accept',
+          pharmacy_id: order.pharmacy_id,
+          notes: 'Order accepted by pharmacy'
+        })
 
-        console.log('API response status:', response.status)
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error('API error response:', errorText)
-          throw new Error(`Failed to accept order: ${errorText}`);
+        if (!response || !response.status || response.status < 200 || response.status >= 300) {
+          throw new Error(`Failed to accept order: ${response?.data?.message || 'Unknown error'}`)
         }
 
-        const updatedOrder = await response.json();
-        console.log('API success:', updatedOrder)
-        
-        // Update local state with the response
         setOrderData(prev => prev.map(o =>
-          o.id === order.id ? { 
-            ...o, 
-            status: mapStatus('Accepted') // 'Accepted' maps to 'processing' in UI
-          } : o
-        ));
-        
-        setToast({ type: "accepted", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
-        setModal(null);
-        return;
+          o.id === order.id ? { ...o, status: mapStatus('Accepted') } : o
+        ))
+        setToast({ type: "accepted", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy })
+        setModal(null)
+        return
       }
 
-      console.log('Processing API call for action:', action)
-      // Convert frontend action to backend action format
-      const backendAction = action === 'reject' ? 'Reject' : 
-                           action === 'dispatch' ? 'dispatch' : 
-                           action === 'accept' ? 'accept' : action;
-      
-      // For dispatch and reject actions, make API call to update order status
+      const backendAction = action === 'reject' ? 'Reject' : action === 'dispatch' ? 'dispatch' : action
       const response = await romsAPI.processRequest(order.id, {
         action: backendAction,
         pharmacy_id: order.pharmacy_id,
         rejectionReason: action === 'reject' ? reason : undefined,
         notes: action === 'dispatch' ? 'Order dispatched by pharmacy' : undefined
-      });
+      })
 
-      console.log('API response status:', response.status)
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('API error response:', errorText)
-        throw new Error(`Failed to update order: ${errorText}`);
+      if (!response || !response.status || response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to update order: ${response?.data?.message || 'Unknown error'}`)
       }
 
-      const updatedOrder = await response.json();
-      console.log('API success:', updatedOrder)
-      
-      // Update local state with the response
-      const newStatus = action === "dispatch" ? "dispatched" : 
-                       action === "reject" ? "Rejected" : order.status;
-      
+      const newStatus = action === "dispatch" ? "dispatched" : action === "reject" ? "Rejected" : order.status
       setOrderData(prev => prev.map(o =>
-        o.id === order.id ? { 
-          ...o, 
-          status: mapStatus(newStatus), 
-          rejectionReason: action === "reject" ? reason : undefined
-        } : o
-      ));
-      
-      setToast({ type: action === "dispatch" ? "dispatched" : (action === "reject" ? "rejected" : "accepted"), orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy });
-      setModal(null);
-      
-      // Refresh orders to get latest status from database
-      setTimeout(() => {
-        fetchOrders();
-      }, 500);
+        o.id === order.id ? { ...o, status: mapStatus(newStatus), rejectionReason: action === "reject" ? reason : undefined } : o
+      ))
+      setToast({ type: action === "dispatch" ? "dispatched" : (action === "reject" ? "rejected" : "accepted"), orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy })
+      setModal(null)
     } catch (error) {
-      console.error('Error updating order:', error);
-      alert('Failed to update order: ' + error.message);
+      console.error('Error updating order:', error)
+      setToast({ type: "error", orderId: order.id, medicine: order.medicine, pharmacy: order.pharmacy })
+      setModal(null)
     }
   }
 
-  // Clear pharmacy filter → also clears URL param
   const clearPharmacyFilter = () => {
     setPharmFilter("All")
     setPage(1)
@@ -1012,7 +1130,6 @@ export default function PharmacyOrders() {
         (o.id.toLowerCase().includes(search.toLowerCase()) ||
          o.pharmacy.toLowerCase().includes(search.toLowerCase()) ||
          o.medicine.toLowerCase().includes(search.toLowerCase())) &&
-        // pharmFilter "All" shows everything; otherwise match pharmacy name
         (pharmFilter==="" || pharmFilter==="All" || o.pharmacy===pharmFilter) &&
         (statusFilter==="All" || o.status===statusFilter) &&
         (catFilter==="All"    || o.category===catFilter) &&
@@ -1035,7 +1152,6 @@ export default function PharmacyOrders() {
     prioFilter!=="All"   ? prioFilter   : null,
   ].filter(Boolean).length
 
-  // Stats scoped to current pharmacy filter (or all if no filter)
   const scopedOrders = pharmFilter && pharmFilter!=="All"
     ? orderData.filter(o => o.pharmacy===pharmFilter)
     : orderData
@@ -1085,6 +1201,7 @@ export default function PharmacyOrders() {
           @keyframes modalIn { from{opacity:0;transform:scale(0.92) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
           @keyframes toastIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
           @keyframes toastProgress { from{width:100%} to{width:0%} }
+          @keyframes spin { to{transform:rotate(360deg)} }
           input::placeholder,textarea::placeholder { color:${C.lilacAsh}; opacity:0.55; }
           select option { background:${C.snow}; color:${C.blueSlate}; }
           table { border-collapse:collapse; width:100%; }
@@ -1102,7 +1219,6 @@ export default function PharmacyOrders() {
           <div style={{ marginBottom:28, paddingTop:4, animation:"fadeUp 0.4s ease both" }}>
             <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:16 }}>
               <div>
-                {/* Breadcrumb */}
                 <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
                   <div style={{ width:30, height:30, borderRadius:8, background:C.techBlue,
                     display:"flex", alignItems:"center", justifyContent:"center",
@@ -1155,7 +1271,6 @@ export default function PharmacyOrders() {
               </div>
 
               <div style={{ display:"flex", gap:9, flexShrink:0 }}>
-                {/* Back to all orders — only visible when pharmacy-filtered */}
                 {isPharmacyFiltered && (
                   <button onClick={clearPharmacyFilter} style={{
                     padding:"10px 16px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
@@ -1175,18 +1290,30 @@ export default function PharmacyOrders() {
                   onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
                   onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
                 ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
-                <button onClick={()=>setShowReportGenerator(true)} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-                  border:"none", background:C.techBlue, color:C.snow, fontWeight:600, fontSize:13,
-                  display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
-                  boxShadow:"0 4px 18px rgba(2,62,138,0.28)" }}
-                  onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}
-                  onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 18px rgba(2,62,138,0.28)" }}
-                ><Download size={13} strokeWidth={2}/> Export</button>
+
+                {/* ── Export PDF Button ── */}
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportLoading || loading}
+                  style={{ padding:"10px 18px", borderRadius:10,
+                    cursor: exportLoading||loading ? "not-allowed" : "pointer",
+                    fontFamily:"inherit", border:"none",
+                    background: exportLoading||loading ? "rgba(2,62,138,0.5)" : C.techBlue,
+                    color:C.snow, fontWeight:600, fontSize:13,
+                    display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
+                    boxShadow: exportLoading||loading ? "none" : "0 4px 18px rgba(2,62,138,0.28)" }}
+                  onMouseEnter={e=>{ if(!exportLoading&&!loading){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}}
+                  onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=exportLoading||loading?"none":"0 4px 18px rgba(2,62,138,0.28)" }}
+                >
+                  {exportLoading
+                    ? <><Loader2 size={13} style={{ animation:"spin 0.9s linear infinite" }}/> Generating...</>
+                    : <><Download size={13} strokeWidth={2}/> Export PDF</>
+                  }
+                </button>
               </div>
             </div>
           </div>
 
-          {/* ── Pharmacy context banner (shown only when filtered) ── */}
           {isPharmacyFiltered && (
             <div style={{
               padding:"14px 20px", borderRadius:12, marginBottom:22,
@@ -1224,7 +1351,6 @@ export default function PharmacyOrders() {
             </div>
           )}
 
-          {/* ── Stats (scoped to current pharmacy or all) ── */}
           <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
             <StatCard icon={ClipboardList} value={stats.total}      label={isPharmacyFiltered ? "Orders" : "Total Orders"} sub={isPharmacyFiltered ? pharmFilter.split(" ")[0] : "All time"} delay="0.07s" />
             <StatCard icon={Hourglass}     value={stats.pending}    label="Pending"      sub="Awaiting action" delay="0.1s"  />
@@ -1233,7 +1359,6 @@ export default function PharmacyOrders() {
             <StatCard icon={AlertTriangle} value={stats.urgent}     label="Urgent"       sub="Need attention"  delay="0.19s" />
           </div>
 
-          {/* Value strip */}
           <div style={{ padding:"11px 18px", borderRadius:10, marginBottom:20,
             background:C.white, border:`1.5px solid ${C.paleSlate}`,
             display:"flex", alignItems:"center", gap:10, animation:"fadeUp 0.4s ease 0.1s both",
@@ -1264,7 +1389,6 @@ export default function PharmacyOrders() {
                 />
               </div>
 
-              {/* Status pills */}
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 {["All","pending","in_transit","dispatched","rejected","cancelled"].map(s=>{
                   const cfg = s==="All" ? null : STATUS_CFG[s]
@@ -1308,7 +1432,6 @@ export default function PharmacyOrders() {
                 background:C.white, border:`1.5px solid ${C.paleSlate}`,
                 boxShadow:"0 2px 12px rgba(2,62,138,0.06)",
                 animation:"fadeUp 0.25s ease both" }}>
-                {/* Only show pharmacy filter when NOT already filtered from URL */}
                 {!isPharmacyFiltered && (
                   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                     <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh, letterSpacing:"0.12em", textTransform:"uppercase" }}>Pharmacy</label>
@@ -1356,16 +1479,15 @@ export default function PharmacyOrders() {
             )}
           </div>
 
-          {/* Loading State */}
           {loading && (
-            <div style={{ 
-              padding:"80px", textAlign:"center", borderRadius:16, 
+            <div style={{
+              padding:"80px", textAlign:"center", borderRadius:16,
               background:C.white, border:`1.5px solid ${C.paleSlate}`,
               boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
               animation:"fadeUp 0.4s ease 0.15s both"
             }}>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-                <Loader2 className="animate-spin" size={32} color={C.techBlue} />
+                <Loader2 size={32} color={C.techBlue} style={{ animation:"spin 0.9s linear infinite" }} />
                 <div>
                   <p style={{ margin:0, fontSize:16, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>
                     Loading orders...
@@ -1378,18 +1500,17 @@ export default function PharmacyOrders() {
             </div>
           )}
 
-          {/* Error State */}
           {fetchError && !loading && (
-            <div style={{ 
-              padding:"80px", textAlign:"center", borderRadius:16, 
+            <div style={{
+              padding:"80px", textAlign:"center", borderRadius:16,
               background:C.white, border:`1.5px solid rgba(192,57,43,0.2)`,
               boxShadow:"0 4px 24px rgba(192,57,43,0.07)",
               animation:"fadeUp 0.4s ease 0.15s both"
             }}>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-                <div style={{ 
+                <div style={{
                   width:52, height:52, borderRadius:14, background:"rgba(192,57,43,0.08)",
-                  border:"1.5px solid rgba(192,57,43,0.22)", display:"flex", alignItems:"center", justifyContent:"center" 
+                  border:"1.5px solid rgba(192,57,43,0.22)", display:"flex", alignItems:"center", justifyContent:"center"
                 }}>
                   <AlertTriangle size={24} color={C.danger} />
                 </div>
@@ -1414,7 +1535,6 @@ export default function PharmacyOrders() {
             </div>
           )}
 
-          {/* Table - only show when not loading and no error */}
           {!loading && !fetchError && (
             <div style={{ borderRadius:16, overflow:"hidden", border:`1.5px solid ${C.paleSlate}`,
               background:C.white, boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
@@ -1488,50 +1608,6 @@ export default function PharmacyOrders() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {showReportGenerator && (
-            <div style={{ position:"fixed", inset:0, zIndex:1000,
-              background:"rgba(4,18,38,0.55)", backdropFilter:"blur(4px)",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              animation:"fadeUp 0.2s ease both" }}>
-              <div style={{ width:"100%", maxWidth:600, maxHeight:"90vh", overflow:"auto",
-                borderRadius:18, background:C.snow, border:`1.5px solid ${C.paleSlate}`,
-                boxShadow:"0 32px 80px rgba(2,62,138,0.22)", animation:"fadeUp 0.25s ease both" }}>
-                <div style={{ padding:"24px 28px 20px", borderBottom:`1px solid ${C.paleSlate}`,
-                  display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <div style={{ width:40, height:40, borderRadius:10, background:`${C.techBlue}15`,
-                      display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <FileText size={20} color={C.techBlue} strokeWidth={2} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin:0, fontSize:18, fontWeight:700, color:C.blueSlate }}>Generate Report</h3>
-                      <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>
-                        Download order reports in PDF or JSON format
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={()=>setShowReportGenerator(false)} style={{
-                    width:32, height:32, borderRadius:8, border:`1.5px solid ${C.paleSlate}`,
-                    background:C.white, color:C.lilacAsh, cursor:"pointer", display:"flex",
-                    alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}
-                    onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
-                    onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}
-                  ><X size={16} strokeWidth={2} /></button>
-                </div>
-                <div style={{ padding:"24px 28px" }}>
-                  <ReportGenerator
-                    type="orders"
-                    filters={{
-                      pharmacy: isPharmacyFiltered ? pharmFilter : (pharmFilter==="All" ? "" : pharmFilter),
-                      status:   statusFilter==="All" ? "" : statusFilter,
-                      priority: prioFilter==="All"   ? "" : prioFilter
-                    }}
-                  />
-                </div>
-              </div>
             </div>
           )}
         </div>

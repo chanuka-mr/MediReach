@@ -12,6 +12,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.13.6",
     "html2pdf.js": "^0.14.0",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.6.0",
     "qrcode.react": "^4.2.0",

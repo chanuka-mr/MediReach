@@ -5,7 +5,6 @@ import { messageAPI } from '../../utils/apiEndpoints';
 import { useChat } from '../../context/ChatContext';
 
 
-const ENDPOINT = "http://localhost:5000";
 
 const ChatBox = ({ currentUser, currentRole }) => {
   const { socket, selectedChat, setSelectedChat, markAsRead } = useChat();
