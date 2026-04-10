@@ -2,18 +2,18 @@ import axios from 'axios';
 
 // Create base axios instance
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: `${process.env.BASEURL}/api`,
     timeout: 60000,
 });
 
 // Create axios instance for non-api routes
 const apiNonAuth = axios.create({       
-    baseURL: 'http://localhost:5000/api',
+    baseURL: `${process.env.BASEURL}/api`,
     timeout: 60000,
 });
 
 const apiNonAuthmedicine = axios.create({       
-    baseURL: 'http://localhost:5000',
+    baseURL: `${process.env.BASEURL}`,
     timeout: 60000,
 });
  
