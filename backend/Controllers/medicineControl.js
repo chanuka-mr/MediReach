@@ -1,0 +1,312 @@
+const Medicine = require('../Model/medicineModel');
+
+// ─── Validation Helper ────────────────────────────────────────────────────────
+
+const validateMedicineInput = (data) => {
+    const errors = [];
+    const {
+        mediName,
+        mediPrice,
+        mediDescription,
+        mediCategory,
+        mediStock,
+        mediCompany,
+        mediExpiryDate,
+        mediManufactureDate,
+        mediPrescriptionStatus,
+        Pharmacy,
+    } = data;
+
+    // mediName
+    if (!mediName || typeof mediName !== 'string' || mediName.trim() === '') {
+        errors.push('Medicine name is required and must be a non-empty string.');
+    } else if (mediName.trim().length < 2 || mediName.trim().length > 100) {
+        errors.push('Medicine name must be between 2 and 100 characters.');
+    }
+
+    // mediPrice
+    if (mediPrice === undefined || mediPrice === null || mediPrice === '') {
+        errors.push('Medicine price is required.');
+    } else if (isNaN(Number(mediPrice)) || Number(mediPrice) < 0) {
+        errors.push('Medicine price must be a non-negative number.');
+    }
+
+    // mediDescription
+    if (!mediDescription || typeof mediDescription !== 'string' || mediDescription.trim() === '') {
+        errors.push('Medicine description is required.');
+    } else if (mediDescription.trim().length > 1000) {
+        errors.push('Medicine description must not exceed 1000 characters.');
+    }
+
+    // mediCategory
+    if (!mediCategory || typeof mediCategory !== 'string' || mediCategory.trim() === '') {
+        errors.push('Medicine category is required.');
+    }
+
+    // mediStock
+    if (mediStock === undefined || mediStock === null || mediStock === '') {
+        errors.push('Medicine stock is required.');
+    } else if (!Number.isInteger(Number(mediStock)) || Number(mediStock) < 0) {
+        errors.push('Medicine stock must be a non-negative integer.');
+    }
+
+    // mediCompany
+    if (!mediCompany || typeof mediCompany !== 'string' || mediCompany.trim() === '') {
+        errors.push('Medicine company is required.');
+    }
+
+    // Pharmacy
+    if (!Pharmacy || typeof Pharmacy !== 'string' || Pharmacy.trim() === '') {
+        errors.push('Pharmacy is required.');
+    }
+
+    // mediExpiryDate
+    if (!mediExpiryDate) {
+        errors.push('Medicine expiry date is required.');
+    } else if (isNaN(Date.parse(mediExpiryDate))) {
+        errors.push('Medicine expiry date must be a valid date.');
+    } else if (new Date(mediExpiryDate) <= new Date()) {
+        errors.push('Medicine expiry date must be in the future.');
+    }
+
+    // mediManufactureDate
+    if (!mediManufactureDate) {
+        errors.push('Medicine manufacture date is required.');
+    } else if (isNaN(Date.parse(mediManufactureDate))) {
+        errors.push('Medicine manufacture date must be a valid date.');
+    } else if (new Date(mediManufactureDate) > new Date()) {
+        errors.push('Medicine manufacture date must not be in the future.');
+    }
+
+    // Cross-field: manufacture before expiry
+    if (
+        mediManufactureDate &&
+        mediExpiryDate &&
+        !isNaN(Date.parse(mediManufactureDate)) &&
+        !isNaN(Date.parse(mediExpiryDate))
+    ) {
+        if (new Date(mediManufactureDate) >= new Date(mediExpiryDate)) {
+            errors.push('Manufacture date must be before expiry date.');
+        }
+    }
+
+    // mediPrescriptionStatus
+    const validStatuses = ['required', 'not required', 'optional'];
+    if (
+        mediPrescriptionStatus === undefined ||
+        mediPrescriptionStatus === null ||
+        mediPrescriptionStatus === ''
+    ) {
+        errors.push('Prescription status is required.');
+    } else if (!validStatuses.includes(String(mediPrescriptionStatus).toLowerCase())) {
+        errors.push(`Prescription status must be one of: ${validStatuses.join(', ')}.`);
+    }
+
+    return errors;
+};
+
+// ─── Controllers ─────────────────────────────────────────────────────────────
+
+//Display all medicines
+const getAllMedicines = async (req, res) => {
+    try {
+        const medicines = await Medicine.find();
+        return res.status(200).json({ medicines });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+//Medicine Insert
+const addmedicine = async (req, res, next) => {
+    // Validation
+    const validationErrors = validateMedicineInput(req.body);
+    if (validationErrors.length > 0) {
+        return res.status(400).json({ message: "Validation failed", errors: validationErrors });
+    }
+
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus, Pharmacy } = req.body;
+    let medicine;
+    try {
+        medicine = new Medicine({
+            mediName,
+            mediPrice,
+            mediDescription,
+            mediImage,
+            mediCategory,
+            mediStock,
+            mediCompany,
+            mediExpiryDate,
+            mediManufactureDate,
+            mediPrescriptionStatus,
+            Pharmacy
+        });
+        await medicine.save();
+    } catch (error) {
+        console.error(error);
+    }
+
+    if (!medicine) {
+        return res.status(500).json({ message: "Unable to add" });
+    }
+    return res.status(201).json({ message: "Medicine added successfully", medicine });
+};
+
+//Get by ID
+const getById = async (req, res, next) => {
+    const id = req.params.id;
+
+    // Validate MongoDB ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid medicine ID format." });
+    }
+
+    let medicine;
+    try {
+        medicine = await Medicine.findById(id);
+    } catch (error) {
+        console.error(error);
+    }
+    if (!medicine) {
+        return res.status(404).json({ message: "No medicine found" });
+    }
+    return res.status(200).json({ medicine });
+};
+
+//Update medicine
+const updateMedicine = async (req, res, next) => {
+    const id = req.params.id;
+
+    // Validate MongoDB ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid medicine ID format." });
+    }
+
+    // Validation
+    const validationErrors = validateMedicineInput(req.body);
+    if (validationErrors.length > 0) {
+        return res.status(400).json({ message: "Validation failed", errors: validationErrors });
+    }
+
+    const { mediName, mediPrice, mediDescription, mediImage, mediCategory, mediStock, mediCompany, mediExpiryDate, mediManufactureDate, mediPrescriptionStatus, Pharmacy } = req.body;
+
+    try {
+        const medicine = await Medicine.findByIdAndUpdate(
+            id, 
+            {
+                mediName,
+                mediPrice,
+                mediDescription,
+                mediImage,
+                mediCategory,
+                mediStock,
+                mediCompany,
+                mediExpiryDate,
+                mediManufactureDate,
+                mediPrescriptionStatus,
+                Pharmacy
+            },
+            { new: true, runValidators: true } // Return the updated document and run validators
+        );
+        
+        if (!medicine) {
+            return res.status(404).json({ message: "No medicine found to Update" });
+        }
+        
+        return res.status(200).json({ message: "Medicine updated successfully", medicine });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error during update" });
+    }
+};
+
+//Update medicine stock specifically
+const updateMedicineStock = async (req, res, next) => {
+    const { medicineId, quantity } = req.body;
+
+    // Validate required fields
+    if (!medicineId) {
+        return res.status(400).json({ message: "Medicine ID is required." });
+    }
+
+    if (quantity === undefined || quantity === null) {
+        return res.status(400).json({ message: "Quantity is required." });
+    }
+
+    // Validate MongoDB ObjectId format for medicineId
+    if (!medicineId.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid medicine ID format." });
+    }
+
+    // Validate quantity
+    const orderQuantity = Number(quantity);
+    if (isNaN(orderQuantity) || orderQuantity < 0) {
+        return res.status(400).json({ message: "Quantity must be a non-negative number." });
+    }
+
+    try {
+        // Find the medicine first
+        const medicine = await Medicine.findById(medicineId);
+        
+        if (!medicine) {
+            return res.status(404).json({ message: "Medicine not found." });
+        }
+
+        // Calculate new stock (ensure it doesn't go below 0)
+        const currentStock = Number(medicine.mediStock) || 0;
+        const newStock = Math.max(0, currentStock - orderQuantity);
+
+        console.log(`Updating stock for medicine: ${medicine.mediName}`);
+        console.log(`Current stock: ${currentStock}, Order quantity: ${orderQuantity}, New stock: ${newStock}`);
+
+        // Update only the stock field
+        const updatedMedicine = await Medicine.findByIdAndUpdate(
+            medicineId,
+            { mediStock: newStock },
+            { new: true, runValidators: true }
+        );
+        
+        return res.status(200).json({ 
+            message: "Medicine stock updated successfully", 
+            medicine: updatedMedicine,
+            previousStock: currentStock,
+            quantityReduced: orderQuantity,
+            newStock: newStock
+        });
+    } catch (error) {
+        console.error('Error updating medicine stock:', error);
+        return res.status(500).json({ message: "Server error during stock update" });
+    }
+};
+
+//Delete medicine
+const deleteMedicine = async (req, res, next) => {
+    const id = req.params.id;
+
+    // Validate MongoDB ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid medicine ID format." });
+    }
+
+    try {
+        medicine = await Medicine.findByIdAndDelete(id);
+    } catch (error) {
+        console.error(error);
+    }
+    if (!medicine) {
+        return res.status(404).json({ message: "No medicine found to Delete" });
+    }
+    return res.status(200).json({ message: "Medicine deleted successfully" });
+};
+
+
+module.exports = {
+    getAllMedicines,
+    addmedicine,
+    getById,
+    updateMedicine,
+    updateMedicineStock,
+    deleteMedicine
+};

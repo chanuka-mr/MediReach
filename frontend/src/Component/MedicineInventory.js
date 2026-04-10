@@ -1,0 +1,1040 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  Search, Filter, ShoppingCart, Clock, Building2,
+  ChevronRight, RefreshCw, Download, Eye,
+  AlertTriangle, Truck, CheckCircle2,
+  DollarSign, Hash, Calendar, MapPin,
+  Pill, TrendingUp, ClipboardList,
+  Hourglass, Ban, CircleDot, X,
+  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  XCircle, ShieldCheck, ShieldOff, Trash2, Loader2,
+  ArrowUpDown, ChevronUp, ChevronDown, Layers,
+  Package, PencilLine, Tag, Beaker, ChevronLeft
+} from 'lucide-react';
+import { medicineAPI } from '../utils/apiEndpoints';
+
+// ── Palette — matches InventoryDashboard ─────────────────────────
+const C = {
+  snow:      "#FFFFFF",
+  white:     "#F7F9FC",
+  paleSlate: "#DDE3ED",
+  techBlue:  "#023E8A",
+  lilacAsh:  "#4C6EF5",
+  blueSlate: "#4A5568",
+  success:   "#0E7C5B",
+  warn:      "#B45309",
+  danger:    "#C0392B",
+}
+
+// ── PDF generation (jsPDF + autotable via CDN) ────────────────────
+async function loadJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-jspdf]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.setAttribute('data-jspdf', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-autotable]')) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s.setAttribute('data-autotable', '1');
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+async function generateMedicineInventoryPDF(medicines) {
+  const JsPDF = await loadJsPDF();
+  const doc   = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  const BLUE    = [2, 62, 138];
+  const SNOW    = [247, 249, 252];
+  const WHITE   = [255, 255, 255];
+  const SLATE   = [74, 85, 104];
+  const PALE    = [221, 227, 237];
+  const SUCCESS = [14, 124, 91];
+  const WARN    = [180, 83, 9];
+  const DANGER  = [192, 57, 43];
+
+  function drawHeader() {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, 0, pageW, 48, 'F');
+    doc.setFillColor(76, 110, 245);
+    doc.rect(0, 48, pageW, 4, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach · Pharmacy Management System', 16, 14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...WHITE);
+    doc.text('Medicine Inventory Report', 16, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 210, 255);
+    doc.text(`Complete stock registry across all pharmacies · ${medicines.length} medicines`, 16, 41);
+    const now = new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    doc.text(`Generated: ${now}`, pageW - 16, 41, { align: 'right' });
+  }
+
+  function drawFooter(pg, tot) {
+    doc.setFillColor(...BLUE);
+    doc.rect(0, pageH - 18, pageW, 18, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 200, 255);
+    doc.text('MediReach — Confidential Report', 16, pageH - 6);
+    doc.text(`Page ${pg} of ${tot}`, pageW - 16, pageH - 6, { align: 'right' });
+  }
+
+  drawHeader();
+
+  const total   = medicines.length;
+  const inStock = medicines.filter(m => Number(m.mediStock || m.stock || 0) > 50).length;
+  const low     = medicines.filter(m => { const s = Number(m.mediStock || m.stock || 0); return s > 0 && s <= 50; }).length;
+  const out     = medicines.filter(m => Number(m.mediStock || m.stock || 0) === 0).length;
+
+  const boxY = 62, boxH = 36, boxW = (pageW - 32) / 4, boxGap = 8;
+  [
+    { label: 'Total Medicines', value: String(total),    color: BLUE    },
+    { label: 'In Stock',        value: String(inStock),  color: SUCCESS },
+    { label: 'Low Stock',       value: String(low),      color: WARN    },
+    { label: 'Out of Stock',    value: String(out),      color: DANGER  },
+  ].forEach((s, i) => {
+    const x = 16 + i * (boxW + boxGap);
+    doc.setFillColor(...SNOW);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'F');
+    doc.setDrawColor(...PALE);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, boxY, boxW, boxH, 4, 4, 'S');
+    doc.setFillColor(...s.color);
+    doc.roundedRect(x, boxY, 4, boxH, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(...s.color);
+    doc.text(s.value, x + 14, boxY + 23);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE);
+    doc.text(s.label, x + 14, boxY + 31);
+  });
+
+  const rows = medicines.map((m, idx) => {
+    const stock = Number(m.mediStock || m.stock || 0);
+    const stockLabel = stock === 0 ? 'Out of Stock' : stock <= 50 ? 'Low Stock' : 'In Stock';
+    const exp = m.mediExpiryDate
+      ? new Date(m.mediExpiryDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+    return [
+      String(idx + 1).padStart(3, '0'),
+      m.mediName   || m.name     || '—',
+      m.mediCategory || m.category || '—',
+      stock.toLocaleString(),
+      stockLabel,
+      m.Pharmacy   || m.pharmacy || '—',
+      m.mediPrice  ? `LKR ${Number(m.mediPrice).toLocaleString()}` : '—',
+      exp,
+    ];
+  });
+
+  doc.autoTable({
+    startY: boxY + boxH + 12,
+    head: [['#', 'Medicine Name', 'Category', 'Stock', 'Stock Status', 'Related Pharmacy', 'Unit Price', 'Expiry Date']],
+    body: rows,
+    theme: 'plain',
+    headStyles: {
+      fillColor: BLUE,
+      textColor: WHITE,
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: { top: 7, bottom: 7, left: 8, right: 8 },
+    },
+    alternateRowStyles: { fillColor: SNOW },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: SLATE,
+      cellPadding: { top: 6, bottom: 6, left: 8, right: 8 },
+    },
+    columnStyles: {
+      0: { cellWidth: 28, halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 'auto', fontStyle: 'bold', textColor: BLUE },
+      2: { cellWidth: 80 },
+      3: { cellWidth: 55, halign: 'right', fontStyle: 'bold' },
+      4: { cellWidth: 72, halign: 'center' },
+      5: { cellWidth: 'auto' },
+      6: { cellWidth: 70, halign: 'right', fontStyle: 'bold', textColor: BLUE },
+      7: { cellWidth: 72, halign: 'center' },
+    },
+    didDrawCell(data) {
+      if (data.section === 'body' && data.column.index === 4) {
+        const v = data.cell.raw;
+        const col = v === 'Out of Stock' ? DANGER : v === 'Low Stock' ? WARN : SUCCESS;
+        const { x, y, width, height } = data.cell;
+        const pad = 3;
+        doc.setFillColor(col[0], col[1], col[2]);
+        doc.roundedRect(x + pad, y + pad, width - pad * 2, height - pad * 2, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...WHITE);
+        doc.text(v, x + width / 2, y + height / 2 + 2.5, { align: 'center' });
+      }
+    },
+    didDrawPage() {
+      const pg  = doc.internal.getCurrentPageInfo().pageNumber;
+      const tot = doc.internal.getNumberOfPages();
+      drawFooter(pg, tot);
+    },
+    margin: { left: 16, right: 16, bottom: 28 },
+  });
+
+  const totalPgs = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPgs; p++) {
+    doc.setPage(p);
+    drawFooter(p, totalPgs);
+  }
+
+  doc.save(`MediReach_Inventory_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// Map DB field names → normalised shape used in the UI
+function normalise(m) {
+  return {
+    id:       m._id || m.id || "",
+    name:     m.mediName     || m.name     || "",
+    category: m.mediCategory || m.category || "",
+    company:  m.mediCompany  || m.company  || "",
+    pharmacy: m.Pharmacy     || m.pharmacy || "",
+    price:    Number(m.mediPrice || m.price || 0),
+    stock:    Number(m.mediStock || m.stock || 0),
+    mfgDate:  m.mediManufactureDate || m.mfgDate || "",
+    expDate:  m.mediExpiryDate      || m.expDate || "",
+    rxStatus: m.mediPrescriptionStatus || m.rxStatus || "",
+    _raw:     m,
+  }
+}
+
+const stockStatus = (qty) => {
+  if (qty===0)  return { label:"Out of Stock", color:C.danger,  bg:"rgba(192,57,43,0.07)",  border:"rgba(192,57,43,0.22)",  icon:XCircle }
+  if (qty<=50)  return { label:"Low Stock",    color:C.warn,    bg:"rgba(180,83,9,0.07)",   border:"rgba(180,83,9,0.22)",   icon:AlertTriangle }
+  return               { label:"In Stock",     color:C.success, bg:"rgba(14,124,91,0.07)",  border:"rgba(14,124,91,0.22)",  icon:CheckCircle2 }
+}
+
+const rxConfig = {
+  "Prescription Required": { icon:ShieldCheck, color:C.techBlue, bg:"rgba(2,62,138,0.07)",  border:"rgba(2,62,138,0.2)"  },
+  "Over The Counter":      { icon:ShieldOff,   color:C.success,  bg:"rgba(14,124,91,0.07)", border:"rgba(14,124,91,0.2)" },
+  "Controlled Substance":  { icon:ShieldAlert, color:C.warn,     bg:"rgba(180,83,9,0.07)",  border:"rgba(180,83,9,0.2)"  },
+}
+
+const isExpiringSoon = (d) => { const diff=(new Date(d)-new Date())/(1000*60*60*24); return diff>0&&diff<=180 }
+const isExpired      = (d) => new Date(d)<new Date()
+const fmtDate        = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—"
+
+// ── Stock Bar ─────────────────────────────────────────────────────
+function StockBar({ qty }) {
+  const max=1300, pct=Math.min((qty/max)*100,100)
+  const { color } = stockStatus(qty)
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ flex:1, height:4, borderRadius:99, background:C.paleSlate, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, borderRadius:99, background:color, transition:"width 0.6s ease" }} />
+      </div>
+      <span style={{ fontSize:12.5, fontWeight:700, color, minWidth:34, textAlign:"right", fontFamily:"'Sora',sans-serif" }}>
+        {qty.toLocaleString()}
+      </span>
+    </div>
+  )
+}
+
+// ── Stat Card ─────────────────────────────────────────────────────
+function StatCard({ icon:Icon, value, label, sub, delay }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{
+      flex:1, padding:"22px 20px", borderRadius:16, cursor:"default",
+      transition:"all 0.28s cubic-bezier(0.4,0,0.2,1)",
+      background: hov ? C.techBlue : C.white,
+      border:`1.5px solid ${hov ? C.techBlue : C.paleSlate}`,
+      boxShadow: hov ? "0 16px 40px rgba(2,62,138,0.18)" : "0 2px 12px rgba(74,85,104,0.07)",
+      transform: hov ? "translateY(-3px)" : "none",
+      animation:`fadeUp 0.5s ease ${delay||"0s"} both`,
+      position:"relative", overflow:"hidden",
+    }}>
+      {hov && <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+        backgroundImage:`radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)`,
+        backgroundSize:"20px 20px" }} />}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative" }}>
+        <div>
+          <p style={{ margin:"0 0 7px", fontSize:10.5, fontWeight:700,
+            color: hov ? "rgba(255,255,255,0.6)" : C.lilacAsh,
+            letterSpacing:"0.14em", textTransform:"uppercase" }}>{label}</p>
+          <p style={{ margin:0, fontSize:38, fontWeight:700, letterSpacing:"-2px", lineHeight:1,
+            color: hov ? C.snow : C.techBlue, fontFamily:"'Sora',sans-serif", transition:"color 0.28s" }}>{value}</p>
+          {sub && <p style={{ margin:"6px 0 0", fontSize:12, color: hov ? "rgba(255,255,255,0.5)" : C.lilacAsh }}>{sub}</p>}
+        </div>
+        <div style={{
+          width:44, height:44, borderRadius:11,
+          background: hov ? "rgba(255,255,255,0.15)" : "rgba(2,62,138,0.07)",
+          border:`1.5px solid ${hov ? "rgba(255,255,255,0.25)" : "rgba(2,62,138,0.12)"}`,
+          display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.28s",
+        }}>
+          <Icon size={19} color={hov ? C.snow : C.techBlue} strokeWidth={1.8} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Delete Confirmation Modal ─────────────────────────────────────
+function DeleteModal({ medicine, onConfirm, onCancel, deleting }) {
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:1000,
+      background:"rgba(4,18,38,0.55)", backdropFilter:"blur(4px)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      animation:"fadeUp 0.2s ease both",
+    }}>
+      <div style={{
+        width:"100%", maxWidth:420, borderRadius:18,
+        background:C.snow, border:`1.5px solid ${C.paleSlate}`,
+        boxShadow:"0 32px 80px rgba(2,62,138,0.22)",
+        overflow:"hidden", animation:"fadeUp 0.25s ease both",
+      }}>
+        <div style={{ height:3, background:`linear-gradient(90deg, ${C.danger}, rgba(192,57,43,0.4))` }} />
+        <div style={{ padding:"28px 28px 24px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:13, marginBottom:16 }}>
+            <div style={{
+              width:46, height:46, borderRadius:13, flexShrink:0,
+              background:"rgba(192,57,43,0.08)", border:`1.5px solid rgba(192,57,43,0.22)`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <Trash2 size={20} color={C.danger} strokeWidth={1.8} />
+            </div>
+            <div>
+              <p style={{ margin:0, fontSize:16, fontWeight:700, color:C.blueSlate,
+                fontFamily:"'Sora',sans-serif", letterSpacing:"-0.4px" }}>Delete Medicine</p>
+              <p style={{ margin:"2px 0 0", fontSize:12, color:C.lilacAsh }}>This action cannot be undone</p>
+            </div>
+          </div>
+          <div style={{
+            borderRadius:10, padding:"12px 14px", marginBottom:20,
+            background:"rgba(192,57,43,0.04)", border:`1px solid rgba(192,57,43,0.16)`,
+          }}>
+            <p style={{ margin:"0 0 3px", fontSize:14, fontWeight:700, color:C.blueSlate }}>{medicine.name}</p>
+            <p style={{ margin:0, fontSize:12, color:C.lilacAsh }}>
+              {medicine.category} · {medicine.company} · {medicine.stock.toLocaleString()} units in stock
+            </p>
+          </div>
+          <p style={{ margin:"0 0 22px", fontSize:13, color:C.blueSlate, lineHeight:1.6 }}>
+            Are you sure you want to permanently remove <strong>{medicine.name}</strong> from the inventory? All associated data will be deleted.
+          </p>
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+            <button
+              onClick={onCancel}
+              disabled={deleting}
+              style={{
+                padding:"9px 20px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+                border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                color:C.blueSlate, fontWeight:600, fontSize:13, transition:"all 0.2s",
+                opacity: deleting ? 0.5 : 1,
+              }}
+              onMouseEnter={e=>{ if(!deleting) e.currentTarget.style.borderColor=C.blueSlate }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate }}
+            >Cancel</button>
+            <button
+              onClick={onConfirm}
+              disabled={deleting}
+              style={{
+                padding:"9px 20px", borderRadius:9, cursor: deleting ? "not-allowed" : "pointer",
+                fontFamily:"inherit", border:"none",
+                background: deleting ? "rgba(192,57,43,0.5)" : C.danger,
+                color:C.snow, fontWeight:600, fontSize:13, transition:"all 0.2s",
+                display:"flex", alignItems:"center", gap:7,
+                boxShadow: deleting ? "none" : "0 4px 16px rgba(192,57,43,0.32)",
+              }}
+              onMouseEnter={e=>{ if(!deleting){ e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(192,57,43,0.42)" }}}
+              onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=deleting?"none":"0 4px 16px rgba(192,57,43,0.32)" }}
+            >
+              {deleting
+                ? <><Loader2 size={13} style={{ animation:"spin 0.9s linear infinite" }} /> Deleting...</>
+                : <><Trash2 size={13} strokeWidth={2} /> Delete</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────
+export default function MedicineInventory() {
+  const navigate   = useNavigate()
+  const location   = useLocation()
+
+  const urlPharmacy = new URLSearchParams(location.search).get("pharmacy") || "All"
+
+  const [allMedicines, setAllMedicines] = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [fetchError,   setFetchError]   = useState(null)
+  const [search,       setSearch]       = useState("")
+  const [catFilter,    setCatFilter]    = useState("All")
+  const [pharmFilter,  setPharmFilter]  = useState(urlPharmacy)
+  const [rxFilter,     setRxFilter]     = useState("All")
+  const [stockFilter,  setStockFilter]  = useState("All")
+  const [showReportGenerator, setShowReportGenerator] = useState(false)
+  const [sortKey,      setSortKey]      = useState("name")
+  const [sortDir,      setSortDir]      = useState("asc")
+  const [page,         setPage]         = useState(1)
+  const [expanded,     setExpanded]     = useState(null)
+  const [showFilters,  setShowFilters]  = useState(false)
+  const [focusSearch,  setFocusSearch]  = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+
+  // Delete state
+  const [deleteTarget,  setDeleteTarget]  = useState(null)
+  const [deleting,      setDeleting]      = useState(false)
+  const [deleteSuccess, setDeleteSuccess] = useState(null)
+
+  // Raw medicines (for PDF — unfiltered)
+  const [rawMedicines, setRawMedicines] = useState([])
+
+  const PER_PAGE = 8
+
+  const fetchMedicines = async () => {
+    setLoading(true); setFetchError(null)
+    try {
+      const res = await medicineAPI.getAllMedicines()
+      const data = res.data
+      const list = Array.isArray(data) ? data : (data.medicines || data.data || [])
+      setRawMedicines(list)
+      setAllMedicines(list.map(normalise))
+    } catch (err) {
+      setFetchError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => { fetchMedicines() }, [])
+
+  React.useEffect(() => {
+    setPharmFilter(urlPharmacy)
+    setPage(1)
+  }, [urlPharmacy])
+
+  // ── Export PDF ───────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    setExportLoading(true)
+    try {
+      await generateMedicineInventoryPDF(rawMedicines)
+    } catch (err) {
+      console.error('PDF generation error:', err)
+      alert('Failed to generate PDF: ' + err.message)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  // ── Delete handler ───────────────────────────────────────────────
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await medicineAPI.deleteMedicine(deleteTarget.id)
+      const data = res.data
+      if (res.status !== 200 && res.status !== 204) {
+        throw new Error(data.message || "Failed to delete")
+      }
+      setAllMedicines(prev => prev.filter(m => m.id !== deleteTarget.id))
+      setRawMedicines(prev => prev.filter(m => (m._id || m.id) !== deleteTarget.id))
+      setDeleteTarget(null)
+      setDeleteSuccess(`"${deleteTarget.name}" was deleted successfully.`)
+      setTimeout(() => setDeleteSuccess(null), 3500)
+      setPage(p => Math.max(1, p))
+    } catch (err) {
+      setFetchError(err.message)
+      setDeleteTarget(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const categories = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.category).filter(Boolean))], [allMedicines])
+  const pharmacies = useMemo(() => ["All", ...new Set(allMedicines.map(m=>m.pharmacy).filter(Boolean))], [allMedicines])
+
+  const handleSort = (key) => {
+    if(sortKey===key) setSortDir(d=>d==="asc"?"desc":"asc")
+    else { setSortKey(key); setSortDir("asc") }
+  }
+
+  const filtered = useMemo(()=>{
+    return allMedicines
+      .filter(m=>
+        (m.name.toLowerCase().includes(search.toLowerCase()) ||
+         String(m.id).toLowerCase().includes(search.toLowerCase()) ||
+         m.company.toLowerCase().includes(search.toLowerCase())) &&
+        (catFilter==="All"    || m.category===catFilter) &&
+        (pharmFilter==="All"  || m.pharmacy===pharmFilter) &&
+        (rxFilter==="All"     || m.rxStatus===rxFilter) &&
+        (stockFilter==="All"  ||
+          (stockFilter==="in"  && m.stock>50) ||
+          (stockFilter==="low" && m.stock>0&&m.stock<=50) ||
+          (stockFilter==="out" && m.stock===0))
+      )
+      .sort((a,b)=>{
+        let av=a[sortKey], bv=b[sortKey]
+        if(typeof av==="string"){av=av.toLowerCase();bv=bv.toLowerCase()}
+        return sortDir==="asc"?(av>bv?1:-1):(av<bv?1:-1)
+      })
+  },[allMedicines,search,catFilter,pharmFilter,rxFilter,stockFilter,sortKey,sortDir])
+
+  const totalPages = Math.ceil(filtered.length/PER_PAGE)
+  const pageData   = filtered.slice((page-1)*PER_PAGE,page*PER_PAGE)
+
+  const stats = {
+    total:    allMedicines.length,
+    inStock:  allMedicines.filter(m=>m.stock>50).length,
+    low:      allMedicines.filter(m=>m.stock>0&&m.stock<=50).length,
+    out:      allMedicines.filter(m=>m.stock===0).length,
+    expiring: allMedicines.filter(m=>isExpiringSoon(m.expDate)).length,
+  }
+
+  const thStyle = {
+    padding:"10px 16px", textAlign:"left", fontWeight:700, fontSize:9.5,
+    letterSpacing:"0.13em", textTransform:"uppercase", color:C.lilacAsh,
+    whiteSpace:"nowrap", borderBottom:`1.5px solid ${C.paleSlate}`,
+    background:C.snow,
+  }
+
+  const SortIcon = ({col}) => {
+    if(sortKey!==col) return <ArrowUpDown size={11} color={C.paleSlate}/>
+    return sortDir==="asc"?<ChevronUp size={11} color={C.techBlue}/>:<ChevronDown size={11} color={C.techBlue}/>
+  }
+
+  const ColHead = ({col,label,style={}}) => (
+    <th onClick={()=>handleSort(col)} style={{...thStyle,cursor:"pointer",userSelect:"none",transition:"color 0.15s",...style}}
+      onMouseEnter={e=>e.currentTarget.style.color=C.techBlue}
+      onMouseLeave={e=>e.currentTarget.style.color=C.lilacAsh}
+    >
+      <div style={{ display:"flex", alignItems:"center", gap:5 }}>{label}<SortIcon col={col}/></div>
+    </th>
+  )
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.snow, fontFamily:"'DM Sans',sans-serif", padding:"36px 40px 56px", position:"relative" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+        * { box-sizing:border-box; }
+        ::-webkit-scrollbar { width:4px; height:4px; }
+        ::-webkit-scrollbar-thumb { background:${C.paleSlate}; border-radius:99px; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes slideIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+        input::placeholder { color:${C.lilacAsh}; opacity:0.55; }
+        select option { background:${C.snow}; color:${C.blueSlate}; }
+        table { border-collapse:collapse; width:100%; }
+      `}</style>
+
+      <div style={{ position:"fixed", top:0, left:0, right:0, height:3, zIndex:99,
+        background:`linear-gradient(90deg, ${C.techBlue}, ${C.lilacAsh}, ${C.paleSlate}, ${C.snow})` }} />
+
+      <div style={{ position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+        backgroundImage:`radial-gradient(circle, ${C.paleSlate} 1px, transparent 1px)`,
+        backgroundSize:"28px 28px", opacity:0.35 }} />
+
+      {deleteTarget && (
+        <DeleteModal
+          medicine={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+          deleting={deleting}
+        />
+      )}
+
+      {deleteSuccess && (
+        <div style={{
+          position:"fixed", top:24, right:28, zIndex:999,
+          padding:"12px 18px", borderRadius:11,
+          background:C.snow, border:`1.5px solid rgba(14,124,91,0.3)`,
+          boxShadow:"0 8px 32px rgba(14,124,91,0.18)",
+          display:"flex", alignItems:"center", gap:10,
+          animation:"slideIn 0.3s ease both", maxWidth:360,
+        }}>
+          <div style={{
+            width:30, height:30, borderRadius:8, flexShrink:0,
+            background:"rgba(14,124,91,0.1)", border:"1.5px solid rgba(14,124,91,0.25)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <CheckCircle2 size={15} color={C.success} strokeWidth={2} />
+          </div>
+          <div>
+            <p style={{ margin:0, fontSize:12.5, fontWeight:700, color:C.success }}>Deleted successfully</p>
+            <p style={{ margin:"2px 0 0", fontSize:11.5, color:C.lilacAsh }}>{deleteSuccess}</p>
+          </div>
+        </div>
+      )}
+
+      <div style={{ position:"relative", zIndex:1 }}>
+        {/* Header */}
+        <div style={{ marginBottom:28, paddingTop:4, animation:"fadeUp 0.4s ease both" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:16 }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:C.techBlue,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  boxShadow:`0 4px 12px rgba(2,62,138,0.28)` }}>
+                  <Layers size={14} color={C.snow} strokeWidth={2} />
+                </div>
+                <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:400 }}>MediReach</span>
+                <ChevronRight size={11} color={C.paleSlate} />
+                <span style={{ fontSize:11.5, color:C.techBlue, fontWeight:700,
+                  background:"rgba(2,62,138,0.08)", padding:"2px 10px", borderRadius:99,
+                  border:`1px solid rgba(2,62,138,0.15)` }}>Medicine Inventory</span>
+              </div>
+              <h1 style={{ margin:0, fontSize:32, fontWeight:700, letterSpacing:"-1.4px",
+                color:C.blueSlate, lineHeight:1.1, fontFamily:"'Sora',sans-serif" }}>Medicine Stock Registry</h1>
+              <p style={{ margin:"7px 0 0", color:C.lilacAsh, fontSize:14 }}>
+                Complete inventory across all connected pharmacies
+              </p>
+            </div>
+            <div style={{ display:"flex", gap:9, flexShrink:0 }}>
+              <button onClick={fetchMedicines} style={{ padding:"10px 18px", borderRadius:10, cursor:"pointer", fontFamily:"inherit",
+                border:`1.5px solid ${C.paleSlate}`, background:C.white, color:C.blueSlate,
+                fontWeight:600, fontSize:13, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}
+                onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}
+                onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.blueSlate }}
+              ><RefreshCw size={13} strokeWidth={2}/> Refresh</button>
+
+              {/* ── Export PDF Button ── */}
+              <button
+                onClick={handleExportPDF}
+                disabled={exportLoading || loading}
+                style={{ padding:"10px 18px", borderRadius:10, cursor: exportLoading||loading ? "not-allowed" : "pointer",
+                  fontFamily:"inherit", border:"none",
+                  background: exportLoading||loading ? "rgba(2,62,138,0.5)" : C.techBlue,
+                  color:C.snow, fontWeight:600, fontSize:13,
+                  display:"flex", alignItems:"center", gap:6, transition:"all 0.2s",
+                  boxShadow: exportLoading||loading ? "none" : `0 4px 18px rgba(2,62,138,0.28)` }}
+                onMouseEnter={e=>{ if(!exportLoading&&!loading){ e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 26px rgba(2,62,138,0.38)" }}}
+                onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=exportLoading||loading?"none":"0 4px 18px rgba(2,62,138,0.28)" }}
+              >
+                {exportLoading
+                  ? <><Loader2 size={13} style={{ animation:"spin 0.9s linear infinite" }}/> Generating...</>
+                  : <><Download size={13} strokeWidth={2}/> Export PDF</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {fetchError && (
+          <div style={{
+            padding:"12px 18px", borderRadius:10, marginBottom:20,
+            background:"rgba(192,57,43,0.06)", border:"1px solid rgba(192,57,43,0.22)",
+            display:"flex", alignItems:"center", gap:12, animation:"fadeUp 0.3s ease both",
+          }}>
+            <AlertTriangle size={16} color={C.danger} />
+            <div style={{ flex:1 }}>
+              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13 }}>Failed to load medicines</p>
+              <p style={{ margin:"2px 0 0", fontSize:12, color:C.danger, opacity:0.7 }}>{fetchError}</p>
+            </div>
+            <button onClick={fetchMedicines} style={{
+              padding:"6px 14px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+              border:"1.5px solid rgba(192,57,43,0.3)", background:"rgba(192,57,43,0.08)",
+              color:C.danger, fontWeight:600, fontSize:12,
+            }}>Retry</button>
+          </div>
+        )}
+
+        {/* Stat Cards */}
+        <div style={{ display:"flex", gap:14, marginBottom:28, animation:"fadeUp 0.4s ease 0.05s both" }}>
+          <StatCard icon={Package}       value={loading ? "—" : stats.total}    label="Total Medicines" sub="Across all pharmacies" delay="0.07s" />
+          <StatCard icon={CheckCircle2}  value={loading ? "—" : stats.inStock}  label="In Stock"        sub="Sufficient supply"     delay="0.1s"  />
+          <StatCard icon={AlertTriangle} value={loading ? "—" : stats.low}      label="Low Stock"       sub="≤ 50 units remaining"  delay="0.13s" />
+          <StatCard icon={XCircle}       value={loading ? "—" : stats.out}      label="Out of Stock"    sub="Needs restocking"      delay="0.16s" />
+          <StatCard icon={Clock}         value={loading ? "—" : stats.expiring} label="Expiring Soon"   sub="Within 6 months"       delay="0.19s" />
+        </div>
+
+        {pharmFilter !== "All" && (
+          <div style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"11px 18px", borderRadius:10, marginBottom:14,
+            background:"rgba(2,62,138,0.06)", border:`1.5px solid rgba(2,62,138,0.18)`,
+            animation:"fadeUp 0.3s ease both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <Building2 size={15} color={C.techBlue} strokeWidth={2} />
+              <div>
+                <span style={{ fontSize:13, fontWeight:700, color:C.techBlue }}>{pharmFilter}</span>
+                <span style={{ fontSize:12, color:C.lilacAsh, marginLeft:8 }}>
+                  — showing medicines registered to this pharmacy only
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={()=>{ setPharmFilter("All"); setPage(1) }}
+              style={{
+                background:"none", border:`1.5px solid rgba(2,62,138,0.22)`, borderRadius:7,
+                padding:"4px 12px", cursor:"pointer", fontFamily:"inherit",
+                color:C.techBlue, fontSize:12, fontWeight:600, transition:"all 0.2s",
+                display:"flex", alignItems:"center", gap:5,
+              }}
+              onMouseEnter={e=>{ e.currentTarget.style.background=C.techBlue; e.currentTarget.style.color=C.snow }}
+              onMouseLeave={e=>{ e.currentTarget.style.background="none"; e.currentTarget.style.color=C.techBlue }}
+            >
+              <ChevronRight size={11} style={{ transform:"rotate(180deg)" }} /> Show All
+            </button>
+          </div>
+        )}
+
+        {/* Search + Filters */}
+        <div style={{ marginBottom:14, animation:"fadeUp 0.4s ease 0.1s both" }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+            <div style={{ position:"relative", flex:1, minWidth:220 }}>
+              <Search size={13} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)" }}
+                color={focusSearch ? C.techBlue : C.lilacAsh} />
+              <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}
+                placeholder="Search by name, ID or manufacturer..."
+                onFocus={()=>setFocusSearch(true)} onBlur={()=>setFocusSearch(false)}
+                style={{ width:"100%", padding:"9px 14px 9px 33px", borderRadius:9,
+                  border:`1.5px solid ${focusSearch ? C.techBlue : C.paleSlate}`,
+                  background:C.white, fontSize:13, outline:"none", fontFamily:"inherit", color:C.blueSlate,
+                  transition:"border-color 0.2s",
+                  boxShadow: focusSearch ? `0 0 0 3px rgba(2,62,138,0.08)` : "none" }}
+              />
+            </div>
+            <button onClick={()=>setShowFilters(f=>!f)} style={{
+              padding:"9px 16px", borderRadius:9, cursor:"pointer", fontFamily:"inherit",
+              border:`1.5px solid ${showFilters ? C.techBlue : C.paleSlate}`,
+              background: showFilters ? "rgba(2,62,138,0.07)" : C.white,
+              color: showFilters ? C.techBlue : C.blueSlate,
+              fontWeight:600, fontSize:12.5, display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}>
+              <Filter size={13} strokeWidth={2}/>
+              Filters
+              {[catFilter,pharmFilter,rxFilter,stockFilter].filter(f=>f!=="All").length>0 && (
+                <span style={{ width:16, height:16, borderRadius:"50%", background:C.techBlue,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:9, fontWeight:800, color:C.snow }}>
+                  {[catFilter,pharmFilter,rxFilter,stockFilter].filter(f=>f!=="All").length}
+                </span>
+              )}
+            </button>
+            <span style={{ fontSize:12, color:C.lilacAsh }}>{loading ? "Loading..." : `${filtered.length} of ${allMedicines.length} medicines`}</span>
+          </div>
+
+          {showFilters && (
+            <div style={{ display:"flex", gap:10, marginTop:10, flexWrap:"wrap",
+              padding:"14px 16px", borderRadius:10,
+              background:C.white, border:`1.5px solid ${C.paleSlate}`,
+              boxShadow:"0 2px 12px rgba(2,62,138,0.06)",
+              animation:"fadeUp 0.25s ease both" }}>
+              {[
+                { label:"Category",  val:catFilter,   set:setCatFilter,   opts:categories },
+                { label:"Pharmacy",  val:pharmFilter,  set:setPharmFilter,  opts:pharmacies },
+                { label:"Rx Status", val:rxFilter,    set:setRxFilter,    opts:["All","Prescription Required","Over The Counter","Controlled Substance"] },
+                { label:"Stock",     val:stockFilter, set:setStockFilter, opts:[{v:"All",l:"All"},{v:"in",l:"In Stock"},{v:"low",l:"Low Stock"},{v:"out",l:"Out of Stock"}] },
+              ].map(f=>(
+                <div key={f.label} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                  <label style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
+                    letterSpacing:"0.12em", textTransform:"uppercase" }}>{f.label}</label>
+                  <select value={f.val} onChange={e=>{ f.set(e.target.value); setPage(1) }} style={{
+                    padding:"7px 28px 7px 10px", borderRadius:8,
+                    border:`1.5px solid ${C.paleSlate}`, background:C.snow,
+                    color:C.blueSlate, fontSize:12.5, outline:"none", fontFamily:"inherit",
+                    cursor:"pointer", minWidth:140, appearance:"none", WebkitAppearance:"none",
+                    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234C6EF5' stroke-opacity='.5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                    backgroundRepeat:"no-repeat", backgroundPosition:"right 9px center" }}>
+                    {f.opts.map(o=>typeof o==="string"
+                      ?<option key={o} value={o}>{o}</option>
+                      :<option key={o.v} value={o.v}>{o.l}</option>)}
+                  </select>
+                </div>
+              ))}
+              <div style={{ display:"flex", alignItems:"flex-end" }}>
+                <button onClick={()=>{ setCatFilter("All"); setPharmFilter("All"); setRxFilter("All"); setStockFilter("All"); setPage(1) }} style={{
+                  padding:"7px 12px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                  border:`1.5px solid rgba(192,57,43,0.22)`, background:"rgba(192,57,43,0.05)",
+                  color:C.danger, fontWeight:600, fontSize:12, transition:"all 0.2s" }}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(192,57,43,0.1)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="rgba(192,57,43,0.05)"}
+                >Clear all</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Table */}
+        <div style={{ borderRadius:16, overflow:"hidden", border:`1.5px solid ${C.paleSlate}`,
+          background:C.white, boxShadow:"0 4px 24px rgba(2,62,138,0.07)",
+          animation:"fadeUp 0.4s ease 0.15s both" }}>
+          <div style={{ overflowX:"auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <ColHead col="name"     label="Medicine"     />
+                  <ColHead col="category" label="Category"     />
+                  <ColHead col="company"  label="Manufacturer" />
+                  <ColHead col="price"    label="Price (LKR)"  />
+                  <ColHead col="stock"    label="Stock"        style={{ minWidth:160 }} />
+                  <th style={thStyle}>Rx Status</th>
+                  <ColHead col="expDate"  label="Expiry"       />
+                  <th style={{ ...thStyle, paddingRight:22 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
+                      <div style={{ width:52, height:52, borderRadius:13,
+                        background:"rgba(2,62,138,0.07)", border:"1.5px solid rgba(2,62,138,0.15)",
+                        display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Loader2 size={22} color={C.techBlue} style={{ animation:"spin 0.9s linear infinite" }} />
+                      </div>
+                      <p style={{ margin:0, fontSize:14, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>Loading medicines...</p>
+                      <p style={{ margin:0, fontSize:12, color:C.lilacAsh }}>Fetching from database</p>
+                    </div>
+                  </td></tr>
+                ) : pageData.length===0 ? (
+                  <tr><td colSpan={9} style={{ padding:"64px", textAlign:"center" }}>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
+                      <div style={{ width:52, height:52, borderRadius:14, background:C.white,
+                        border:`1.5px solid ${C.paleSlate}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Package size={22} color={C.lilacAsh} />
+                      </div>
+                      <p style={{ margin:0, fontSize:15, fontWeight:600, color:C.blueSlate, fontFamily:"'Sora',sans-serif" }}>No medicines found</p>
+                      <p style={{ margin:0, fontSize:12.5, color:C.lilacAsh }}>Try adjusting your search or filters</p>
+                    </div>
+                  </td></tr>
+                ) : pageData.map((med,idx)=>{
+                  const ss    = stockStatus(med.stock)
+                  const rx    = rxConfig[med.rxStatus]
+                  const RxI   = rx?.icon ?? ShieldOff
+                  const StI   = ss.icon
+                  const exp   = isExpired(med.expDate)
+                  const expSn = isExpiringSoon(med.expDate)
+                  const isOpen= expanded===med.id
+
+                  return (
+                    <React.Fragment key={med.id}>
+                      <tr style={{
+                        borderBottom:`1px solid ${C.snow}`,
+                        background: isOpen ? "rgba(2,62,138,0.03)" : C.white,
+                        transition:"background 0.15s", cursor:"pointer",
+                        animation:`fadeUp 0.4s ease ${idx*0.04}s both`,
+                      }}
+                        onMouseEnter={e=>{ if(!isOpen) e.currentTarget.style.background="rgba(2,62,138,0.02)" }}
+                        onMouseLeave={e=>{ if(!isOpen) e.currentTarget.style.background=C.white }}
+                      >
+                        <td style={{ padding:"13px 16px", minWidth:190 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                            <div style={{
+                              width:34, height:34, borderRadius:9, flexShrink:0,
+                              background:`linear-gradient(135deg, ${C.techBlue}, #3d74c4)`,
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              border:`1.5px solid rgba(2,62,138,0.3)`,
+                            }}>
+                              <Pill size={14} color={C.snow} strokeWidth={1.8} />
+                            </div>
+                            <div>
+                              <p style={{ margin:0, fontSize:13.5, fontWeight:600, color:C.blueSlate, whiteSpace:"nowrap" }}>{med.name}</p>
+                              <p style={{ margin:"1px 0 0", fontSize:11, color:C.lilacAsh, display:"flex", alignItems:"center", gap:3 }}>
+                                <Building2 size={9} strokeWidth={2} />
+                                {med.pharmacy.split(" ").slice(0,2).join(" ")}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
+                          <span style={{ fontSize:11.5, fontWeight:600, padding:"3px 10px", borderRadius:99,
+                            background:"rgba(76,110,245,0.08)", color:C.lilacAsh,
+                            border:`1px solid rgba(76,110,245,0.18)` }}>{med.category}</span>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
+                          <span style={{ fontSize:13, color:C.blueSlate, fontWeight:500 }}>{med.company}</span>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
+                          <span style={{ fontSize:14, fontWeight:700, color:C.techBlue, fontFamily:"'Sora',sans-serif" }}>
+                            {med.price.toLocaleString()}
+                          </span>
+                          <span style={{ fontSize:10.5, color:C.lilacAsh, marginLeft:3 }}>LKR</span>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", minWidth:160 }}>
+                          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                            <div style={{ display:"inline-flex", alignItems:"center", gap:4,
+                              background:ss.bg, borderRadius:99, padding:"2px 9px", border:`1px solid ${ss.border}` }}>
+                              <StI size={9} color={ss.color} strokeWidth={2.5} />
+                              <span style={{ fontSize:10, fontWeight:700, color:ss.color }}>{ss.label}</span>
+                            </div>
+                            <StockBar qty={med.stock} />
+                          </div>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                            <RxI size={13} color={rx?.color ?? C.lilacAsh} strokeWidth={1.8} />
+                            <span style={{ fontSize:11.5, color:rx?.color ?? C.lilacAsh, fontWeight:600 }}>
+                              {med.rxStatus==="Prescription Required"?"Rx Required":med.rxStatus==="Over The Counter"?"OTC":"Controlled"}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td style={{ padding:"13px 16px", whiteSpace:"nowrap" }}>
+                          {exp ? (
+                            <span style={{ fontSize:11.5, fontWeight:700, color:C.danger, display:"flex", alignItems:"center", gap:4 }}>
+                              <XCircle size={11} strokeWidth={2.5} /> Expired
+                            </span>
+                          ) : expSn ? (
+                            <span style={{ fontSize:11.5, fontWeight:700, color:C.warn, display:"flex", alignItems:"center", gap:4 }}>
+                              <AlertTriangle size={11} strokeWidth={2.5} /> {fmtDate(med.expDate)}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize:12, color:C.lilacAsh, fontWeight:500 }}>{fmtDate(med.expDate)}</span>
+                          )}
+                        </td>
+
+                        <td style={{ padding:"13px 22px 13px 16px", whiteSpace:"nowrap" }}>
+                          <div style={{ display:"flex", gap:7, alignItems:"center" }}>
+                            <button
+                              onClick={()=>navigate(`/updateMedicine/${med.id}`)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid rgba(76,110,245,0.28)`,
+                                background:"rgba(76,110,245,0.07)",
+                                color:C.lilacAsh,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
+                              onMouseEnter={e=>{ e.currentTarget.style.background=C.lilacAsh; e.currentTarget.style.borderColor=C.lilacAsh; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(76,110,245,0.28)" }}
+                              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(76,110,245,0.07)"; e.currentTarget.style.borderColor="rgba(76,110,245,0.28)"; e.currentTarget.style.color=C.lilacAsh; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
+                            >
+                              <PencilLine size={12} strokeWidth={2} /> Update
+                            </button>
+
+                            <button
+                              onClick={()=>setExpanded(isOpen ? null : med.id)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid ${isOpen ? C.techBlue : C.paleSlate}`,
+                                background: isOpen ? "rgba(2,62,138,0.07)" : C.white,
+                                color: isOpen ? C.techBlue : C.lilacAsh,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
+                              onMouseEnter={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.techBlue; e.currentTarget.style.color=C.techBlue }}}
+                              onMouseLeave={e=>{ if(!isOpen){ e.currentTarget.style.borderColor=C.paleSlate; e.currentTarget.style.color=C.lilacAsh }}}
+                            >
+                              <Eye size={12} strokeWidth={2} /> {isOpen ? "Hide" : "View"}
+                            </button>
+
+                            <button
+                              onClick={()=>setDeleteTarget(med)}
+                              style={{
+                                padding:"6px 13px", borderRadius:8, cursor:"pointer", fontFamily:"inherit",
+                                border:`1.5px solid rgba(192,57,43,0.28)`,
+                                background:"rgba(192,57,43,0.06)",
+                                color:C.danger,
+                                fontWeight:600, fontSize:12, transition:"all 0.2s",
+                                display:"flex", alignItems:"center", gap:5,
+                              }}
+                              onMouseEnter={e=>{ e.currentTarget.style.background=C.danger; e.currentTarget.style.borderColor=C.danger; e.currentTarget.style.color=C.snow; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(192,57,43,0.32)" }}
+                              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(192,57,43,0.06)"; e.currentTarget.style.borderColor="rgba(192,57,43,0.28)"; e.currentTarget.style.color=C.danger; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none" }}
+                            >
+                              <Trash2 size={12} strokeWidth={2} /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isOpen && (
+                        <tr style={{ borderBottom:`1px solid ${C.paleSlate}` }}>
+                          <td colSpan={9} style={{ padding:"0 22px 16px" }}>
+                            <div style={{
+                              borderRadius:12, padding:"18px 22px",
+                              background:C.white, border:`1.5px solid ${C.paleSlate}`,
+                              display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:18,
+                              animation:"fadeUp 0.25s ease both",
+                            }}>
+                              {[
+                                { icon:Pill,       label:"Full Name",         value:med.name },
+                                { icon:Building2,  label:"Assigned Pharmacy", value:med.pharmacy },
+                                { icon:Tag,        label:"Category",          value:med.category },
+                                { icon:Beaker,     label:"Manufacturer",      value:med.company },
+                                { icon:DollarSign, label:"Unit Price",        value:`LKR ${med.price.toLocaleString()}` },
+                                { icon:Hash,       label:"Current Stock",     value:med.stock.toLocaleString()+" units" },
+                                { icon:Calendar,   label:"Manufacture Date",  value:fmtDate(med.mfgDate) },
+                                { icon:Calendar,   label:"Expiry Date",       value:fmtDate(med.expDate), warn:exp?"danger":expSn?"warn":null },
+                              ].map((d,i)=>(
+                                <div key={i} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                                    <d.icon size={10} color={C.lilacAsh} strokeWidth={2} />
+                                    <span style={{ fontSize:9.5, fontWeight:700, color:C.lilacAsh,
+                                      letterSpacing:"0.12em", textTransform:"uppercase" }}>{d.label}</span>
+                                  </div>
+                                  <span style={{ fontSize:13, fontWeight:600,
+                                    color: d.warn==="danger"?C.danger:d.warn==="warn"?C.warn:C.blueSlate }}>
+                                    {d.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages>1 && (
+            <div style={{ padding:"12px 22px", borderTop:`1.5px solid ${C.paleSlate}`,
+              background:C.snow, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span style={{ fontSize:12, color:C.lilacAsh }}>
+                Page {page} of {totalPages} · {loading ? '...' : filtered.length} results
+              </span>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{
+                  width:32, height:32, borderRadius:8, cursor:page===1?"not-allowed":"pointer",
+                  border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                  color:page===1?C.paleSlate:C.lilacAsh,
+                  display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
+                  <ChevronLeft size={14} strokeWidth={2.5}/>
+                </button>
+                {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
+                  <button key={p} onClick={()=>setPage(p)} style={{
+                    width:32, height:32, borderRadius:8, cursor:"pointer",
+                    border:`1.5px solid ${p===page?C.techBlue:C.paleSlate}`,
+                    background:p===page?C.techBlue:C.white,
+                    color:p===page?C.snow:C.blueSlate,
+                    fontWeight:700, fontSize:12.5, fontFamily:"'Sora',sans-serif",
+                    boxShadow:p===page?`0 4px 14px rgba(2,62,138,0.25)`:"none",
+                    transition:"all 0.15s" }}>{p}</button>
+                ))}
+                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{
+                  width:32, height:32, borderRadius:8, cursor:page===totalPages?"not-allowed":"pointer",
+                  border:`1.5px solid ${C.paleSlate}`, background:C.white,
+                  color:page===totalPages?C.paleSlate:C.lilacAsh,
+                  display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
+                  <ChevronRight size={14} strokeWidth={2.5}/>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,299 @@
+const {
+    getAllMedicines,
+    addmedicine,
+    getById,
+    updateMedicine,
+    deleteMedicine,
+} = require('../../Controllers/medicineControl');
+
+// Mock the Medicine model
+jest.mock('../../Model/medicineModel');
+const Medicine = require('../../Model/medicineModel');
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const mockRes = () => {
+    const res = {};
+    res.status = jest.fn().mockReturnValue(res);
+    res.json = jest.fn().mockReturnValue(res);
+    return res;
+};
+
+const validBody = {
+    mediName: 'Paracetamol',
+    mediPrice: 10.5,
+    mediDescription: 'Pain reliever and fever reducer.',
+    mediImage: 'http://example.com/image.jpg',
+    mediCategory: 'Analgesic',
+    mediStock: 100,
+    mediCompany: 'PharmaCo',
+    mediExpiryDate: '2027-01-01',
+    mediManufactureDate: '2023-01-01',
+    mediPrescriptionStatus: 'not required',
+    Pharmacy: 'CityPharmacy',
+};
+
+const validId = '64a7f9e2b4c3a12d5e6f7890'; // valid 24-char hex
+
+// ─── getAllMedicines ──────────────────────────────────────────────────────────
+
+describe('getAllMedicines', () => {
+    it('should return all medicines with status 200', async () => {
+        const fakeList = [{ mediName: 'Paracetamol' }, { mediName: 'Ibuprofen' }];
+        Medicine.find.mockResolvedValue(fakeList);
+
+        const req = {};
+        const res = mockRes();
+
+        await getAllMedicines(req, res);
+
+        expect(Medicine.find).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ medicines: fakeList });
+    });
+
+    it('should return 500 on server error', async () => {
+        Medicine.find.mockRejectedValue(new Error('DB error'));
+
+        const req = {};
+        const res = mockRes();
+
+        await getAllMedicines(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Server error' });
+    });
+});
+
+// ─── addmedicine ─────────────────────────────────────────────────────────────
+
+describe('addmedicine', () => {
+    it('should add a medicine successfully with status 201', async () => {
+        const saveMock = jest.fn().mockResolvedValue(true);
+        Medicine.mockImplementation(() => ({ ...validBody, save: saveMock }));
+
+        const req = { body: validBody };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Medicine added successfully' })
+        );
+    });
+
+    it('should return 400 if mediName is missing', async () => {
+        const req = { body: { ...validBody, mediName: '' } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Validation failed' })
+        );
+    });
+
+    it('should return 400 if mediPrice is negative', async () => {
+        const req = { body: { ...validBody, mediPrice: -5 } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if mediStock is not an integer', async () => {
+        const req = { body: { ...validBody, mediStock: 10.5 } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if expiry date is in the past', async () => {
+        const req = { body: { ...validBody, mediExpiryDate: '2000-01-01' } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if manufacture date is in the future', async () => {
+        const req = { body: { ...validBody, mediManufactureDate: '2099-01-01' } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if manufacture date is after expiry date', async () => {
+        const req = {
+            body: {
+                ...validBody,
+                mediManufactureDate: '2026-01-01',
+                mediExpiryDate: '2025-01-01',
+            },
+        };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if prescriptionStatus is invalid', async () => {
+        const req = { body: { ...validBody, mediPrescriptionStatus: 'maybe' } };
+        const res = mockRes();
+
+        await addmedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+});
+
+// ─── getById ─────────────────────────────────────────────────────────────────
+
+describe('getById', () => {
+    it('should return a medicine with status 200', async () => {
+        Medicine.findById.mockResolvedValue({ mediName: 'Paracetamol' });
+
+        const req = { params: { id: validId } };
+        const res = mockRes();
+
+        await getById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ medicine: { mediName: 'Paracetamol' } })
+        );
+    });
+
+    it('should return 404 if medicine not found', async () => {
+        Medicine.findById.mockResolvedValue(null);
+
+        const req = { params: { id: validId } };
+        const res = mockRes();
+
+        await getById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ message: 'No medicine found' });
+    });
+
+    it('should return 400 for an invalid ID format', async () => {
+        const req = { params: { id: 'invalid-id' } };
+        const res = mockRes();
+
+        await getById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Invalid medicine ID format.' });
+    });
+});
+
+// ─── updateMedicine ───────────────────────────────────────────────────────────
+
+describe('updateMedicine', () => {
+    it('should update a medicine and return status 200', async () => {
+        const mockUpdatedMedicine = { mediName: 'Updated Paracetamol', ...validBody };
+        Medicine.findByIdAndUpdate.mockResolvedValue(mockUpdatedMedicine);
+
+        const req = { params: { id: validId }, body: validBody };
+        const res = mockRes();
+
+        await updateMedicine(req, res);
+
+        expect(Medicine.findByIdAndUpdate).toHaveBeenCalledWith(
+            validId, 
+            expect.objectContaining({
+                mediName: validBody.mediName,
+                mediPrice: validBody.mediPrice,
+                mediDescription: validBody.mediDescription,
+                mediImage: validBody.mediImage,
+                mediCategory: validBody.mediCategory,
+                mediStock: validBody.mediStock,
+                mediCompany: validBody.mediCompany,
+                mediExpiryDate: validBody.mediExpiryDate,
+                mediManufactureDate: validBody.mediManufactureDate,
+                mediPrescriptionStatus: validBody.mediPrescriptionStatus,
+                Pharmacy: validBody.Pharmacy
+            }),
+            { new: true, runValidators: true }
+        );
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ 
+                message: "Medicine updated successfully",
+                medicine: mockUpdatedMedicine 
+            })
+        );
+    });
+
+    it('should return 400 for an invalid ID format', async () => {
+        const req = { params: { id: 'bad-id' }, body: validBody };
+        const res = mockRes();
+
+        await updateMedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Invalid medicine ID format.' });
+    });
+
+    it('should return 400 for invalid input data', async () => {
+        const req = { params: { id: validId }, body: { ...validBody, mediName: '' } };
+        const res = mockRes();
+
+        await updateMedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Validation failed' })
+        );
+    });
+});
+
+// ─── deleteMedicine ───────────────────────────────────────────────────────────
+
+describe('deleteMedicine', () => {
+    it('should delete a medicine and return status 200', async () => {
+        Medicine.findByIdAndDelete.mockResolvedValue({ mediName: 'Deleted Medicine' });
+
+        const req = { params: { id: validId } };
+        const res = mockRes();
+
+        await deleteMedicine(req, res);
+
+        expect(Medicine.findByIdAndDelete).toHaveBeenCalledWith(validId);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Medicine deleted successfully' })
+        );
+    });
+
+    it('should return 404 if medicine not found', async () => {
+        Medicine.findByIdAndDelete.mockResolvedValue(null);
+
+        const req = { params: { id: validId } };
+        const res = mockRes();
+
+        await deleteMedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ message: 'No medicine found to Delete' });
+    });
+
+    it('should return 400 for an invalid ID format', async () => {
+        const req = { params: { id: 'invalid-id' } };
+        const res = mockRes();
+
+        await deleteMedicine(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Invalid medicine ID format.' });
+    });
+});
