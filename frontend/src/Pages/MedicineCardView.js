@@ -30,7 +30,7 @@ const RX_CFG = {
 }
 
 // ── Medicine Card ────────────────────────────────────────────────
-function MedicineCard({ medicine, onAdd, inCart }) {
+function MedicineCard({ medicine, onAdd, inCart, cartPharmacy }) {
   const [hov, setHov] = useState(false);
   const [liked, setLiked] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -38,8 +38,11 @@ function MedicineCard({ medicine, onAdd, inCart }) {
   const isLowStock = medicine.mediStock > 0 && medicine.mediStock <= 50;
   const isOutOfStock = (medicine.mediStock || 0) === 0;
 
+  // Check if this medicine can be added to cart (same pharmacy)
+  const canAddToCart = !cartPharmacy || cartPharmacy === medicine.Pharmacy;
+
   const handleAdd = () => {
-    if (isOutOfStock) return;
+    if (isOutOfStock || !canAddToCart) return;
     setAdding(true);
     onAdd(medicine);
     setTimeout(() => setAdding(false), 600);
@@ -244,12 +247,13 @@ function MedicineCard({ medicine, onAdd, inCart }) {
                 ? `rgba(2,62,138,0.1)`
                 : C.techBlue,
               color: isOutOfStock ? C.lilacAsh : adding ? C.snow : inCart ? C.techBlue : C.snow,
-              fontWeight: 700, fontSize: 12.5, cursor: isOutOfStock ? "not-allowed" : "pointer",
-              transition: "all 0.22s cubic-bezier(0.4,0,0.2,1)",
+              fontWeight: 700, fontSize: 12.5, cursor: isOutOfStock || !canAddToCart ? "not-allowed" : "pointer",
+              fontFamily: "inherit", transition: "all 0.22s",
               boxShadow: isOutOfStock || inCart ? "none" : `0 4px 16px rgba(2,62,138,0.3)`,
-              fontFamily: "inherit",
               border: inCart ? `1.5px solid rgba(2,62,138,0.25)` : "none",
             }}
+            onMouseEnter={e => { if (!isOutOfStock && !inCart) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(2,62,138,0.4)"; } }}
+            onMouseLeave={e => { if (!isOutOfStock && !inCart) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(2,62,138,0.3)"; } }}
           >
             {adding ? (
               <CheckCircle size={14} strokeWidth={2.5} />
@@ -433,6 +437,17 @@ const MedicineCardView = () => {
   const addToCart = (medicine) => {
     setCart(prev => {
       const existing = prev.find(i => i._id === medicine._id);
+      
+      // Check if cart has items from different pharmacy
+      const currentPharmacy = medicine.Pharmacy;
+      const differentPharmacies = prev.length > 0 && 
+        prev.some(item => item.Pharmacy !== currentPharmacy);
+      
+      if (differentPharmacies) {
+        // Don't add item if it's from a different pharmacy
+        return prev;
+      }
+      
       return existing
         ? prev.map(i => i._id === medicine._id ? { ...i, quantity: i.quantity + 1 } : i)
         : [...prev, { ...medicine, quantity: 1 }];
@@ -452,6 +467,23 @@ const MedicineCardView = () => {
 
   const getTotalItems = () => cart.reduce((s, i) => s + i.quantity, 0);
   const getTotalPrice = () => cart.reduce((s, i) => s + i.mediPrice * i.quantity, 0);
+
+  // Check if cart has items from multiple pharmacies
+  const hasMultiplePharmacies = () => {
+    if (cart.length === 0) return false;
+    const uniquePharmacies = new Set(cart.map(item => item.Pharmacy));
+    return uniquePharmacies.size > 1;
+  };
+
+  // Get the pharmacy name that should be used for this order
+  const getCartPharmacyName = () => {
+    if (cart.length === 0) return '';
+    const uniquePharmacies = new Set(cart.map(item => item.Pharmacy));
+    if (uniquePharmacies.size === 1) {
+      return cart[0].Pharmacy;
+    }
+    return '';
+  };
 
   const handlePlaceOrder = () => {
     if (!cart.length) return;
@@ -740,6 +772,7 @@ const MedicineCardView = () => {
                       medicine={medicine}
                       onAdd={addToCart}
                       inCart={cart.some(i => i._id === medicine._id)}
+                      cartPharmacy={getCartPharmacyName()}
                     />
                   </div>
                 ))}
@@ -845,14 +878,35 @@ const MedicineCardView = () => {
                   <p style={{ margin: 0, fontSize: 12.5, color: C.lilacAsh }}>Add medicines to get started</p>
                 </div>
               ) : (
-                cart.map(item => (
-                  <CartItem
-                    key={item._id}
-                    item={item}
-                    onUpdate={updateQuantity}
-                    onRemove={removeFromCart}
-                  />
-                ))
+                <div>
+                  {/* Warning message for multiple pharmacies */}
+                  {hasMultiplePharmacies() && (
+                    <div style={{
+                      margin: "0 0 16px", padding: "12px 16px",
+                      background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.22)",
+                      borderRadius: 10, display: "flex", alignItems: "center", gap: 10
+                    }}>
+                      <AlertTriangle size={20} color={C.warn} strokeWidth={2} />
+                      <div>
+                        <p style={{ margin: "0 0 4px", fontWeight: 700, color: C.warn, fontSize: 13, fontFamily: "'Sora', sans-serif" }}>
+                          Multiple Pharmacies Detected
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12, color: C.lilacAsh, lineHeight: 1.4 }}>
+                          Please select medicines from only one pharmacy for this order.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {cart.map(item => (
+                    <CartItem
+                      key={item._id}
+                      item={item}
+                      onUpdate={updateQuantity}
+                      onRemove={removeFromCart}
+                    />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -873,16 +927,18 @@ const MedicineCardView = () => {
                 {/* Place order */}
                 <button
                   onClick={handlePlaceOrder}
+                  disabled={hasMultiplePharmacies()}
                   style={{
                     width: "100%", padding: "13px 20px", borderRadius: 11, border: "none",
-                    background: C.techBlue, color: C.snow,
-                    fontWeight: 700, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit",
+                    background: hasMultiplePharmacies() ? C.paleSlate : C.techBlue, 
+                    color: hasMultiplePharmacies() ? C.lilacAsh : C.snow,
+                    fontWeight: 700, fontSize: 14.5, cursor: hasMultiplePharmacies() ? "not-allowed" : "pointer", fontFamily: "inherit",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    boxShadow: `0 6px 24px rgba(2,62,138,0.32)`,
+                    boxShadow: hasMultiplePharmacies() ? "none" : `0 6px 24px rgba(2,62,138,0.32)`,
                     transition: "all 0.22s",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 10px 32px rgba(2,62,138,0.4)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 6px 24px rgba(2,62,138,0.32)"; }}
+                  onMouseEnter={e => !hasMultiplePharmacies() && (e.currentTarget.style.transform = "translateY(-2px)", e.currentTarget.style.boxShadow = "0 10px 32px rgba(2,62,138,0.4)")}
+                  onMouseLeave={e => !hasMultiplePharmacies() && (e.currentTarget.style.transform = "none", e.currentTarget.style.boxShadow = "0 6px 24px rgba(2,62,138,0.32)")}
                 >
                   Place Order
                   <ArrowUpRight size={16} strokeWidth={2.5} />
