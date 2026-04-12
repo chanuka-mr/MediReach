@@ -56,7 +56,7 @@ const OrderDashboard = () => {
             fetchOrders(true);
         }, 10000);
         return () => clearInterval(interval);
-    }, [pharmacyId, statusFilter, fetchOrders]);
+    }, [pharmacyId, statusFilter]);
 
     const handleAction = async (orderId, pharmacyIdForOrder, action) => {
         try {
