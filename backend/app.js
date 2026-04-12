@@ -57,7 +57,7 @@ app.use(express.json());
 // Use a permissive CORS config but prefer explicit origins if needed
 app.use(
     cors({
-        origin: ['http://localhost:3000', 'http://localhost:3001'],
+        origin: ['http://localhost:3000', 'http://localhost:3001' , 'https://medi-reach-virid.vercel.app'],
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
     })
