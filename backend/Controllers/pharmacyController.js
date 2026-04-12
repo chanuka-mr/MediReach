@@ -807,43 +807,46 @@ exports.getNearbyPharmacies = async (req, res) => {
 exports.getOpenNowPharmacies = async (req, res) => {
   try {
     const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const currentHours = now.getHours().toString().padStart(2, '0');
+    const currentMins = now.getMinutes().toString().padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMins}`;
+    const currentMinutes = parseInt(currentHours) * 60 + parseInt(currentMins);
     
-    console.log(`🕐 Finding pharmacies open at ${currentTime}`);
+    console.log(`🕐 Finding pharmacies open at ${currentTime} (${currentMinutes} minutes)`);
 
-    const pharmacies = await Pharmacy.find({
-      isActive: true,
-      $or: [
-        // Regular hours (same day)
-        {
-          'operatingHours.open': { $lte: currentTime },
-          'operatingHours.close': { $gte: currentTime }
-        },
-        // Handle pharmacies that close after midnight (e.g., 22:00 to 02:00)
-        {
-          'operatingHours.open': { $gt: '12:00' },
-          'operatingHours.close': { $lt: '12:00' },
-          $expr: { 
-            $or: [
-              { $gte: [currentTime, '$operatingHours.open'] },
-              { $lte: [currentTime, '$operatingHours.close'] }
-            ]
-          }
-        },
-        // Always include 24/7 pharmacies (open: 00:00, close: 23:59 / 00:00 / 24:00)
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '23:59' },
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '00:00' },
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '24:00' }
-      ]
+    // Get all active pharmacies
+    const allPharmacies = await Pharmacy.find({ isActive: true });
+    
+    // Filter in application level with correct time comparison logic
+    const openPharmacies = allPharmacies.filter(pharmacy => {
+      const openTime = pharmacy.operatingHours.open;
+      const closeTime = pharmacy.operatingHours.close;
+      
+      // Special case: 24/7 pharmacies always open (open='00:00', close='00:00' or '23:59')
+      if (openTime === '00:00' && (closeTime === '00:00' || closeTime === '23:59')) {
+        return true;
+      }
+      
+      // Convert time strings to minutes for numeric comparison
+      const openMinutes = parseInt(openTime.split(':')[0]) * 60 + parseInt(openTime.split(':')[1]);
+      const closeMinutes = parseInt(closeTime.split(':')[0]) * 60 + parseInt(closeTime.split(':')[1]);
+      
+      if (openMinutes <= closeMinutes) {
+        // Regular hours - pharmacy operates within the same day (e.g., 09:00 to 17:00)
+        return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+      } else {
+        // Crossing midnight - pharmacy operates across two days (e.g., 22:00 to 02:00)
+        return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+      }
     });
 
-    console.log(`✅ Found ${pharmacies.length} pharmacies open now`);
+    console.log(`✅ Found ${openPharmacies.length} pharmacies open now`);
 
     res.status(200).json({
       status: 'success',
-      results: pharmacies.length,
+      results: openPharmacies.length,
       data: { 
-        pharmacies,
+        pharmacies: openPharmacies,
         currentTime,
         date: now.toDateString()
       }
@@ -864,12 +867,14 @@ exports.get247Pharmacies = async (req, res) => {
   try {
     console.log('🕛 Finding 24/7 pharmacies');
 
+    // 24/7 pharmacies have open='00:00' (midnight) and close='00:00' or '23:59'
+    // representing they operate the entire day continuously
     const pharmacies = await Pharmacy.find({
       isActive: true,
+      'operatingHours.open': '00:00',
       $or: [
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '23:59' },
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '00:00' },
-        { 'operatingHours.open': '00:00', 'operatingHours.close': '24:00' }
+        { 'operatingHours.close': '00:00' },
+        { 'operatingHours.close': '23:59' }
       ]
     });
 

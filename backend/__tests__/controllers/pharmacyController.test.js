@@ -430,8 +430,33 @@ describe('pharmacyController.restorePharmacy', () => {
 });
 
 describe('pharmacyController.getOpenNowPharmacies', () => {
-  it('should get open now pharmacies', async () => {
-    Pharmacy.aggregate.mockResolvedValue([{ _id: '1', isOpen: true }]);
+  it('should get open now pharmacies - regular hours (09:00 to 17:00)', async () => {
+    // Mock current time to 12:00
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-15T12:00:00'));
+
+    const mockPharmacies = [
+      {
+        _id: '1',
+        name: 'City Pharmacy',
+        isActive: true,
+        operatingHours: { open: '09:00', close: '17:00' },
+      },
+      {
+        _id: '2',
+        name: 'Night Pharmacy',
+        isActive: true,
+        operatingHours: { open: '22:00', close: '06:00' },
+      },
+      {
+        _id: '3',
+        name: '24/7 Pharmacy',
+        isActive: true,
+        operatingHours: { open: '00:00', close: '00:00' },
+      },
+    ];
+
+    Pharmacy.find.mockResolvedValue(mockPharmacies);
 
     const req = {};
     const res = mockRes();
@@ -439,19 +464,96 @@ describe('pharmacyController.getOpenNowPharmacies', () => {
     await getOpenNowPharmacies(req, res);
 
     expect(res.status).toHaveBeenCalledWith(200);
+    // Should return 2 pharmacies: City Pharmacy (09:00-17:00, currently 12:00) and 24/7 Pharmacy
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'success',
+        results: 2,
+      })
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('should get open now pharmacies - crossing midnight (22:00 to 06:00)', async () => {
+    // Mock current time to 23:30
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-15T23:30:00'));
+
+    const mockPharmacies = [
+      {
+        _id: '1',
+        name: 'Night Pharmacy',
+        isActive: true,
+        operatingHours: { open: '22:00', close: '06:00' },
+      },
+      {
+        _id: '2',
+        name: 'Day Pharmacy',
+        isActive: true,
+        operatingHours: { open: '09:00', close: '17:00' },
+      },
+    ];
+
+    Pharmacy.find.mockResolvedValue(mockPharmacies);
+
+    const req = {};
+    const res = mockRes();
+
+    await getOpenNowPharmacies(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    // Should return 1 pharmacy: Night Pharmacy (22:00-06:00, currently 23:30)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'success',
+        results: 1,
+      })
+    );
+
+    jest.useRealTimers();
   });
 });
 
 describe('pharmacyController.get247Pharmacies', () => {
-  it('should get 24/7 pharmacies', async () => {
-    Pharmacy.find.mockResolvedValue([{ _id: '1', is24x7: true }]);
+  it('should get 24/7 pharmacies with open=00:00 and close=00:00', async () => {
+    const mock247Pharmacies = [
+      {
+        _id: '1',
+        name: '24/7 Pharmacy A',
+        isActive: true,
+        operatingHours: { open: '00:00', close: '00:00' },
+      },
+      {
+        _id: '2',
+        name: '24/7 Pharmacy B',
+        isActive: true,
+        operatingHours: { open: '00:00', close: '23:59' },
+      },
+    ];
+
+    Pharmacy.find.mockResolvedValue(mock247Pharmacies);
 
     const req = {};
     const res = mockRes();
 
     await get247Pharmacies(req, res);
 
+    expect(Pharmacy.find).toHaveBeenCalledWith({
+      isActive: true,
+      'operatingHours.open': '00:00',
+      $or: [
+        { 'operatingHours.close': '00:00' },
+        { 'operatingHours.close': '23:59' },
+      ],
+    });
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'success',
+        results: 2,
+      })
+    );
   });
 });
 
@@ -568,8 +670,8 @@ describe('pharmacyController - Additional Error Handling', () => {
   });
 
   it('should handle getOpenNowPharmacies error', async () => {
-    Pharmacy.aggregate.mockImplementation(() => {
-      throw new Error('aggregation error');
+    Pharmacy.find.mockImplementation(() => {
+      throw new Error('database error');
     });
 
     const req = {};
