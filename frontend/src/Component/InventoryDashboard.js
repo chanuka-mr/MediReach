@@ -620,7 +620,7 @@ export default function InventoryDashboard() {
           }}>
             <AlertTriangle size={16} color={C.danger} />
             <div style={{ flex:1 }}>
-              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13 }}>Failed to load pharmacy data</p>
+              <p style={{ margin:0, fontWeight:600, color:C.danger, fontSize:13 }}>Failed to Fetch pharmacy data</p>
               <p style={{ margin:"2px 0 0", fontSize:12, color:C.danger, opacity:0.7 }}>{fetchError}</p>
             </div>
             <button onClick={fetchData} style={{
