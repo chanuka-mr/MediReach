@@ -2,14 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { romsAPI, medicineAPI } from '../utils/apiEndpoints'
 import {
-  Search, Filter, ShoppingCart, Clock, Building2,
+  Search, Filter, ShoppingCart, Building2,
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
-  ArrowUpDown, RefreshCw, Download, Eye,
-  XCircle, AlertTriangle, Truck, CheckCircle2,
+  ArrowUpDown, RefreshCw, Download,
+  AlertTriangle, Truck, CheckCircle2,
   DollarSign, Hash, Calendar, MapPin,
   Pill, TrendingUp, ClipboardList,
   Hourglass, Ban, CircleDot, X,
-  ShieldAlert, SendHorizonal, ThumbsDown, FileText,
+  SendHorizonal, ThumbsDown,
   ArrowLeft, Building, Loader2
 } from 'lucide-react'
 
@@ -897,7 +897,7 @@ export default function PharmacyOrders() {
 
   useEffect(() => {
     fetchOrders()
-  }, [pharmFilter])
+  }, [pharmFilter, fetchOrders])
 
   const fetchOrders = async () => {
     setLoading(true)

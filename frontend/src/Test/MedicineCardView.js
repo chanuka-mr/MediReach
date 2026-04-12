@@ -238,7 +238,6 @@ function MedicineCard({ medicine, onAdd, inCart, cartPharmacy }) {
               display: "flex", alignItems: "center", gap: 6,
               padding: adding ? "9px 18px" : "9px 16px",
               borderRadius: 10,
-              border: "none",
               background: isOutOfStock
                 ? C.paleSlate
                 : adding
@@ -250,7 +249,6 @@ function MedicineCard({ medicine, onAdd, inCart, cartPharmacy }) {
               fontWeight: 700, fontSize: 12.5, cursor: isOutOfStock || !canAddToCart ? "not-allowed" : "pointer",
               fontFamily: "inherit", transition: "all 0.22s",
               boxShadow: isOutOfStock || inCart ? "none" : `0 4px 16px rgba(2,62,138,0.3)`,
-              border: inCart ? `1.5px solid rgba(2,62,138,0.25)` : "none",
             }}
             onMouseEnter={e => { if (!isOutOfStock && !inCart) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(2,62,138,0.4)"; } }}
             onMouseLeave={e => { if (!isOutOfStock && !inCart) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(2,62,138,0.3)"; } }}

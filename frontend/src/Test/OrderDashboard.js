@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     Search,
-    Filter,
     RefreshCcw,
     CheckCircle,
-    XCircle,
     Clock,
     MoreVertical,
     Check,
@@ -57,7 +55,7 @@ const OrderDashboard = () => {
             fetchOrders(true);
         }, 10000);
         return () => clearInterval(interval);
-    }, [pharmacyId, statusFilter]);
+    }, [pharmacyId, statusFilter, fetchOrders]);
 
     const handleAction = async (orderId, pharmacyIdForOrder, action) => {
         try {

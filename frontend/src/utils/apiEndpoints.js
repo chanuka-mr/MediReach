@@ -346,32 +346,6 @@ export const apiUtils = {
             }
             return { status: 'error', message: 'Server connection failed' };
         }
-    },
-    
-    // Handle API errors consistently
-    handleError: (error) => {
-        if (error.response) {
-            // Server responded with error status
-            return {
-                message: error.response.data.message || 'Server error occurred',
-                status: error.response.status,
-                data: error.response.data
-            };
-        } else if (error.request) {
-            // Request was made but no response received
-            return {
-                message: 'Network error. Please check your connection.',
-                status: null,
-                data: null
-            };
-        } else {
-            // Something else happened
-            return {
-                message: error.message || 'An unexpected error occurred',
-                status: null,
-                data: null
-            };
-        }
     }
 };
 
