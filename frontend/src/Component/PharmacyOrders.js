@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { romsAPI, medicineAPI } from '../utils/apiEndpoints'
+import { romsAPI, medicineAPI  } from '../utils/apiEndpoints'
 import {
   Search, Filter, ShoppingCart, Building2,
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
@@ -895,9 +895,6 @@ export default function PharmacyOrders() {
   const [exportLoading, setExportLoading] = useState(false)
   const PER_PAGE = 8
 
-  useEffect(() => {
-    fetchOrders()
-  }, [pharmFilter, fetchOrders])
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -967,6 +964,10 @@ export default function PharmacyOrders() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchOrders()
+  }, [pharmFilter])
 
   const mapStatus = (status) => {
     switch (status) {
